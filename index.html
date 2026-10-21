@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261011d">
+<link rel="stylesheet" href="styles.css?v=20261021a">
 </head>
 <body>
 
@@ -307,7 +307,7 @@
   <!-- STEP 1: Persoonlijke info -->
   <div class="panel active" id="step0">
     <div class="panel-title">Wie ben je</div>
-    <div class="panel-sub">Maak je profiel aan. Vanaf 16 jaar staan je voor- en achternaam op je profiel; later kies je zelf of dat je gebruikersnaam wordt. Jonger dan 16? Dan staat alleen je gebruikersnaam op je profiel. Je e-mail en wachtwoord blijven altijd privé.</div>
+    <div class="panel-sub">Maak je profiel aan. Vanaf 16 jaar staan je voor- en achternaam op je profiel; later kies je zelf of dat je gebruikersnaam wordt.</div>
 
     <div class="field-group">
       <div class="field">
@@ -325,18 +325,17 @@
         <label>Gebruikersnaam <span class="req">*</span></label>
         <input type="text" id="username" placeholder="Bijv. RockDrummer92" maxlength="20" autocomplete="off" oninput="scheduleUsernameCheck()">
         <p id="usernameStatus" class="field-status"></p>
-        <p class="field-hint">Dit is je artiestennaam. Ben je jonger dan 16 jaar? Dan staat alleen deze naam op je profiel en moet hij anders zijn dan je voornaam.</p>
+        <p class="field-hint">Ben je jonger dan 16 jaar? Dan staat alleen deze naam op je profiel en moet hij anders zijn dan je voornaam.</p>
       </div>
     </div>
 
-    <div class="field-group">
+    <div class="field-group single">
       <div class="field">
         <label>Geboortedatum <span class="req">*</span></label>
         <input type="text" id="birth_date" placeholder="01-02-2001" maxlength="10" inputmode="numeric" oninput="formatBirthDate(this); ouderLeeftijdsregel()">
         <!-- TT-42: verschijnt alleen bij 13, 14 of 15. Mededeling, geen fout. -->
         <p class="field-hint" id="ouderLeeftijdHint" style="display:none;">Onder de 16 vragen we straks toestemming aan je ouder of verzorger. Voor hen is het één klik. Je kunt gewoon doorgaan.</p>
       </div>
-      <div class="field"></div>
     </div>
 
     <!-- Postcode en plaats naast elkaar, in de hele app één vorm
@@ -804,12 +803,11 @@
       </div>
     </div>
 
-    <div class="field-group">
+    <div class="field-group single">
       <div class="field">
         <label>Geboortedatum <span class="req">*</span></label>
         <input type="text" id="wbjBirthDate" maxlength="10" inputmode="numeric" placeholder="dd-mm-jjjj" oninput="formatBirthDate(this)">
       </div>
-      <div class="field"></div>
     </div>
 
     <div class="field-group single">
@@ -2489,7 +2487,6 @@
 <div class="modal-overlay" id="usernameGateModal" data-verplicht="1">
   <div class="modal-box modal-box-md">
     <div class="filter-title" style="margin-bottom:4px;">Kies een gebruikersnaam</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Nieuw: andere muzikanten zien voortaan een gebruikersnaam in plaats van je echte naam. Kies er eentje om verder te gaan.</p>
     <div class="field">
       <input type="text" id="usernameGateInput" placeholder="Bijv. RockDrummer92" maxlength="20" autocomplete="off" oninput="scheduleUsernameCheck2()" onkeydown="submitOnEnter(event, saveUsernameGate)">
       <p id="usernameGateStatus" class="field-status"></p>
