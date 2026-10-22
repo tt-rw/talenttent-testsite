@@ -1,0 +1,115 @@
+# Vaste monitorronde van The Talent Tent (TT-304).
+#
+# Waarom hier en niet in een sessie: `tests/tt_monitor.py` draait alleen als
+# iemand hem start. Deze workflow is de loper die dat vanzelf doet - elke drie
+# dagen, en na een upload naar main. Zakt de monitor, dan eindigt de run rood
+# en stuurt GitHub daar een mail over naar de eigenaar van de repo.
+#
+# Na een upload wacht de monitor eerst 20 minuten (besluit Ronald,
+# 25-09-2026). Reden: Ronald uploadt een set in stappen - hoofdmap, `tests/`,
+# `tests/stub/` - en GitHub maakt van elke stap een aparte push. Na de eerste
+# stap is de set nog half binnen; `CHECKSUMS.txt` klopt dan nog niet en de run
+# werd rood (commit 2d09663, 25-09-2026: 20 van 21, twintig seconden later 21
+# van 21). Na het wachten kijkt de run of zijn commit nog de nieuwste op main
+# is. Zo niet, dan stopt hij groen: de run van de latere push controleert de
+# set. Er is BEWUST geen `cancel-in-progress`: een afgebroken run kan zelf ook
+# een mail opleveren.
+#
+# Deze workflow staat BEWUST alleen in de productierepo, naast `static.yml`.
+# Tweede bewuste uitzondering op §2 regel 2 van de projectinstructies
+# (besluit Ronald, 21-09-2026).
+#
+# Let op: GitHub zet een `schedule` in een publieke repo uit na 60 dagen
+# zonder activiteit. Een push of een handmatige start zet hem weer aan.
+#
+# `tests/tt_tests.py` draait hier BEWUST niet (besluit Ronald, 21-09-2026, na
+# de eerste rode run). Drie gronden:
+#   1. Blok D van de monitor toetst `CHECKSUMS.txt` tegen de bestanden. Klopt
+#      dat, dan zijn de bestanden in de repo dezelfde als die Claude in de
+#      sessie al met `tt_tests.py` heeft getoetst. De CI-run levert dan geen
+#      nieuwe informatie op.
+#   2. `tt_tests.py` heeft Playwright nodig: een pip-installatie, een
+#      chromium-download en apt-pakketten. Dat is de enige zware
+#      afhankelijkheid van de hele workflow, en de runner-image schuift
+#      (ubuntu-latest wordt Ubuntu 26 op 19-10-2026).
+#   3. Een rode run om een kapotte installatie kost meer vertrouwen dan hij
+#      oplevert - dezelfde regel als bovenin `tests/tt_monitor.py`.
+# Komt er later toch gedragstoetsing in CI, dan hoort die in een APARTE
+# workflow, zodat een Playwright-storing de monitor nooit rood kleurt.
+
+# TT-496 (22-10-2026): tweede job, `bewaking`, elk kwartier. Die kijkt naar de
+# LIVE app (`tests/tt_bewaking.py`): antwoordt de site, antwoordt Supabase, hoe
+# lang loopt het certificaat en het domein nog, en de aantallen uit de
+# databasefunctie `tt_bewaking` (mislukte mails, wachtende profielen, ontbrekende
+# welkomstmails, mislukte cron-taken, pieken in `app_error_log`). Zakt hij, dan
+# eindigt de run rood en mailt GitHub naar de eigenaar van de repo: een weg die
+# niet via de mailserver van cloud86 loopt. De code voor de functie staat als
+# geheim `TT_BEWAKING_CODE` in GitHub; hij opent alleen aantallen.
+# De job `monitor` draait niet bij het kwartiersschema.
+#
+# Nog niet gebouwd: de laatste back-up op Backblaze (onbekend hoe die te lezen is).
+
+name: Monitor
+
+on:
+  schedule:
+    # Elke drie dagen om 06:00 UTC (08:00 Nederlandse zomertijd).
+    - cron: "0 6 */3 * *"
+    # Elk kwartier: alleen de job `bewaking`.
+    - cron: "*/15 * * * *"
+  push:
+    branches: ["main"]
+  # Zelf starten kan via de Actions-tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    if: github.event.schedule != '*/15 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wachten tot de upload compleet is
+        # Alleen na een upload. De vaste ronde en handmatig starten wachten niet.
+        if: github.event_name == 'push'
+        run: sleep 1200
+
+      - name: Is dit nog de nieuwste upload?
+        id: nieuwste
+        if: github.event_name == 'push'
+        run: |
+          kop=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}" refs/heads/main | cut -f1)
+          if [ -n "$kop" ] && [ "$kop" != "$GITHUB_SHA" ]; then
+            echo "Er kwam na deze upload nog een upload binnen ($kop)."
+            echo "Die run controleert de complete set. Deze stopt hier."
+            echo "overslaan=ja" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Repo ophalen
+        if: steps.nieuwste.outputs.overslaan != 'ja'
+        uses: actions/checkout@v4
+
+      - name: Node klaarzetten
+        # tt_monitor.py gebruikt `node --check` per JS-bestand.
+        if: steps.nieuwste.outputs.overslaan != 'ja'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Monitorronde
+        if: steps.nieuwste.outputs.overslaan != 'ja'
+        run: python3 tests/tt_monitor.py
+
+  bewaking:
+    # Kwartiersschema en handmatig starten. Niet na een upload.
+    if: github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo ophalen
+        uses: actions/checkout@v4
+
+      - name: Bewaking
+        env:
+          TT_BEWAKING_CODE: ${{ secrets.TT_BEWAKING_CODE }}
+        run: python3 tests/tt_bewaking.py
