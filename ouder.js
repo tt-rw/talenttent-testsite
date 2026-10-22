@@ -322,6 +322,11 @@ function ouderStoppenEnWissen() {
       clearOnboardingProgress();
       ouderPaneelSluiten();
       showView('landing');
+      // TT-503 D7: ook wat in het geheugen en in de velden van de wizard staat,
+      // moet weg. Alleen de opslag wissen liet de naam en de gegevens van de
+      // vorige registratie staan; "Profiel aanmaken" opende dan weer in het
+      // halve profiel. Een herlaad zet alles in één keer terug op leeg.
+      window.location.reload();
     },
     'Ja, stoppen',
     true
