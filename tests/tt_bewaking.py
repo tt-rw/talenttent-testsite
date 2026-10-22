@@ -32,6 +32,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Aanname (22-10-2026): de getallen zijn een eerste schatting; wijzig ze hier.
 DREMPELS = {
     "edge_fouten_uur": 1,          # elke fout van een Edge Function
+    "bevestig_fouten_uur": 1,      # de app kon de bevestigingsmail niet laten sturen
     "app_fouten_uur": 50,          # piek van fouten uit de app
     "nieuwe_soorten_uur": 5,       # veel nieuwe soorten fout tegelijk
     "wacht_zonder_mail": 1,        # wacht op bevestiging, mail nooit gestart
