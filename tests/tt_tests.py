@@ -3275,7 +3275,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           // Je setlist — mislukt
           zet(); S.calls = [];
           S.rpcErrors.tt_save_musician_koppelingen = { code: '23514', message: 'check' };
-          jstSongs = [{ title: 'Nieuw', artist: 'B', level: 2 }]; jstSnapshot = '';
+          jstSongs = [{ title: 'Nieuw', artist: 'B', level: 2 }, { title: 'Nieuw2', artist: 'B', level: 2 }, { title: 'Nieuw3', artist: 'B', level: 2 }]; jstSnapshot = '';  // TT-514: minimaal drie
           await saveJeSetlist();
           uit.setlistFout = titels();
           uit.setlistFoutLos = losGewist();
@@ -3284,7 +3284,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
 
           // Je setlist — lukt
           zet(); S.calls = [];
-          jstSongs = [{ title: 'Nieuw', artist: 'B', level: 2 }]; jstSnapshot = '';
+          jstSongs = [{ title: 'Nieuw', artist: 'B', level: 2 }, { title: 'Nieuw2', artist: 'B', level: 2 }, { title: 'Nieuw3', artist: 'B', level: 2 }]; jstSnapshot = '';  // TT-514: minimaal drie
           await saveJeSetlist();
           uit.setlistGoed = titels();
           const rpc = S.calls.find(c => c.kind === 'rpc' && c.name === 'tt_save_musician_koppelingen');
@@ -3315,7 +3315,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               ato["setlistFout"] == ["Oud"], json.dumps(ato))
         check("en meldt dat het niet gelukt is", "niet gelukt" in ato["setlistToast"], ato["setlistToast"])
         check("Je setlist wist niet meer los vooraf", not ato["setlistFoutLos"], "")
-        check("gelukt opslaan vervangt het repertoire", ato["setlistGoed"] == ["Nieuw"], json.dumps(ato))
+        check("gelukt opslaan vervangt het repertoire", ato["setlistGoed"] == ["Nieuw", "Nieuw2", "Nieuw3"], json.dumps(ato))
         check("Je setlist raakt alleen het repertoire",
               ato["setlistAlleenSongs"], json.dumps(ato))
         check("mislukt opslaan van Wat speel je laat instrumenten en genres staan",
@@ -8970,7 +8970,8 @@ window.TT_STUB.fnAntwoord = {};
           const tekstX = el => { const r = document.createRange(); r.selectNodeContents(el); return af(r.getClientRects()[0].left); };
           const uit = { rijen: rijen.length, kopZichtbaar: !kop.hidden && kop.getBoundingClientRect().height > 0,
             kopTeller: kop.querySelector('.setlist-teller').textContent,
-            kopBehX: tekstX(kop.querySelector('.setlist-kop-beh').firstChild),
+            iMidden: (() => { const q = kop.querySelector('.niveau-info-btn').getBoundingClientRect(); return af((q.left + q.right) / 2); })(),
+            kruisMidden: new Set(),
             keuzeX: new Set(), spelersX: new Set(), kruisjes: new Set(), omlijnd: true, scheef: [], regels: [], afgesneden: [],
             tikdoel: 999, pagina: document.documentElement.scrollWidth > innerWidth };
           rijen.forEach((r, i) => {
@@ -8988,6 +8989,7 @@ window.TT_STUB.fnAntwoord = {};
             }
             const x = r.querySelector('.song-remove'), q = x.getBoundingClientRect();
             uit.kruisjes.add(af(q.left) + '-' + af(q.right));
+            uit.kruisMidden.add(af((q.left + q.right) / 2));
             if (q.right > db.right + 0.5) uit.afgesneden.push('kruis ' + i);
             const ar = r.querySelector('.setlist-artiest').getBoundingClientRect(), tr = r.querySelector('.setlist-titel').getBoundingClientRect();
             if (ar.height > 41) uit.regels.push('artiest ' + i);
@@ -8999,7 +9001,10 @@ window.TT_STUB.fnAntwoord = {};
             let h = 0; for (let y = kb.top - 10; y <= kb.bottom + 10; y++) { const e = document.elementFromPoint(midden, y); if (e && e.closest('.setlist-keuze') === r.querySelector('.setlist-keuze')) h++; }
             uit.tikdoel = Math.min(uit.tikdoel, h);
           });
-          uit.keuzeX = [...uit.keuzeX]; uit.spelersX = [...uit.spelersX]; uit.kruisjes = uit.kruisjes.size;
+          uit.keuzeX = [...uit.keuzeX]; uit.spelersX = [...uit.spelersX]; uit.kruisjes = uit.kruisjes.size; uit.kruisMidden = [...uit.kruisMidden];
+          // De langste teller ("Voeg nog 2 nummers toe") past op één regel naast "Beheersing"
+          const t = kop.querySelector('.setlist-teller'); t.textContent = setlistTellerTekst(1);
+          uit.tellerHoogte = af(t.getBoundingClientRect().height); uit.tellerEenRegel = uit.tellerHoogte < 24;  // 14px: één regel ±16px
           uit.zeker = (rijen.find(r => r.querySelector('.setlist-zeker')) || document.body).textContent.includes('Zeker?');
           uit.zekerBreedte = af((lijst.querySelector('.setlist-zeker') || document.body).getBoundingClientRect().width);
           uit.kopBinnen = [...kop.children].every(c => c.getBoundingClientRect().right <= db.right + 0.5);
@@ -9015,8 +9020,10 @@ window.TT_STUB.fnAntwoord = {};
                 ok87 = d87.get("rijen") == 8
                 check(f"{naam87}: acht omlijnde rijen, kop met \"8 nummers\" en Beheersing binnen het vak",
                       ok87 and d87["omlijnd"] and d87["kopZichtbaar"] and d87["kopTeller"] == "8 nummers" and d87["kopBinnen"], json.dumps(d87))
-                check(f"{naam87}: keuze, voorproef en \"Beheersing\" in de kop beginnen op dezelfde x",
-                      ok87 and len(d87["keuzeX"]) == 1 and len(d87["spelersX"]) == 1 and d87["keuzeX"][0] == d87["spelersX"][0] == d87["kopBehX"], json.dumps(d87))
+                check(f"{naam87}: keuze en voorproef beginnen op dezelfde x; de i van \"Beheersing\" staat recht boven de kruisjes",
+                      ok87 and len(d87["keuzeX"]) == 1 and len(d87["spelersX"]) == 1 and d87["keuzeX"][0] == d87["spelersX"][0]
+                      and len(d87["kruisMidden"]) == 1 and abs(d87["kruisMidden"][0] - d87["iMidden"]) <= 0.5, json.dumps(d87))
+                check(f"{naam87}: de teller \"Voeg nog 2 nummers toe\" past op één regel", ok87 and d87["tellerEenRegel"], json.dumps(d87))
                 check(f"{naam87}: bovenkant artiest op één lijn met bovenkant voorproef",
                       ok87 and not d87["scheef"], json.dumps(d87))
                 check(f"{naam87}: artiest, titel en voorproef elk hoogstens twee regels; niets afgesneden; geen scroll opzij",
@@ -9419,7 +9426,27 @@ window.TT_STUB.fnAntwoord = {};
           jstSongs = [{ artist: 'Metallica', title: 'One', level: 'bijna' }]; jstRenderSongs();
           u.tegel = { rij: !!$('jstSongsList').querySelector('.setlist-rij'), keuze: ($('jstSongsList').querySelector('.setlist-keuze') || {}).textContent,
             kop: !$('jstSongsKop').hidden, teller: $('jstSongsTeller').textContent };
-          jstSongs = []; jstRenderSongs();
+          // Ook in de tegel minimaal drie (besluit Ronald, 25-10-2026), ook
+          // zonder wijziging (bestaand profiel met minder nummers)
+          u.tegelSter = !!document.querySelector('#jeSetlistScreen label .req');
+          const opgeslagen = [];
+          const bewaardSave = S.rpcResults.tt_save_musician_koppelingen;
+          S.rpcResults.tt_save_musician_koppelingen = (p) => { opgeslagen.push(p); return null; };
+          jstSongs = [{ artist: 'Metallica', title: 'One', level: null }, { artist: 'Van Halen', title: 'Jump', level: null }];
+          jstSnapshot = jstFieldSnapshot(); jstRenderSongs();
+          await saveJeSetlist(); await w(400);
+          u.tegelTwee = { tekst: regel('jstArtistSearch'), rood: $('jstArtistSearch').classList.contains('field-error'), opgeslagen: opgeslagen.length };
+          clearFieldErrors(document);
+          jstSongs.push({ artist: 'Onbekend', title: 'Niemand Speelt Dit', level: null }); jstRenderSongs();
+          await saveJeSetlist(); await w(100);
+          u.tegelDrie = { tekst: regel('jstArtistSearch'), opgeslagen: opgeslagen.length };
+          S.rpcResults.tt_save_musician_koppelingen = bewaardSave;
+          jstSongs = []; jstRenderSongs(); clearFieldErrors(document);
+          // Profiel: een nummer zonder beheersing krijgt geen (leeg) label
+          const proef = document.createElement('div');
+          proef.innerHTML = buildMusicianDetailHTML({ id: 'p1', weergavenaam: 'Proef', username: 'proef', musician_instruments: [], musician_genres: [], musician_media: [],
+            musician_songs: [{ song_title: 'One', song_artist: 'Metallica', mastery_level: null }, { song_title: 'Jump', song_artist: 'Van Halen', mastery_level: 'bijna' }] }, false, false);
+          u.profielLabels = [...proef.querySelectorAll('.profile-song-row')].map(r => [...r.querySelectorAll('.level-pill')].map(p => p.textContent));
           // Opruimen
           S.rpcResults[FN] = bewaard; nummerSpelersCache.clear(); myMusicianId = bewaardId;
           state.songs = []; renderSongs(); clearFieldErrors(document); goTo(0); showView('about');
@@ -9428,23 +9455,23 @@ window.TT_STUB.fnAntwoord = {};
         check("stap Nummers: kop \"Je setlist\", regel \"Kies drie nummers en ontdek andere muzikanten.\", rood sterretje",
               d93["kop"] == "Je setlist" and d93["sub"] == "Kies drie nummers en ontdek andere muzikanten." and d93["ster"], json.dumps(d93))
         check("zonder nummers: geen kop boven de lijst", d93["kopLeeg"], json.dumps(d93))
-        check("nul nummers: Verder blijft op de stap, fout \"Kies nog 3 nummers\" bij het zoekveld",
-              d93["nul"]["stap"] == 3 and d93["nul"]["rood"] and d93["nul"]["tekst"] == "Kies nog 3 nummers" and d93["nul"]["aria"] == "true", json.dumps(d93))
+        check("nul nummers: Verder blijft op de stap, fout \"Voeg nog 3 nummers toe\" bij het zoekveld",
+              d93["nul"]["stap"] == 3 and d93["nul"]["rood"] and d93["nul"]["tekst"] == "Voeg nog 3 nummers toe" and d93["nul"]["aria"] == "true", json.dumps(d93))
         check("foutregel 8px onder het zoekveld, in de .field (huisstijl §3)",
               d93["nul"]["afstand"] == 8 and d93["nul"]["inField"], json.dumps(d93))
         check("typen in het zoekveld haalt de fout weg", not d93["naTypen"]["rood"] and d93["naTypen"]["tekst"] is None, json.dumps(d93))
-        check("een nummer staat direct in de lijst met teller \"1 van 3\"; de voorproef wacht er niet op",
-              d93["direct"]["rijen"] == 1 and d93["direct"]["spelers"] == "" and d93["direct"]["teller"] == "1 van 3" and d93["direct"]["kop"], json.dumps(d93))
+        check("een nummer staat direct in de lijst met teller \"Voeg nog 2 nummers toe\"; de voorproef wacht er niet op",
+              d93["direct"]["rijen"] == 1 and d93["direct"]["spelers"] == "" and d93["direct"]["teller"] == "Voeg nog 2 nummers toe" and d93["direct"]["kop"], json.dumps(d93))
         check("na het antwoord: \"4 anderen spelen dit ook\" (eigen profiel telt niet mee); keuze toont \"Beheersing\"",
               d93["een"]["spelers"] == "4 anderen spelen dit ook" and d93["een"]["keuze"] == "Beheersing", json.dumps(d93))
-        check("één nummer: Verder blokkeert met \"Kies nog 2 nummers\"", d93["eenVerder"]["stap"] == 3 and d93["eenVerder"]["tekst"] == "Kies nog 2 nummers", json.dumps(d93))
-        check("enkelvoud: \"1 ander speelt dit ook\"; teller \"2 van 3\"",
-              d93["twee"]["spelers"] == "1 ander speelt dit ook" and d93["twee"]["teller"] == "2 van 3", json.dumps(d93))
-        check("twee nummers: Verder blokkeert met \"Kies nog 1 nummer\"", d93["tweeVerder"]["stap"] == 3 and d93["tweeVerder"]["tekst"] == "Kies nog 1 nummer", json.dumps(d93))
+        check("één nummer: Verder blokkeert met \"Voeg nog 2 nummers toe\"", d93["eenVerder"]["stap"] == 3 and d93["eenVerder"]["tekst"] == "Voeg nog 2 nummers toe", json.dumps(d93))
+        check("enkelvoud: \"1 ander speelt dit ook\"; teller \"Voeg nog 1 nummer toe\"",
+              d93["twee"]["spelers"] == "1 ander speelt dit ook" and d93["twee"]["teller"] == "Voeg nog 1 nummer toe", json.dumps(d93))
+        check("twee nummers: Verder blokkeert met \"Voeg nog 1 nummer toe\"", d93["tweeVerder"]["stap"] == 3 and d93["tweeVerder"]["tekst"] == "Voeg nog 1 nummer toe", json.dumps(d93))
         check("nul spelers: geen voorproef; bij drie nummers wordt de teller \"3 nummers\"",
               d93["drie"]["spelers"] == "" and d93["drie"]["teller"] == "3 nummers", json.dumps(d93))
-        check("teller loopt door: \"0 van 3\", \"2 van 3\", \"3 nummers\", \"12 nummers\"",
-              d93["teksten"] == ["0 van 3", "2 van 3", "3 nummers", "12 nummers"], json.dumps(d93))
+        check("teller: \"Voeg nog 3 nummers toe\", \"Voeg nog 1 nummer toe\", \"3 nummers\", \"12 nummers\"",
+              d93["teksten"] == ["Voeg nog 3 nummers toe", "Voeg nog 1 nummer toe", "3 nummers", "12 nummers"], json.dumps(d93))
         o93 = d93["opmaak"]
         check("voorproef: 12px, gedempt, het aantal vet in tekstkleur, het icoon in --steun",
               o93["maat"] == "12px" and o93["tekst"] == o93["muted"] and o93["vet"] == o93["text"] and o93["icoon"] == o93["steun"], json.dumps(d93))
@@ -9463,8 +9490,14 @@ window.TT_STUB.fnAntwoord = {};
               d93["fout"]["spelers"] == "" and d93["fout"]["toast"] == "" and not d93["fout"]["inCache"], json.dumps(d93))
         check("voorproef ontsmet: alleen een geheel getal boven nul geeft tekst",
               d93["regels"][:4] == ["", "", "", ""] and "<b>3 anderen</b> spelen dit ook" in d93["regels"][4] and "<img" not in "".join(d93["regels"]), json.dumps(d93))
+        check("tegel: rood sterretje; met twee nummers blokkeert Opslaan met \"Voeg nog 1 nummer toe\", ook zonder wijziging",
+              d93["tegelSter"] and d93["tegelTwee"]["tekst"] == "Voeg nog 1 nummer toe" and d93["tegelTwee"]["rood"] and d93["tegelTwee"]["opgeslagen"] == 0, json.dumps(d93))
+        check("tegel: met drie nummers slaat Opslaan op, zonder fout",
+              d93["tegelDrie"]["tekst"] is None and d93["tegelDrie"]["opgeslagen"] == 1, json.dumps(d93))
+        check("profiel: een nummer zonder beheersing toont geen leeg label; met beheersing wel",
+              d93["profielLabels"] == [[], ["Bijna"]], json.dumps(d93))
         check("de tegel Je setlist gebruikt dezelfde lijst, kop en keuze",
-              d93["tegel"]["rij"] and d93["tegel"]["keuze"] == "Bijna" and d93["tegel"]["kop"] and d93["tegel"]["teller"] == "1 van 3", json.dumps(d93))
+              d93["tegel"]["rij"] and d93["tegel"]["keuze"] == "Bijna" and d93["tegel"]["kop"] and d93["tegel"]["teller"] == "Voeg nog 2 nummers toe", json.dumps(d93))
         check("geen paginafouten in blok 93", not page_errors, "; ".join(page_errors)[:300])
         page_errors.clear()
 

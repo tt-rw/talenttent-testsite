@@ -1022,22 +1022,28 @@
   /* TT-514 (besluit Ronald, 25-10-2026, ontwerp C ronde 6): de setlist in
      wizardstap Nummers en in de tegel Je setlist. Eén component, opgebouwd
      door setlistLijstHTML() in utils.js. Elk nummer is een omlijnde rij
-     ("anders wordt het een grote bak met letters"). Drie vaste kolommen voor
-     kop en rijen: tekst, voorproef + beheersing (116px), kruisje (44px),
-     zodat alles op elk toestel recht onder elkaar staat. Artiest en titel
+     ("anders wordt het een grote bak met letters"). Drie vaste kolommen per
+     rij: tekst, voorproef + beheersing (116px), kruisje (44px), zodat alles
+     op elk toestel recht onder elkaar staat. Artiest en titel
      elk maximaal twee regels, daarna "…". De bovenkant van de artiest staat
      op één lijn met de bovenkant van de voorproef; de tekst van de
      beheersingskeuze staat op dezelfde x als de voorproeftekst (Ronald).
      Vervangt de TT-459-repertoirelijst (.rep-*, drie niveauknoppen). */
-  .setlist-kop, .setlist-rij {
+  .setlist-rij {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 116px 44px;
     column-gap: 8px;
   }
-  .setlist-kop { align-items: center; padding: 0 1px 8px 0; }
+  /* De kop: teller links, "Beheersing" met de i rechts. De i staat recht
+     boven de kruisjes (Ronald, 25-10-2026: "lijn desnoods het woord
+     beheersing rechts uit"), zodat de teller ("Voeg nog 2 nummers toe")
+     de ruimte heeft. 11px = 1px rand van de rij + (44px kruisje - 24px i) / 2. */
+  .setlist-kop { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 11px 8px 0; }
   .setlist-kop[hidden] { display: none; }
-  .setlist-teller { font-size: 16px; font-weight: 700; }
-  .setlist-kop-beh { display: flex; align-items: center; font-size: 13px; color: var(--muted); }
+  /* 14px: "Voeg nog 2 nummers toe" past zo ook op 360px op één regel
+     naast "Beheersing" (besluit Ronald, 25-10-2026, optie B). */
+  .setlist-teller { font-size: 14px; font-weight: 700; }
+  .setlist-kop-beh { display: flex; align-items: center; flex: none; font-size: 13px; color: var(--muted); }
   .setlist-lijst { display: flex; flex-direction: column; gap: 8px; }
   .setlist-rij {
     align-items: start;

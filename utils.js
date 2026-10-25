@@ -819,16 +819,20 @@ const PIJL_OMLAAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 const PERSONEN_TEKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>';
 
 // Geeft de veldfout terug als er te weinig nummers zijn, anders een lege
-// lijst. Gebruikt door nextStep(3).
-function nummersTekortFouten() {
-  const nog = NUMMERS_MIN - state.songs.length;
-  if (nog <= 0) return [];
-  return [['artistSearch', nog === 1 ? 'Kies nog 1 nummer' : `Kies nog ${nog} nummers`]];
+// lijst. Gebruikt door nextStep(3) (wizard) en saveJeSetlist() (tegel):
+// ook in de tegel minimaal drie (besluit Ronald, 25-10-2026).
+// De tekst is die van de teller boven de lijst (besluit Ronald, 25-10-2026).
+function nummersTekortFouten(lijst = state.songs, veld = 'artistSearch') {
+  if (lijst.length >= NUMMERS_MIN) return [];
+  return [[veld, setlistTellerTekst(lijst.length)]];
 }
 
-// "2 van 3", vanaf drie "3 nummers", "4 nummers" enzovoort.
+// Onder de drie: "Voeg nog 2 nummers toe" (Ronald, 25-10-2026: "2 van 3"
+// begrijpt niemand); vanaf drie "3 nummers", "4 nummers" enzovoort.
 function setlistTellerTekst(n) {
-  return n < NUMMERS_MIN ? `${n} van ${NUMMERS_MIN}` : `${n} nummers`;
+  const nog = NUMMERS_MIN - n;
+  if (nog > 0) return nog === 1 ? 'Voeg nog 1 nummer toe' : `Voeg nog ${nog} nummers toe`;
+  return `${n} nummers`;
 }
 
 // Hoeveel ándere muzikanten met een afgerond profiel dit nummer spelen.

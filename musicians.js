@@ -24,11 +24,14 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
   ).map(s => {
     // mastery_level komt in een class-attribuut terecht — alleen bekende
     // waarden toelaten, anders kan iemand het attribuut openbreken.
+    // TT-514 (bevinding Ronald, 25-10-2026: "een nummer zonder
+    // beheersingsniveau komt in het muzikantenprofiel met een leeg kader"):
+    // zonder beheersing geen label, zoals in Maak setlist (search.js).
     const lvl = LEVEL_LABELS[s.mastery_level] ? s.mastery_level : '';
     return `
     <div class="profile-song-row">
       <span><strong>${escHtml(s.song_artist)}</strong> — <span style="color:var(--muted)">${escHtml(s.song_title)}</span></span>
-      <span class="level-pill">${escHtml(LEVEL_LABELS[lvl] || '')}</span>
+      ${lvl ? `<span class="level-pill">${escHtml(LEVEL_LABELS[lvl])}</span>` : ''}
     </div>`;
   }).join('');
 
@@ -1211,6 +1214,7 @@ async function openJeSetlist() {
   }
   jstSongs = (data.musician_songs || []).map(s => ({ title: s.song_title, artist: s.song_artist, level: s.mastery_level }));
   songZoekLeeg('jst');
+  clearFieldErrors(document.getElementById('jeSetlistScreen'));
   jstRenderSongs();
   jstSnapshot = jstFieldSnapshot();
   // TT-514: dezelfde voorproef als in de wizard, per nummer.
@@ -1372,6 +1376,9 @@ function jstRemoveSong(i) {
 }
 
 async function saveJeSetlist() {
+  // TT-514 (besluit Ronald, 25-10-2026): ook hier minimaal drie nummers, ook
+  // voor een bestaand profiel met minder; daarom vóór de controle op wijzigingen.
+  if (showFieldErrors(nummersTekortFouten(jstSongs, 'jstArtistSearch'))) return;
   if (jstFieldSnapshot() === jstSnapshot) return;
 
   // TT-281: wissen en opnieuw vullen in één transactie — zie persistEditedProfile().
