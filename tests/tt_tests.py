@@ -2004,7 +2004,7 @@ def blok_browser():
         check("paneel toont alle gekozen muzikanten in volgorde van kiezen",
               pan and [x["naam"] for x in pan["spelers"]] == ["sanne", "dylan", "ronnie"], json.dumps(pan))
         check("niveau staat rechts naast de naam",
-              pan and pan["spelers"][1]["niveau"] == "Basis" and pan["spelers"][2]["niveau"] == "Podiumklaar"
+              pan and pan["spelers"][1]["niveau"] == "Basis" and pan["spelers"][2]["niveau"] == "Podium"
               and pan["spelers"][1]["rechts"] == 0, json.dumps(pan))
         check("wie het niet speelt, staat grijs met 'Speelt dit niet'",
               pan and pan["spelers"][0]["niet"] and pan["spelers"][0]["tekst"] == "Speelt dit niet"
