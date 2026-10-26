@@ -52,11 +52,12 @@ function initPicker(cfg) {
 function renderPickerBadges(cfg) {
   const list = cfg.getList();
   // TT-520 (26-10-2026): in de filters van Zoeken staat de keuze in het veld
-  // zelf ("Alle", "Drums, Zang"), zoals Leeftijd en Niveau ernaast. Geen
+  // zelf ("–", "Drums, Zang"), zoals Leeftijd en Niveau ernaast. Geen
   // badges eronder: de velden staan daar in twee kolommen. `inVeld` geeft de
-  // tekst; het veld krijgt de rand van een filter dat aanstaat (.is-set).
+  // tekst; het veld krijgt de rand van een filter dat aanstaat (.is-set) en
+  // het streepje van de lege stand is grijs (.leeg, zie zetVeldTekst()).
   if (cfg.inVeld) {
-    document.getElementById(cfg.fieldId + 'Label').textContent = cfg.inVeld(list);
+    zetVeldTekst(document.getElementById(cfg.fieldId + 'Label'), cfg.inVeld(list));
     cfg.fieldEl.classList.toggle('is-set', list.length > 0);
     return;
   }

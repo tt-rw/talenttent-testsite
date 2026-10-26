@@ -387,11 +387,12 @@ function memberSearchVeldenInit() {
     fieldId: 'memberSearchRadiusField',
     title: 'Straal',
     unit: 'km',
-    // '' heet in het wiel "Alle", zoals elke lege stand (initWheel()).
+    // '' heet in het wiel "Alle", in het gesloten veld een grijs streepje,
+    // zoals elke lege stand (initWheel(), LEEG_VELD).
     columns: [{ inputId: 'memberSearchRadius', values: [''].concat(WHEEL_RADIUS), ariaLabel: 'Zoekstraal in kilometers' }],
     value: [''],
     clearTo: [''],
-    format: (v) => v[0] ? `${v[0]} km` : 'Alle',
+    format: (v) => v[0] ? `${v[0]} km` : LEEG_VELD,
     hint:   (v) => v[0] ? `Straal ${v[0]} km` : 'Elke afstand',
     onChange: zoek
   });

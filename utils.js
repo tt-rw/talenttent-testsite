@@ -1023,6 +1023,16 @@ function zekerTerugBijKlikErnaast(lijst, teken) {
 // (cfg.inputId). Alle bestaande code die die waarde uitleest, blijft daardoor
 // ongewijzigd werken.
 const WHEEL_ITEM_H = 44;   // moet gelijk zijn aan .wheel-item in styles.css
+
+// De lege stand (filter uit) in een gesloten keuzeveld: een streepje, grijs
+// (besluit Ronald 26-10-2026; was "Alle"). In het wiel zelf heet die stand
+// nog "Alle" (labelOf in initWheel()), want daar kies je hem.
+const LEEG_VELD = '–';
+function zetVeldTekst(el, tekst) {
+  if (!el) return;
+  el.textContent = tekst;
+  el.classList.toggle('leeg', tekst === LEEG_VELD);
+}
 const WHEELS = {};
 
 // cfg: { id, inputId, values[], value, onChange, onPick, ariaLabel, labels? }
@@ -1210,7 +1220,7 @@ function refreshWheelField(id) {
   if (!el) return;
   const waarden = wheelFieldValues(id);
   const labelEl = el.querySelector('.wheel-field-label');
-  if (labelEl) labelEl.textContent = cfg.format(waarden);
+  zetVeldTekst(labelEl, cfg.format(waarden));
   const aan = typeof cfg.isActief === 'function' ? cfg.isActief(waarden)
             : waarden.some(v => v !== '' && v != null);
   el.classList.toggle('is-set', !!aan);

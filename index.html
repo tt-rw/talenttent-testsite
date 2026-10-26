@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261026c">
+<link rel="stylesheet" href="styles.css?v=20261026d">
 </head>
 <body>
 
@@ -417,7 +417,6 @@
         </label>
         <div class="picker-field" id="instrumentPickerField">
           <span class="picker-field-label" id="instrumentPickerFieldLabel">Kies een instrument</span>
-          <span class="picker-field-chevron">▾</span>
         </div>
         <div class="picker-badge-row" id="instrumentBadgeRow"></div>
       </div>
@@ -428,7 +427,6 @@
         <label>Mijn Genre(s) <span class="req">*</span></label>
         <div class="picker-field" id="genrePickerField">
           <span class="picker-field-label" id="genrePickerFieldLabel">Kies een genre</span>
-          <span class="picker-field-chevron">▾</span>
         </div>
         <div class="picker-badge-row" id="genreBadgeRow"></div>
       </div>
@@ -874,7 +872,6 @@
       </label>
       <div class="picker-field" id="wspInstrumentField">
         <span class="picker-field-label" id="wspInstrumentFieldLabel">Kies een instrument</span>
-        <span class="picker-field-chevron">▾</span>
       </div>
       <div class="picker-badge-row" id="wspInstrumentBadgeRow"></div>
     </div>
@@ -883,7 +880,6 @@
       <label>Mijn Genre(s) <span class="req">*</span></label>
       <div class="picker-field" id="wspGenreField">
         <span class="picker-field-label" id="wspGenreFieldLabel">Kies een genre</span>
-        <span class="picker-field-chevron">▾</span>
       </div>
       <div class="picker-badge-row" id="wspGenreBadgeRow"></div>
     </div>
@@ -1151,7 +1147,6 @@
             <label>Instrument</label>
             <div class="picker-field" id="bbInvalInstrument">
               <span class="picker-field-label" id="bbInvalInstrumentLabel">Kies een instrument</span>
-              <span class="picker-field-chevron">▾</span>
             </div>
             <div class="picker-badge-row" id="bbInvalInstrumentBadges"></div>
           </div>
@@ -1174,7 +1169,6 @@
       <div class="menu-anchor">
         <div class="wheel-field" id="bbContactVeld" aria-label="Contactpersoon">
           <span class="wheel-field-label"></span>
-          <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
         </div>
         <div class="choice-menu" id="bbContactMenu" role="listbox" aria-label="Contactpersoon"></div>
       </div>
@@ -1205,7 +1199,6 @@
         <label>Genres <span class="req">*</span></label>
         <div class="picker-field" id="bmzGenreField">
           <span class="picker-field-label" id="bmzGenreFieldLabel">Kies een genre</span>
-          <span class="picker-field-chevron">▾</span>
         </div>
         <div class="picker-badge-row" id="bmzGenreBadgeRow"></div>
       </div>
@@ -1402,7 +1395,6 @@
             <label>Straal</label>
             <div class="wheel-field" id="filterRadiusField">
               <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
             <input type="hidden" id="filterRadius" value="10">
           </div>
@@ -1412,14 +1404,13 @@
 
       <!-- Filters, in twee kolommen: Instrument, Niveau, Leeftijd, Genre,
            Volgorde, Weergave (TT-520). Instrument en Genre tonen hun keuze in
-           het veld zelf, zoals Leeftijd en Niveau ("Alle" = filter uit). -->
+           het veld zelf, zoals Leeftijd en Niveau (grijs "–" = filter uit). -->
       <div class="zoek-filter-vak" id="zoekFilterVak" hidden>
         <div class="field-pair-row">
           <div class="field">
             <label>Instrument</label>
             <div class="wheel-field" id="filterInstrumentsField">
               <span class="wheel-field-label" id="filterInstrumentsFieldLabel"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
           </div>
           <div class="field">
@@ -1429,7 +1420,6 @@
             </label>
             <div class="wheel-field" id="filterNiveauField">
               <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
             <input type="hidden" id="filterNiveauMin">
             <input type="hidden" id="filterNiveauMax">
@@ -1440,7 +1430,6 @@
             <label>Leeftijd</label>
             <div class="wheel-field" id="filterAgeField">
               <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
             <input type="hidden" id="filterAgeMin">
             <input type="hidden" id="filterAgeMax">
@@ -1449,7 +1438,6 @@
             <label>Genre</label>
             <div class="wheel-field" id="filterGenresField">
               <span class="wheel-field-label" id="filterGenresFieldLabel"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
           </div>
         </div>
@@ -1461,7 +1449,6 @@
             <div class="menu-anchor">
               <div class="wheel-field" id="filterSortModeField" aria-label="Volgorde">
                 <span class="wheel-field-label"></span>
-                <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
               </div>
               <div class="choice-menu" id="filterSortModeMenu" role="listbox" aria-label="Volgorde"></div>
             </div>
@@ -1476,7 +1463,6 @@
             <div class="menu-anchor">
               <div class="wheel-field" id="musicianViewToggleField" aria-label="Weergave">
                 <span class="wheel-field-label"></span>
-                <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
               </div>
               <div class="choice-menu" id="musicianViewToggleMenu" role="listbox" aria-label="Weergave"></div>
             </div>
@@ -1544,7 +1530,6 @@
             <label>Straal</label>
             <div class="wheel-field" id="filterSetlistRadiusField">
               <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
             <input type="hidden" id="filterSetlistRadius" value="10">
           </div>
@@ -1565,7 +1550,6 @@
           <p>Kies maximaal 1 instrument, eventueel aangevuld met Zang en/of Songwriting.</p>
           <div class="picker-field" id="filterSetlistInstrumentsField">
             <span class="picker-field-label" id="filterSetlistInstrumentsFieldLabel">Instrument kiezen…</span>
-            <span class="picker-field-chevron">▾</span>
           </div>
           <div class="picker-badge-row" id="filterSetlistInstrumentsBadgeRow"></div>
         </div>
@@ -1629,7 +1613,6 @@
         <div class="menu-anchor">
           <div class="wheel-field" id="filterSetlistSortModeField" aria-label="Sorteren op">
             <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
           </div>
           <div class="choice-menu" id="filterSetlistSortModeMenu" role="listbox" aria-label="Sorteren op"></div>
         </div>
@@ -1648,7 +1631,6 @@
         <div class="menu-anchor">
           <div class="wheel-field" id="setlistViewToggleField" aria-label="Weergave">
             <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
           </div>
           <div class="choice-menu" id="setlistViewToggleMenu" role="listbox" aria-label="Weergave"></div>
         </div>
@@ -1683,7 +1665,6 @@
             <label>Straal</label>
             <div class="wheel-field" id="filterGedeeldRadiusField">
               <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
             </div>
             <input type="hidden" id="filterGedeeldRadius" value="10">
           </div>
@@ -1730,7 +1711,6 @@
         <div class="menu-anchor">
           <div class="wheel-field" id="gedeeldSortModeField" aria-label="Sorteren op">
             <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
           </div>
           <div class="choice-menu" id="gedeeldSortModeMenu" role="listbox" aria-label="Sorteren op"></div>
         </div>
@@ -1832,7 +1812,6 @@
           <label>Genres <span class="req">*</span></label>
           <div class="picker-field" id="bandGenreField">
             <span class="picker-field-label" id="bandGenreFieldLabel">Kies een genre</span>
-            <span class="picker-field-chevron">▾</span>
           </div>
           <div class="picker-badge-row" id="bandGenreBadgeRow"></div>
         </div>
@@ -2471,7 +2450,7 @@
          Naam, dan Plaats en Straal op één regel (.filter-row-city, straal als
          wielveld van 104px), dan Instrument als keuzeveld met badge. Geen
          zichtbare browser-keuzelijst en geen kaal getalveld meer. De velden
-         zijn klassen, geen losse style=. De straal start op "Alle": zonder
+         zijn klassen, geen losse style=. De straal start leeg ("–"): zonder
          straal zoekt het venster zoals voorheen, ook op naam buiten de buurt. -->
     <div class="field">
       <label>Naam</label>
@@ -2490,7 +2469,6 @@
           <label>Straal</label>
           <div class="wheel-field" id="memberSearchRadiusField">
             <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
           </div>
           <input type="hidden" id="memberSearchRadius" value="">
         </div>
@@ -2501,7 +2479,6 @@
       <label>Instrument</label>
       <div class="picker-field" id="memberSearchInstrumentsField">
         <span class="picker-field-label" id="memberSearchInstrumentsFieldLabel">Kies een instrument</span>
-        <span class="picker-field-chevron">▾</span>
       </div>
       <div class="picker-badge-row" id="memberSearchInstrumentsBadgeRow"></div>
     </div>
@@ -2627,18 +2604,18 @@
 </div><!-- /#appRoot -->
 
 <script src="core.js?v=20261026b"></script>
-<script src="utils.js?v=20261026a"></script>
+<script src="utils.js?v=20261026c"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261023b"></script>
 <script src="postcode.js?v=20261021e"></script>
 <script src="wizard.js?v=20261025a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261026b"></script>
+<script src="search.js?v=20261026c"></script>
 <script src="musicians.js?v=20261026a"></script>
-<script src="bands.js?v=20261026a"></script>
+<script src="bands.js?v=20261026c"></script>
 <script src="messages.js?v=20261026b"></script>
 <script src="push.js?v=20261019a"></script>
-<script src="modals-shared.js?v=20261026b"></script>
+<script src="modals-shared.js?v=20261026c"></script>
 <script>
 // ─── Start ───────────────────────────────────────────────────────────────────
 // TT-82: zonder Supabase-bibliotheek starten we de app niet op. De melding

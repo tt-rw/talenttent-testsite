@@ -2622,7 +2622,7 @@
   .nav-menu-binnen > .nav-menu-item,
   .nav-menu-binnen > .nav-menu-map-lijst { border-bottom: 1px solid var(--border); }
   .nav-menu-map { justify-content: space-between; }
-  /* Dezelfde ▾ als in de keuzevelden (.picker-field-chevron); open staat hij omhoog. */
+  /* Uitklapteken van de menukop; open staat hij omhoog. */
   .nav-menu-chevron { color: var(--muted); font-size: 12px; margin-left: 12px; flex-shrink: 0; transition: transform 0.15s; }
   .nav-menu-map.open .nav-menu-chevron { transform: rotate(180deg); }
   /* De map toont zijn items iets ingesprongen op een tintje, zodat te zien is
@@ -4026,7 +4026,7 @@
      PICKER_LABEL_BREAKS en initPicker() verderop in het JS-blok. */
   .picker-field {
     width: 100%; box-sizing: border-box; display: flex; align-items: center;
-    justify-content: space-between; gap: 8px;
+    justify-content: flex-start; gap: 8px;
     /* TT-244: zelfde vlak, rand, hoogte en lettergrootte als een invoerveld.
        Was --surface2/--border, 48px en 14px. 44px is ook de tikdoelnorm uit
        huisstijl §6; 16px voorkomt inzoomen op iOS, zie §7. */
@@ -4036,7 +4036,6 @@
     cursor: pointer; transition: border-color 0.15s;
   }
   /* :hover verplaatst naar de touch-guard verderop (TT-182). */
-  .picker-field-chevron { color: var(--muted); font-size: 12px; flex-shrink: 0; }
 
   .picker-badge-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   /* Herzien 25-08-2026 (Ronald, UX-feedback op TT-116): was een solide
@@ -4707,12 +4706,13 @@
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;   /* de waarde staat gecentreerd, huisstijl §7.2 */
+    /* De waarde staat links, op de lijn van het label erboven; geen pijltje
+       (besluit Ronald 26-10-2026, huisstijl §7.2). Een tik opent het wiel. */
+    justify-content: flex-start;
     min-height: 44px;
     /* Zelfde inspringing en hoekstraal als elk ander veld. Op een scherm van
        360px blijft er 117px over voor de tekst; de langste stand,
-       "22 - 40 jaar", heeft er 81 nodig. Het pijltje staat er los overheen en
-       kost geen breedte. */
+       "22 - 40 jaar", heeft er 81 nodig. */
     padding: 0 var(--field-inset);
     /* TT-244: zelfde vlak en rand als een invoerveld. */
     background: var(--field-bg);
@@ -4727,14 +4727,11 @@
   .wheel-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* Gouden rand zodra dit filter aanstaat — in één blik te zien wat er leeft. */
   .wheel-field.is-set { border-color: var(--accent); }
-  .wheel-field-label { overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 12px); }
-  .wheel-field-chevron {
-    position: absolute;
-    right: 6px;
-    color: var(--muted);
-    font-size: 12px;
-    pointer-events: none;
-  }
+  .wheel-field-label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  /* Filter uit: een grijs streepje in plaats van "Alle" (besluit Ronald
+     26-10-2026). Een gekozen waarde staat in --text, zo zie je in één blik wat
+     aanstaat. In het wiel zelf heet de lege stand nog "Alle". */
+  .wheel-field-label.leeg { color: var(--muted); }
 
   /* ─── Bladwijzer met het wiel ────────────────────────────────────────────── */
   /* Bewuste uitzondering op §9 (volledig scherm op mobiel): een keuzelaag van

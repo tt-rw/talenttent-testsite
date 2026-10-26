@@ -6704,7 +6704,7 @@ window.TT_STUB.fnAntwoord = {};
         }""")
         check("TT-253: geen zichtbare keuzelijst en geen kaal getalveld meer", d61["geenSelect"], json.dumps(d61))
         check("TT-253: instrument is een keuzeveld, straal een wielveld naast Plaats", d61["keuzeveld"] and d61["wielveld"], json.dumps(d61))
-        check("TT-253: het wielveld is 104px of breder en start op Alle", d61["straalBreed"] >= 104 and d61["straalTekst"] == "Alle", json.dumps(d61))
+        check("TT-253: het wielveld is 104px of breder en start leeg (–)", d61["straalBreed"] >= 104 and d61["straalTekst"] == "–", json.dumps(d61))
         check("TT-253: geen losse style= op de velden (huisstijl §3)", d61["geenStijl"], "")
         check("TT-253: een instrument kiezen toont een badge en zoekt", "Drums" in d61["badge"] and d61["gezocht"], json.dumps(d61))
         check("TT-253: opnieuw openen begint leeg", d61["leegNaOpenen"], "")
@@ -9806,13 +9806,13 @@ window.TT_STUB.fnAntwoord = {};
               of["vak"] and of["aria"] == "true" and of["draai"].startswith("matrix(-1")
               and of["labels"] == ["Instrument", "Niveau", "Leeftijd", "Genre", "Volgorde", "Weergave"]
               and all(of["paren"]) and of["kolommen"][0] == of["kolommen"][1], j95("openF"))
-        check("beginstand van de filters: Alle, Alle, Alle, Alle, Beste match, Lijst",
-              of["waarden"] == ["Alle", "Alle", "Alle", "Alle", "Beste match", "Lijst"], j95("openF"))
+        check("beginstand van de filters: –, –, –, –, Beste match, Lijst",
+              of["waarden"] == ["–", "–", "–", "–", "Beste match", "Lijst"], j95("openF"))
         check("Instrument toont de keuze in het veld; een band die het zoekt, blijft staan; wie het niet speelt, valt weg",
               d95["instrument"]["tekst"] == "Drums" and d95["instrument"]["aan"] and sorted(d95["instrument"]["treffers"]) == ["b1", "m2"], j95("instrument"))
         check("Wissen wist alles behalve Plaats en Straal; de weergave blijft",
               d95["gewist"] == {"naam": "", "inst": [], "genre": [], "leeftijd": ["", ""], "niveau": ["", ""], "plaats": "Delft",
-                                "straal": "25", "volgorde": "score", "weergave": "grid", "instTekst": "Alle"}, j95("gewist"))
+                                "straal": "25", "volgorde": "score", "weergave": "grid", "instTekst": "–"}, j95("gewist"))
         rj = d95["rijen"]
         check("elke treffer een eigen vlak: rand 1px rondom, hoek 10px, 12px opvulling, 8px ertussen, geen gele streep links",
               rj["tussen"] == 8 and rj["rand"] == ["1px", "1px", "10px", "12px"], j95("rijen"))
@@ -9840,6 +9840,55 @@ window.TT_STUB.fnAntwoord = {};
               and "onclick=\"openZoekMuzikanten()\"" in bron95["index.html"], "")
         check("blok 95: geen paginafouten", not f95, "; ".join(f95)[:300])
         c95.close()
+
+        # ────────────────────────────────────────────────────────────
+        # Blok 96 — keuzevelden zonder pijltje (besluit Ronald 26-10-2026):
+        # de waarde staat links op de lijn van het label, de lege stand is een
+        # grijs streepje; in het wiel zelf heet die stand nog "Alle".
+        # ────────────────────────────────────────────────────────────
+        print("\nBlok 96 — keuzevelden: geen pijltje, waarde links, lege stand grijs")
+        c96 = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+        p96 = c96.new_page(); f96 = []; p96.on("pageerror", lambda e: f96.append(str(e)))
+        p96.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+            p96.route(pat, lambda r: r.abort())
+        p96.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load"); p96.wait_for_timeout(400)
+        d96 = p96.evaluate(r"""async () => {
+          const w = (n = 200) => new Promise(r => setTimeout(r, n)), u = {}, $ = id => document.getElementById(id);
+          u.pijltjes = document.querySelectorAll('.wheel-field-chevron, .picker-field-chevron').length;
+          u.links = [...document.querySelectorAll('.wheel-field')].every(e => getComputedStyle(e).justifyContent === 'flex-start');
+          openZoekScherm('muzikanten', { geenZoek: true }); showView('search', 'pop'); toggleZoekFilters(); await w();
+          const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
+          const kleur = el => getComputedStyle(el).color;
+          const pijl = id => { const v = $(id), l = v.closest('.field, .frc-straal').querySelector('label'), t = v.querySelector('.wheel-field-label');
+            const rg = document.createRange(); rg.selectNodeContents(l.firstElementChild || l); const lx = rg.getBoundingClientRect().left;
+            return Math.round(t.getBoundingClientRect().left - lx); };
+          u.uitlijn = ['filterInstrumentsField', 'filterNiveauField', 'filterAgeField', 'filterGenresField', 'filterSortModeField', 'musicianViewToggleField', 'filterRadiusField'].map(pijl);
+          const inst = $('filterInstrumentsFieldLabel'), lft = $('filterAgeField').querySelector('.wheel-field-label');
+          const tmp = document.createElement('i'); tmp.style.color = muted; document.body.appendChild(tmp); const mutedRgb = getComputedStyle(tmp).color; tmp.remove();
+          u.leeg = { inst: [inst.textContent, inst.classList.contains('leeg'), kleur(inst) === mutedRgb],
+                     lft: [lft.textContent, lft.classList.contains('leeg'), kleur(lft) === mutedRgb],
+                     volg: [$('filterSortModeField').querySelector('.wheel-field-label').classList.contains('leeg')] };
+          filterInstruments.splice(0, filterInstruments.length, 'Drums'); renderPickerBadges(PICKERS.filterInstruments);
+          setWheelFieldValues('leeftijd', ['16', ''], false);
+          u.gekozen = { inst: [inst.textContent, inst.classList.contains('leeg'), kleur(inst) === mutedRgb],
+                        lft: [lft.textContent, lft.classList.contains('leeg')] };
+          setWheelFieldValues('leeftijd', ['', ''], false);
+          $('filterAgeField').click(); await w(300);
+          u.wiel = [...document.querySelectorAll('#wheelSheetModal .wheel-item')].map(e => e.textContent)[0] || null;
+          return u;
+        }""")
+        j96 = lambda k: json.dumps(d96.get(k), ensure_ascii=False)
+        check("geen pijltje meer in een keuzeveld, in de hele app", d96["pijltjes"] == 0, j96("pijltjes"))
+        check("elk wielveld zet de waarde links", d96["links"], "")
+        check("in Zoeken staat elke waarde op de lijn van het label erboven (±1px)", all(abs(x) <= 1 for x in d96["uitlijn"]), j96("uitlijn"))
+        check("filter uit: een grijs streepje (Instrument en Leeftijd); Volgorde is nooit leeg",
+              d96["leeg"]["inst"] == ["–", True, True] and d96["leeg"]["lft"] == ["–", True, True] and d96["leeg"]["volg"] == [False], j96("leeg"))
+        check("een gekozen waarde staat in de tekstkleur, zonder .leeg",
+              d96["gekozen"]["inst"] == ["Drums", False, False] and d96["gekozen"]["lft"] == ["16+ jaar", False], j96("gekozen"))
+        check("in het wiel heet de lege stand nog Alle", d96["wiel"] == "Alle", j96("wiel"))
+        check("blok 96: geen paginafouten", not f96, "; ".join(f96)[:300])
+        c96.close()
 
         print("\nBlok 8 — elke view opent zonder fout")
         for v in VIEWS:

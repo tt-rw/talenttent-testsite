@@ -412,10 +412,10 @@ function setSearchSortMode(mode) {
   }
 }
 
-// Instrument en Genre tonen hun keuze in het veld zelf (TT-520): "Alle" zolang
-// er niets gekozen is, net als Leeftijd en Niveau ernaast (TT-308).
+// Instrument en Genre tonen hun keuze in het veld zelf (TT-520): een grijs
+// streepje zolang er niets gekozen is, net als Leeftijd en Niveau ernaast.
 function pickerVeldTekst(lijst) {
-  return lijst.length ? lijst.join(', ') : 'Alle';
+  return lijst.length ? lijst.join(', ') : LEEG_VELD;
 }
 
 function initSearchFilters() {
@@ -529,7 +529,7 @@ function niveauNaam(n) {
 // breed. In het wiel en op de terugleesregel blijft "t/m" staan — daar is
 // ruimte en leest het woord duidelijker.
 function leeftijdKort(min, max) {
-  if (min === '' && max === '') return 'Alle'; // TT-308, zie utils.js/initWheel
+  if (min === '' && max === '') return LEEG_VELD; // filter uit, zie utils.js
   if (min !== '' && max === '') return `${min}+ jaar`;
   if (min === '' && max !== '') return `t/m ${max} jaar`;
   if (min === max) return `${min} jaar`;
@@ -545,7 +545,7 @@ function leeftijdBereikTekst(min, max) {
 }
 
 function niveauKort(min, max) {
-  if (min === '' && max === '') return 'Alle'; // TT-308, zie utils.js/initWheel
+  if (min === '' && max === '') return LEEG_VELD; // filter uit, zie utils.js
   if (min !== '' && max === '') return `${min}+`;
   if (min === max) return `Alleen ${min}`;
   return `${min} - ${max}`;
