@@ -185,6 +185,11 @@
   }
   /* Voorbeeldtekst in een veld: de standaard van de browser is op crème te
      donker en lijkt dan ingevuld. Donker houdt de standaard van de browser. */
+  /* TT-520 (besluit Ronald 26-10-2026, sessie 19): in Zoeken staan de velden
+     direct op de crème pagina. Daar hebben ze een eigen vlak nodig, zoals in
+     donker het grijs: wit (--surface). Op een wit paneel (de tegelschermen)
+     blijven ze crème (TT-461). */
+  :root[data-theme="licht"] #view-search { --field-bg: var(--surface); }
   :root[data-theme="licht"] input::placeholder,
   :root[data-theme="licht"] textarea::placeholder { color: #6E6A63; opacity: 1; }
 
@@ -1825,6 +1830,19 @@
   #view-search > div > .search-wrap,
   #zoekStart { padding-top: var(--kop-ruimte); }
   .zoek-titel { margin: 0 0 20px; }
+
+  /* TT-520 (besluit Ronald 26-10-2026, sessie 19, optie A: "het is
+     rustiger"): één ondergrond. In Zoeken staan de velden direct op de
+     pagina, zonder het kader van .search-filters; alleen de treffers zijn
+     een vlak. Geldt voor Muzikanten en Mix & Match. Elders (Berichten, Over
+     ons, de tegelschermen) blijft het paneel; die beoordeelt Ronald later. */
+  #view-search .search-filters {
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin-bottom: 20px;
+  }
 
   /* De tegels: het tegelpatroon van Instellingen (.tile), met een icoon links
      op een grijs vlak (--surface2; besluit Ronald 26-10-2026, sessie 18:
@@ -4291,7 +4309,9 @@
       position: fixed;
       left: 0; right: 0; bottom: 0;
       z-index: 200;
-      background: var(--surface);
+      /* TT-520 (besluit Ronald 26-10-2026, sessie 19, optie A): de onderbalk
+         in de kleur van de pagina, alleen de lijn erboven. Was --surface. */
+      background: var(--bg);
       border-top: 1px solid var(--border);
       /* Ruimte voor de streep onderaan een iPhone. */
       padding-bottom: env(safe-area-inset-bottom, 0px);
