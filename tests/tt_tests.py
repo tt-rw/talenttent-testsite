@@ -6417,10 +6417,10 @@ window.TT_STUB.fnAntwoord = {};
         check("UI: label tot veld 8px, tussen twee velden 20px, balk tot titel 8px, zijmarge 16px",
               m["labelVeld"] == 8 and m["genreLabelVeld"] == 8 and m["naamTotPostcode"] == 20 and m["balkTitel"] == 8
               and m["links"] == 16 and m["rechts"] == 16, j59("maten"))
-        # TT-492 (20-10-2026): Roboto komt nu uit de repo en laadt dus ook in de test; de regelhoogte van
-        # Roboto maakt een invulveld 45 px in plaats van 44 px. Beide voldoen aan het minimum van 44 px.
-        check("UI: velden 44 of 45px hoog met 16px letter, labels 14px; knoppen minstens 44px, Band aanmaken over de volle breedte",
-              m["veldH"] in (44, 45) and m["zipH"] in (44, 45) and m["genreH"] in (44, 45) and m["veldLetter"] == "16px" and m["labelLetter"] == "14px"
+        # Sinds 26-10-2026 is een invulveld weer precies 44px (regelhoogte 18px); met Roboto uit de repo
+        # (TT-492) was het 45px.
+        check("UI: velden 44px hoog met 16px letter, labels 14px; knoppen minstens 44px, Band aanmaken over de volle breedte",
+              m["veldH"] == 44 and m["zipH"] == 44 and m["genreH"] == 44 and m["veldLetter"] == "16px" and m["labelLetter"] == "14px"
               and all(h >= 44 for h in m["knopH"]) and m["knopTekst"] == ["Band aanmaken"], j59("maten"))
         check("leeg opslaan: alle drie de fouten tegelijk, bij hun veld", d59["fouten"] == ["bandName", "bandZip", "bandGenreField"], j59("fouten"))
         check("de balk loopt 5% op per ingevuld veld: 5, 10, 15%",
@@ -9864,6 +9864,9 @@ window.TT_STUB.fnAntwoord = {};
             const rg = document.createRange(); rg.selectNodeContents(l.firstElementChild || l); const lx = rg.getBoundingClientRect().left;
             return Math.round(t.getBoundingClientRect().left - lx); };
           u.uitlijn = ['filterInstrumentsField', 'filterNiveauField', 'filterAgeField', 'filterGenresField', 'filterSortModeField', 'musicianViewToggleField', 'filterRadiusField'].map(pijl);
+          const pr = $('filterCity').getBoundingClientRect(), sr = $('filterRadiusField').getBoundingClientRect();
+          const pl = document.querySelector('.frc-plaats label').getBoundingClientRect(), sl = document.querySelector('.frc-straal label').getBoundingClientRect();
+          u.plaatsStraal = [pr.height, sr.height, Math.round(pr.top - sr.top), Math.round(pl.top - sl.top)];
           const inst = $('filterInstrumentsFieldLabel'), lft = $('filterAgeField').querySelector('.wheel-field-label');
           const tmp = document.createElement('i'); tmp.style.color = muted; document.body.appendChild(tmp); const mutedRgb = getComputedStyle(tmp).color; tmp.remove();
           u.leeg = { inst: [inst.textContent, inst.classList.contains('leeg'), kleur(inst) === mutedRgb],
@@ -9887,6 +9890,8 @@ window.TT_STUB.fnAntwoord = {};
         check("een gekozen waarde staat in de tekstkleur, zonder .leeg",
               d96["gekozen"]["inst"] == ["Drums", False, False] and d96["gekozen"]["lft"] == ["16+ jaar", False], j96("gekozen"))
         check("in het wiel heet de lege stand nog Alle", d96["wiel"] == "Alle", j96("wiel"))
+        check("invulveld en keuzeveld zijn beide 44px; Plaats en Straal staan op één lijn (veld en label)",
+              d96["plaatsStraal"] == [44, 44, 0, 0], j96("plaatsStraal"))
         check("blok 96: geen paginafouten", not f96, "; ".join(f96)[:300])
         c96.close()
 

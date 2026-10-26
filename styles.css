@@ -757,6 +757,12 @@
     -webkit-appearance: none;
   }
 
+  /* Een invulveld is 44px hoog, net als een keuzeveld (huisstijl §7). Sinds
+     Roboto uit de repo komt (TT-492) gaf de standaardregelhoogte 45px, en
+     stond Straal 1px lager dan Plaats (gevonden 26-10-2026). 12 + 18 + 12 +
+     2px rand = 44. Een tekstvak (textarea) houdt zijn eigen regelhoogte. */
+  input:not([type="checkbox"]):not([type="radio"]) { line-height: 18px; }
+
   /* TT-259 (24-09-2026): de focus was een gloed van goud op 10% — olijfbruin,
      huisstijl §1.1. Nu een tweede pixel vol goud: de rand wordt 2px, zonder
      gloed. De selector met :not() staat erbij omdat de basisregel hierboven
@@ -2144,6 +2150,7 @@
      met alleen .media-rij-url kreeg het adres een rand en 11px opvulling. */
   .media-rij input.media-rij-url {
     width: 100%;
+    line-height: normal;   /* geen veld van 44px, zie de invulvelden */
     margin-top: 2px;
     padding: 0;
     font-size: var(--fs-sm);
@@ -3752,6 +3759,7 @@
      erin tikt. */
   .media-rij input.nummer-titel {
     width: 100%;
+    line-height: normal;   /* geen veld van 44px, zie de invulvelden */
     padding: 0;
     font-size: 14px;
     font-weight: 700;
