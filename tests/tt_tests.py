@@ -9140,7 +9140,7 @@ window.TT_STUB.fnAntwoord = {};
             if (thema) html.dataset.theme = thema; else delete html.dataset.theme;
             await w(400);
             const cs = e => getComputedStyle(document.querySelector(e));
-            const p = cs('#wieBenJeScreen'), z = cs('.search-filters'), v = cs('#wbjFname');
+            const p = cs('#wieBenJeScreen'), z = cs('#view-about .search-filters'), v = cs('#wbjFname');
             const uit = cs('#wbjNaamTonenControl .segmented-btn:not(.selected)'), aan = cs('#wbjNaamTonenControl .segmented-btn.selected');
             return { pBg: p.backgroundColor, zBg: z.backgroundColor, pRand: p.borderTopColor, zRand: z.borderTopColor, pDikte: p.borderTopWidth,
                      pHoek: p.borderTopLeftRadius, zHoek: z.borderTopLeftRadius, pOpvul: p.paddingLeft, vBg: v.backgroundColor, vRand: v.borderTopColor,
@@ -9152,7 +9152,7 @@ window.TT_STUB.fnAntwoord = {};
           u.alleSchermen = {};
           for (const th of ['licht', 'donker']) {
             html.dataset.theme = th; await w(200);
-            const z = getComputedStyle(document.querySelector('.search-filters'));
+            const z = getComputedStyle(document.querySelector('#view-about .search-filters'));
             u.alleSchermen[th] = ids.filter(i => { const p = getComputedStyle(document.getElementById(i));
               return !(p.backgroundColor === z.backgroundColor && p.borderTopColor === z.borderTopColor && p.borderTopWidth === '1px' && p.paddingLeft === '24px' && p.borderTopLeftRadius === z.borderTopLeftRadius); });
           }
@@ -9755,6 +9755,18 @@ window.TT_STUB.fnAntwoord = {};
           showView('landing'); await w();
           document.querySelector('.landing-knop').click(); await w(400);
           u.landing = { view: huidigeView, scherm: zoekScherm };
+
+          // 12. Eén ondergrond (besluit Ronald 26-10-2026, optie A): geen kader om de
+          // velden, de onderbalk in de kleur van de pagina; in licht hebben de velden
+          // een eigen vlak (wit op crème), zoals het grijs in donker.
+          const html = document.documentElement;
+          const meetA = () => { const f = getComputedStyle(document.querySelector('#searchModeMusician .search-filters'));
+            return { kader: [f.backgroundColor, f.borderTopWidth, f.paddingLeft],
+              balk: getComputedStyle($('appBottomNav')).backgroundColor, pagina: getComputedStyle(document.body).backgroundColor,
+              veld: getComputedStyle($('filterName')).backgroundColor,
+              ander: getComputedStyle(document.querySelector('#view-about .search-filters')).backgroundColor }; };
+          u.optieA = { donker: meetA() };
+          html.dataset.theme = 'licht'; await w(300); u.optieA.licht = meetA(); delete html.dataset.theme; await w(100);
           return u;
         }""")
         j95 = lambda k: json.dumps(d95.get(k), ensure_ascii=False)
@@ -9814,6 +9826,14 @@ window.TT_STUB.fnAntwoord = {};
         check("Mix & Match opent het Setlist-scherm, met de titel Mix & Match",
               d95["mix"] == {"scherm": "mixmatch", "zicht": True, "titel": "Mix & Match"}, j95("mix"))
         check("de landingsknop opent Zoeken → Muzikanten", d95["landing"] == {"view": "search", "scherm": "muzikanten"}, j95("landing"))
+        oa = d95["optieA"]
+        check("één ondergrond: geen kader om de velden in Zoeken; elders blijft het paneel (optie A, 26-10-2026)",
+              all(oa[t]["kader"] == ["rgba(0, 0, 0, 0)", "0px", "0px"] and oa[t]["ander"] != "rgba(0, 0, 0, 0)" for t in ("donker", "licht")), j95("optieA"))
+        check("de onderbalk heeft de kleur van de pagina, in donker en licht",
+              all(oa[t]["balk"] == oa[t]["pagina"] for t in ("donker", "licht")), j95("optieA"))
+        check("de velden hebben een eigen vlak op de pagina: donker grijs, licht wit (#FFFEFA)",
+              oa["donker"]["veld"] == "rgb(36, 36, 36)" and oa["licht"]["veld"] == "rgb(255, 254, 250)"
+              and all(oa[t]["veld"] != oa[t]["pagina"] for t in ("donker", "licht")), j95("optieA"))
         bron95 = {f: open(os.path.join(ROOT, f), encoding="utf-8").read() for f in ("messages.js", "veiligheid.js", "index.html")}
         check("Muzikanten zoeken → in een lege staat opent Muzikanten direct",
               bron95["messages.js"].count("openZoekMuzikanten()") == 3 and "openZoekMuzikanten()" in bron95["veiligheid.js"]
