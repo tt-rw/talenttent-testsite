@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261026a">
+<link rel="stylesheet" href="styles.css?v=20261026b">
 </head>
 <body>
 
@@ -238,7 +238,7 @@
   </div>
   <div class="landing-onder">
     <h2 class="landing-sub">Muzikanten bij jou in de buurt.</h2>
-    <button class="btn btn-primary landing-knop" onclick="showView('search')">Zoek muzikanten →</button>
+    <button class="btn btn-primary landing-knop" onclick="openZoekMuzikanten()">Zoek muzikanten →</button>
     <p class="landing-login">Zoeken kan zonder profiel. <span class="landing-acties"><button type="button" class="landing-inloggen" onclick="showView('auth')">Inloggen</button> of <button type="button" class="landing-inloggen" onclick="showView('register')">Profiel aanmaken</button></span></p>
   </div>
 </div>
@@ -1340,51 +1340,58 @@
 <!-- VIEW: Zoeken                                -->
 <!-- ═══════════════════════════════════════════ -->
 <div class="app-view" id="view-search">
-  <div class="search-mode-tabs-outer">
-    <div class="search-mode-tabs">
-      <button class="search-mode-tab active" id="searchModeMusicianBtn" onclick="setSearchMode('musician')">Muzikant</button>
-      <button class="search-mode-tab" id="searchModeBandBtn" onclick="setSearchMode('band')">Band</button>
-      <button class="search-mode-tab" id="searchModeSetlistBtn" onclick="setSearchMode('setlist')">Setlist</button>
-    </div>
+  <!-- TT-520 (26-10-2026, besluiten Ronald, bespreking zoekschermen): Zoeken
+       heeft drie schermen in deze ene view. Het startscherm is de bovenkant
+       van het tabblad; Muzikanten en Mix & Match liggen één stap dieper
+       (zoekScherm in search.js, terug via appTerug() in core.js). Vervangt de
+       vier standen Muzikant · Band · Setlist (twee) en het vegen ertussen. -->
+  <div id="zoekStart" class="search-wrap">
+    <h1 class="filter-title zoek-titel">Zoeken</h1>
+    <!-- Twee brede tegels onder elkaar; icoon links op een grijs vlak, geen
+         pijl (Laag 2, besluit Ronald 25-10-2026; icoonvlak 26-10-2026). Het
+         bestaande tegelpatroon (.tile), zoals in Instellingen. -->
+    <button type="button" class="tile zoek-tegel" id="zoekTegelMuzikanten" onclick="openZoekScherm('muzikanten')">
+      <span class="zoek-tegel-icoon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21v-1a6 6 0 0 1 9.5-4.9"></path><circle cx="17" cy="16" r="3"></circle><line x1="22" y1="21" x2="19.2" y2="18.2"></line></svg></span>
+      <span class="zoek-tegel-tekst"><span class="tile-title">Muzikanten</span><span class="tile-sub">Muzikanten en bands bij jou in de buurt</span></span>
+    </button>
+    <button type="button" class="tile zoek-tegel" id="zoekTegelMixMatch" onclick="openZoekScherm('mixmatch')">
+      <span class="zoek-tegel-icoon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg></span>
+      <span class="zoek-tegel-tekst"><span class="tile-title">Mix &amp; Match</span><span class="tile-sub">Ontdek wat jullie samen kunnen spelen</span></span>
+    </button>
   </div>
 
-  <div id="searchModeMusician">
+  <div id="searchModeMusician" style="display:none;">
   <div class="search-wrap">
+    <h1 class="filter-title zoek-titel">Muzikanten</h1>
+    <!-- TT-520 Laag 3.1: muzikanten en bands op één scherm. Losse knoppen van
+         44px, de gekozen stand van elke keuzeknop (huisstijl §5.1). -->
+    <div class="zoek-soort" role="tablist" aria-label="Wat zoek je?">
+      <button type="button" role="tab" class="search-mode-tab active" id="zoekSoortAllesBtn" aria-selected="true" onclick="setZoekSoort('alles')">Alles</button>
+      <button type="button" role="tab" class="search-mode-tab" id="zoekSoortMuzikantenBtn" aria-selected="false" onclick="setZoekSoort('muzikanten')">Muzikanten</button>
+      <button type="button" role="tab" class="search-mode-tab" id="zoekSoortBandsBtn" aria-selected="false" onclick="setZoekSoort('bands')">Bands</button>
+    </div>
     <!-- TT-385 fase 3: een tik op een open rol of invaller van je eigen band
-         opent Zoeken met dat instrument en de plaats van de band. Deze regel
-         zegt waarvoor (zoekMuzikantVoorRol() in search.js). -->
+         opent Muzikanten met dat instrument en de plaats van de band. Deze
+         regel zegt waarvoor (zoekMuzikantVoorRol() in search.js). -->
     <div class="melding" id="zoekRolMelding" hidden></div>
     <div class="search-filters">
-      <!-- TT-232 (09-09-2026, Ronalds schets): het ⋯-menu is hier weg. De
-           inhoud ervan ging over e-mail, niet over zoeken, en staat nu onder
-           Instellingen → E-mailvoorkeuren. -->
-      <div class="filter-title">Vind een muzikant</div>
-
-      <div class="filter-row single">
-        <div class="field">
-          <label>Gebruikersnaam</label>
-          <input type="text" id="filterName" placeholder="Bijv. Sanne of RockDrummer92" oninput="scheduleMusicianAutoSearch()" onkeydown="submitOnEnter(event, runSearch)">
-          <!-- TT-257 (12-09-2026): zonder deze regel is het aanhalingsteken
-               niet te ontdekken. 12px, gedempt, zelfde inspringing als het
-               label (huisstijl §3). -->
-          <p class="field-hint">Tussen "aanhalingstekens" zoekt hij op precies die naam.</p>
+      <!-- Zichtbaar: Naam, Plaats + Straal. De rest achter Filters, rechts op
+           de labelregel van Naam, met een pijltje (TT-520, besluiten Ronald
+           26-10-2026, sessie 18: punten 1 en 2). Geen uitlegregels. -->
+      <div class="field">
+        <div class="label-rij zoek-label-rij">
+          <label for="filterName">Naam</label>
+          <button type="button" class="zoek-filters-knop" id="zoekFiltersKnop" aria-expanded="false" aria-controls="zoekFilterVak" onclick="toggleZoekFilters()">Filters<svg class="zoek-filters-pijl" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
         </div>
+        <input type="text" id="filterName" placeholder="Bijv. Sanne of The Rusty Strings" oninput="scheduleMusicianAutoSearch()" onkeydown="submitOnEnter(event, runSearch)">
       </div>
 
-      <!-- TT-160 (27-08-2026, Ronalds voorstel): Plaats/postcode en
-           zoekstraal in één rij i.p.v. twee losse velden — bespaart ruimte.
-           Eén .field met een eigen flex-indeling i.p.v. .filter-row, zodat
-           dit — anders dan de generieke .filter-row — ook op mobiel naast
-           elkaar blijft staan. Straal stond voorheen verstopt achter "Meer
-           filters"; nu altijd zichtbaar naast Plaats, wat logischer is
-           zodra je een vertrekpunt instelt. -->
-      <!-- TT-233 (10-09-2026): Plaats en Straal op één regel, via .filter-row-city
-           i.p.v. inline stijlen. Straal is een wielveld: 104px vast, groeit niet
-           mee met Plaats. Huisstijl §7.2. -->
+      <!-- TT-160/TT-233: Plaats en Straal op één regel; Straal is een wielveld
+           van 104px. Huisstijl §7.2. -->
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <label>Plaats</label>
+            <label for="filterCity">Plaats</label>
             <input type="text" id="filterCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterCityList'); scheduleMusicianAutoSearch(); scheduleSearchCityStatus('filterCity','filterCityStatus');"
               onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterCityList'); runSearch(); })"
@@ -1403,132 +1410,90 @@
         <div id="filterCityStatus" class="city-status"></div>
       </div>
 
-      <!-- TT-233 (10-09-2026): Leeftijd en Niveau naast elkaar, allebei een
-           wielveld. Het wiel zelf staat niet meer vast open in het formulier —
-           het komt op in een bladwijzer (#wheelSheetModal) en gaat weer weg.
-           Huisstijl §7.1. De losse toelichtingsregel onder de rij is vervallen;
-           de betekenis staat op de terugleesregel in de bladwijzer en achter
-           de i-knop. -->
-      <div class="field-pair-row">
-        <div class="field">
-          <label>Leeftijd</label>
-          <div class="wheel-field" id="filterAgeField">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+      <!-- Filters, in twee kolommen: Instrument, Niveau, Leeftijd, Genre,
+           Volgorde, Weergave (TT-520). Instrument en Genre tonen hun keuze in
+           het veld zelf, zoals Leeftijd en Niveau ("Alle" = filter uit). -->
+      <div class="zoek-filter-vak" id="zoekFilterVak" hidden>
+        <div class="field-pair-row">
+          <div class="field">
+            <label>Instrument</label>
+            <div class="wheel-field" id="filterInstrumentsField">
+              <span class="wheel-field-label" id="filterInstrumentsFieldLabel"></span>
+              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+            </div>
           </div>
-          <input type="hidden" id="filterAgeMin">
-          <input type="hidden" id="filterAgeMax">
+          <div class="field">
+            <label class="label-with-info">
+              <span>Niveau</span>
+              <button type="button" class="niveau-info-btn" onclick="openZoekNiveauInfo()" aria-label="Wat betekenen de niveaus 1 tot en met 5?" title="Toelichting op niveau">i</button>
+            </label>
+            <div class="wheel-field" id="filterNiveauField">
+              <span class="wheel-field-label"></span>
+              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+            </div>
+            <input type="hidden" id="filterNiveauMin">
+            <input type="hidden" id="filterNiveauMax">
+          </div>
         </div>
-        <div class="field">
-          <label class="label-with-info">
-            <span>Niveau</span>
-            <button type="button" class="niveau-info-btn" onclick="openMusicianNiveauInfoModal()" aria-label="Wat betekenen de niveaus 1 tot en met 5?" title="Toelichting op niveau">i</button>
-          </label>
-          <div class="wheel-field" id="filterNiveauField">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+        <div class="field-pair-row">
+          <div class="field">
+            <label>Leeftijd</label>
+            <div class="wheel-field" id="filterAgeField">
+              <span class="wheel-field-label"></span>
+              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+            </div>
+            <input type="hidden" id="filterAgeMin">
+            <input type="hidden" id="filterAgeMax">
           </div>
-          <input type="hidden" id="filterNiveauMin">
-          <input type="hidden" id="filterNiveauMax">
+          <div class="field">
+            <label>Genre</label>
+            <div class="wheel-field" id="filterGenresField">
+              <span class="wheel-field-label" id="filterGenresFieldLabel"></span>
+              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+            </div>
+          </div>
+        </div>
+        <!-- Volgorde en Weergave: een keuzemenu, geen wiel (huisstijl §7.1).
+             Het verborgen <select> is de bron van waarheid. -->
+        <div class="field-pair-row">
+          <div class="field">
+            <label>Volgorde</label>
+            <div class="menu-anchor">
+              <div class="wheel-field" id="filterSortModeField" aria-label="Volgorde">
+                <span class="wheel-field-label"></span>
+                <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+              </div>
+              <div class="choice-menu" id="filterSortModeMenu" role="listbox" aria-label="Volgorde"></div>
+            </div>
+            <select id="filterSortMode" style="display:none;" onchange="setSearchSortMode(this.value)">
+              <option value="score">Beste match</option>
+              <option value="distance">Dichtstbijzijnde</option>
+              <option value="actief">Laatst actief</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Weergave</label>
+            <div class="menu-anchor">
+              <div class="wheel-field" id="musicianViewToggleField" aria-label="Weergave">
+                <span class="wheel-field-label"></span>
+                <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
+              </div>
+              <div class="choice-menu" id="musicianViewToggleMenu" role="listbox" aria-label="Weergave"></div>
+            </div>
+            <select id="musicianViewToggle" style="display:none;" onchange="setMusicianViewMode(this.value)">
+              <option value="list">Lijst</option>
+              <option value="grid">Kaarten</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <!-- TT-10: filters ververst nu automatisch bij elke klik/wijziging;
-           knop blijft staan als duidelijk, expliciet alternatief (bijv. na
-           het typen van een naam zonder te wachten op de korte vertraging). -->
-
-      <!-- TT-55 (12-08-2026, Ronalds richting 4+5), uitgebreid met
-           Songwriting (03-09-2026, TT-183): maximaal 1 instrument tegelijk,
-           optioneel + Zang en/of Songwriting — in de praktijk zoek je
-           instrument voor instrument, niet een hele band ineens. Geen matchformule nodig:
-           dit is nu een harde filter op het bestaande veld
-           musician_instruments, met sortering op de bestaande genre-score
-           daarbinnen. -->
-      <div class="filter-row single">
-        <div class="field">
-          <label>Instrument</label>
-          <p>Kies maximaal 1 instrument, eventueel aangevuld met Zang en/of Songwriting.</p>
-          <div class="picker-field" id="filterInstrumentsField">
-            <span class="picker-field-label" id="filterInstrumentsFieldLabel">Instrument kiezen…</span>
-            <span class="picker-field-chevron">▾</span>
-          </div>
-          <div class="picker-badge-row" id="filterInstrumentsBadgeRow"></div>
-        </div>
-      </div>
-
-      <!-- TT-51 (12-08-2026): niveau als filter, geen score — bereik met
-           onder- en bovengrens, aaneengesloten (vastgelegd door Ronald). Geldt
-           voor het/de hierboven gekozen instrument(en); zonder gekozen
-           instrument geldt het bereik tegen élk instrument dat iemand speelt.
-           TT-232 (09-09-2026): staat nu als draaiwiel bovenaan, naast
-           Leeftijd. De werking van het filter zelf is niet gewijzigd. -->
-
-      <div class="filter-row single">
-        <div class="field">
-          <label>Genre</label>
-          <div class="picker-field" id="filterGenresField">
-            <span class="picker-field-label" id="filterGenresFieldLabel">Genre kiezen…</span>
-            <span class="picker-field-chevron">▾</span>
-          </div>
-          <div class="picker-badge-row" id="filterGenresBadgeRow"></div>
-        </div>
-      </div>
-
-      <!-- TT-232 (09-09-2026, Ronalds besluit): het Doel-filter is hier weg.
-           Het doel blijft op het profiel staan; als zoekfilter voegde het te
-           weinig toe tegenover de ruimte die het kostte. -->
-
-      <!-- TT-232: primaire knop rechts, secundaire links — huisstijl §10
-           (TT-228). .btn-row zorgt voor twee exact gelijke knoppen. -->
-      <div class="btn-row">
-        <button class="btn btn-ghost" onclick="resetMusicianSearch()">Filters wissen</button>
-        <button class="btn btn-primary" onclick="runSearch()">Zoek muzikanten</button>
-      </div>
-    </div>
-
-    <div class="results-section-divider"><span>Resultaat</span></div>
-
-
-    <!-- Sorteren staat bewust bij het resultaat, niet bij de zoekfilters —
-         her-sorteert direct zonder opnieuw te hoeven zoeken. -->
-    <!-- TT-233 (10-09-2026, Ronald): dezelfde rij-indeling en hetzelfde
-         uiterlijk als Leeftijd en Niveau. Twee gelijke kolommen, gecentreerde
-         tekst, pijltje rechts. Blijft een keuzelijst en geen wiel: het zijn
-         korte, ongeordende lijsten (huisstijl §7.1). -->
-    <div id="sortBarMusician" class="field-pair-row">
-      <!-- Het <select> blijft staan, verborgen: het is de bron van waarheid voor
-           alle bestaande code die .value leest of zet. Het zichtbare veld opent
-           dezelfde bladwijzer als Leeftijd en Niveau. Een browser-keuzelijst is
-           niet af te ronden en niet te animeren — die tekent het
-           besturingssysteem, niet de pagina. -->
-      <div class="field">
-        <label>Sorteren op</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="filterSortModeField" aria-label="Sorteren op">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-          </div>
-          <div class="choice-menu" id="filterSortModeMenu" role="listbox" aria-label="Sorteren op"></div>
-        </div>
-        <select id="filterSortMode" style="display:none;" onchange="setSearchSortMode(this.value)">
-          <option value="score">Beste match</option>
-          <option value="distance">Dichtstbijzijnde</option>
-          <option value="actief">Laatst actief</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Weergave</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="musicianViewToggleField" aria-label="Weergave">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-          </div>
-          <div class="choice-menu" id="musicianViewToggleMenu" role="listbox" aria-label="Weergave"></div>
-        </div>
-        <select id="musicianViewToggle" style="display:none;" onchange="setMusicianViewMode(this.value)">
-          <option value="list">Lijst</option>
-          <option value="grid">Kaarten</option>
-        </select>
+      <!-- Wissen staat altijd, rechts, direct onder het laatste zichtbare veld;
+           het wist alles behalve Plaats en Straal (besluiten Ronald 26-10-2026,
+           sessie 18, punten 3 en 6). De vink Onthoud mijn zoekopdracht komt
+           links op deze regel (bouwsessie a, deel 2: met de database). -->
+      <div class="zoek-wis-rij">
+        <button type="button" class="zoek-wissen-knop" id="zoekWissenKnop" onclick="resetMusicianSearch()">Wissen</button>
       </div>
     </div>
 
@@ -1536,177 +1501,15 @@
   </div>
   </div>
 
-  <div id="searchModeBand" style="display:none;">
-  <div class="search-wrap">
-    <div class="search-filters">
-      <!-- TT-236 (10-09-2026, Ronalds schets): dit blok is gelijkgetrokken met
-           het muzikanten-zoekblok hierboven. Zelfde velden, zelfde volgorde,
-           zelfde afstanden. De ondertitel "Zoek bands die nog muzikanten
-           zoeken" is weg: het Status-veld draagt die betekenis nu, en de
-           muzikantentab heeft ook geen ondertitel. -->
-      <div class="filter-title">Vind een band</div>
-
-      <div class="filter-row single">
-        <div class="field">
-          <label>Bandnaam</label>
-          <input type="text" id="filterBandName" placeholder="Bijv. The Rusty Strings" oninput="scheduleBandAutoSearch()" onkeydown="submitOnEnter(event, runBandSearch)">
-          <p class="field-hint">Tussen "aanhalingstekens" zoekt hij op precies die naam.</p>
-        </div>
-      </div>
-
-      <!-- TT-236: zelfde Plaats+Straal-rij als bij Muzikanten (huisstijl §7.2).
-           Straal is een wielveld met een verborgen invoerveld eronder; dat veld
-           houdt zijn id, dus runBandSearch() leest het ongewijzigd uit. -->
-      <div class="field">
-        <div class="filter-row-city">
-          <div class="city-search-wrap frc-plaats">
-            <label>Plaats</label>
-            <input type="text" id="filterBandCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
-              oninput="onCitySearchInput(this.value,'acFilterBandCityList'); scheduleBandAutoSearch(); scheduleSearchCityStatus('filterBandCity','filterBandCityStatus');"
-              onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterBandCityList'); runBandSearch(); })"
-              onblur="setTimeout(()=>closeAC('acFilterBandCityList'),200)">
-            <div class="autocomplete-list" id="acFilterBandCityList"></div>
-          </div>
-          <div class="frc-straal">
-            <label>Straal</label>
-            <div class="wheel-field" id="filterBandRadiusField">
-              <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-            </div>
-            <input type="hidden" id="filterBandRadius" value="10">
-          </div>
-        </div>
-        <div id="filterBandCityStatus" class="city-status"></div>
-      </div>
-
-      <!-- TT-236 (10-09-2026, tweede schets van Ronald): Genre staat tussen
-           Plaats en Ervaring. Het blok draagt geen eigen marge — de 20px
-           tussenruimte komt van .search-filters > .filter-row (huisstijl §7.2:
-           nooit een inline marge op een blok apart). -->
-      <div class="filter-row single">
-        <div class="field">
-          <label>Genre</label>
-          <div class="picker-field" id="filterBandGenresField">
-            <span class="picker-field-label" id="filterBandGenresFieldLabel">Genre kiezen…</span>
-            <span class="picker-field-chevron">▾</span>
-          </div>
-          <div class="picker-badge-row" id="filterBandGenresBadgeRow"></div>
-        </div>
-      </div>
-
-      <!-- TT-236: de knop "Meer filters" is hier weg. Bij Muzikanten bestaat
-           die al niet meer sinds TT-232; twee tabbladen met een verschillend
-           inklapgedrag was de grootste breuk tussen de twee schermen.
-           Ervaring en Status staan naast elkaar, op de plek waar bij
-           Muzikanten Leeftijd en Niveau staan. -->
-      <div class="field-pair-row">
-        <div class="field">
-          <!-- V-21 (13-08-2026): de band-schaal heet "ervaring", niet "niveau".
-               Dat woord blijft voorbehouden aan de instrumentschaal. -->
-          <label class="label-with-info">
-            <span>Ervaring</span>
-            <button type="button" class="niveau-info-btn" onclick="openBandNiveauInfoModal()" aria-label="Wat betekent de ervaring 1 tot en met 5?" title="Toelichting op ervaring">i</button>
-          </label>
-          <div class="wheel-field" id="filterBandNiveauField">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-          </div>
-          <input type="hidden" id="filterBandNiveauMin">
-          <input type="hidden" id="filterBandNiveauMax">
-        </div>
-        <div class="field">
-          <label>Status</label>
-          <div class="menu-anchor">
-            <div class="wheel-field" id="filterBandStatusField" aria-label="Status">
-              <span class="wheel-field-label"></span>
-              <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-            </div>
-            <div class="choice-menu" id="filterBandStatusMenu" role="listbox" aria-label="Status"></div>
-          </div>
-          <!-- Het <select> blijft verborgen staan als bron van waarheid, zoals
-               bij Sorteren en Weergave. Huisstijl §7.1. -->
-          <select id="filterBandStatus" style="display:none;" onchange="setBandStatusFilter(this.value)">
-            <option value="">Alle bands</option>
-            <option value="zoekend">Zoekt muzikanten</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- TT-55-uitbreiding (12-08-2026): zelfde 1-instrument-beperking als
-           het muzikanten-zoekfilter. TT-236: staat nu vóór Genre, zoals bij
-           Muzikanten, heet net als daar "Instrument", en blijft ook zonder
-           eigen profiel staan (Ronald, 10-09-2026: identiek aan de
-           muzikanten-zoekpagina). De klasse .band-instrument-filter is
-           daarmee vervallen. -->
-      <div class="filter-row single">
-        <div class="field">
-          <label>Instrument</label>
-          <p>Kies maximaal 1 instrument, eventueel aangevuld met Zang en/of Songwriting.</p>
-          <div class="picker-field" id="filterBandWantedField">
-            <span class="picker-field-label" id="filterBandWantedFieldLabel">Instrument kiezen…</span>
-            <span class="picker-field-chevron">▾</span>
-          </div>
-          <div class="picker-badge-row" id="filterBandWantedBadgeRow"></div>
-        </div>
-      </div>
-
-      <!-- TT-236: primaire knop rechts, secundaire links — huisstijl §10
-           (TT-228). .btn-row zorgt voor twee exact gelijke knoppen. -->
-      <div class="btn-row">
-        <button class="btn btn-ghost" onclick="resetBandSearch()">Filters wissen</button>
-        <button class="btn btn-primary" onclick="runBandSearch()">Zoek bands</button>
-      </div>
-    </div>
-
-    <div class="results-section-divider"><span>Resultaat</span></div>
-
-    <!-- Sorteren staat bewust bij het resultaat, niet bij de zoekfilters —
-         her-sorteert direct zonder opnieuw te hoeven zoeken. TT-236: zelfde
-         rij-indeling en hetzelfde uiterlijk als bij Muzikanten. -->
-    <div id="sortBarBand" class="field-pair-row">
-      <div class="field">
-        <label>Sorteren op</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="filterBandSortModeField" aria-label="Sorteren op">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-          </div>
-          <div class="choice-menu" id="filterBandSortModeMenu" role="listbox" aria-label="Sorteren op"></div>
-        </div>
-        <select id="filterBandSortMode" style="display:none;" onchange="setBandSearchSortMode(this.value)">
-          <option value="score" class="sort-score-option">Beste match</option>
-          <option value="distance">Dichtstbijzijnde</option>
-          <option value="actief">Laatst actief</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Weergave</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="bandViewToggleField" aria-label="Weergave">
-            <span class="wheel-field-label"></span>
-            <span class="wheel-field-chevron" aria-hidden="true">&#9662;</span>
-          </div>
-          <div class="choice-menu" id="bandViewToggleMenu" role="listbox" aria-label="Weergave"></div>
-        </div>
-        <select id="bandViewToggle" style="display:none;" onchange="setBandViewMode(this.value)">
-          <option value="list">Lijst</option>
-          <option value="grid">Kaarten</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="bandSearchResults"></div>
-  </div>
-  </div>
-
   <div id="searchModeSetlist" style="display:none;">
   <div class="search-wrap">
-    <!-- TT-289 (17-09-2026, schets Ronald): het Setlist-tabblad heeft twee
-         standen. "Zoek muzikanten" zoekt van nummers naar muzikanten (de
-         bestaande stand). "Maak setlist" zoekt van muzikanten naar de nummers
-         die ze delen. Vegen blijft wisselen tussen de drie hoofdtabbladen. -->
-    <!-- Twee losse knoppen in de vorm van de hoofdtabbladen, met dezelfde
-         actieve kleur als "Setlist" erboven (Ronald, 17-09-2026). -->
+    <!-- TT-520: Mix & Match opent voorlopig het Setlist-scherm zoals het was
+         (bouwsessie b herbouwt het). Alleen de titel staat er nu boven, op
+         dezelfde plek als bij Zoeken en Muzikanten. -->
+    <h1 class="filter-title zoek-titel">Mix &amp; Match</h1>
+    <!-- TT-289 (17-09-2026, schets Ronald): twee standen. "Zoek muzikanten"
+         zoekt van nummers naar muzikanten. "Maak setlist" zoekt van
+         muzikanten naar de nummers die ze delen. -->
     <div class="setlist-soort" role="tablist" aria-label="Soort setlist-zoeken">
       <button type="button" role="tab" class="search-mode-tab active" id="setlistSoortMuzikantenBtn" aria-selected="true" onclick="setSetlistSoort('muzikanten')">Zoek muzikanten</button>
       <button type="button" role="tab" class="search-mode-tab" id="setlistSoortNummersBtn" aria-selected="false" onclick="setSetlistSoort('nummers')">Maak setlist</button>
@@ -2823,19 +2626,19 @@
 
 </div><!-- /#appRoot -->
 
-<script src="core.js?v=20261019a"></script>
+<script src="core.js?v=20261026b"></script>
 <script src="utils.js?v=20261026a"></script>
-<script src="veiligheid.js?v=20261009f"></script>
+<script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261023b"></script>
 <script src="postcode.js?v=20261021e"></script>
 <script src="wizard.js?v=20261025a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261025a"></script>
+<script src="search.js?v=20261026b"></script>
 <script src="musicians.js?v=20261026a"></script>
 <script src="bands.js?v=20261026a"></script>
-<script src="messages.js?v=20261024a"></script>
+<script src="messages.js?v=20261026b"></script>
 <script src="push.js?v=20261019a"></script>
-<script src="modals-shared.js?v=20261021a"></script>
+<script src="modals-shared.js?v=20261026b"></script>
 <script>
 // ─── Start ───────────────────────────────────────────────────────────────────
 // TT-82: zonder Supabase-bibliotheek starten we de app niet op. De melding
@@ -2845,7 +2648,6 @@
 if (!window.ttBackendMissing) {
   init();
   initSearchFilters();
-  initZoekVeeg();   // TT-170: vegen tussen de zoektabbladen
   appInit();
 }
 // TT-61: de landingspagina staat al in beeld vóór appInit() iets toont. Ook
