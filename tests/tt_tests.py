@@ -525,7 +525,7 @@ def blok_browser():
         # binnen 5 km". Die tekst staat nergens in de code en heeft er ook
         # nooit gestaan; verruimdNotice() in search.js schrijft "Binnen 5 km
         # vonden we nog geen match." Gemeten in de browser, 12-09-2026: de
-        # verruiming zelf werkt wel — musicianVerruimd komt op {van:5, naar:50}
+        # verruiming zelf werkt wel — zoekVerruimd komt op {van:5, naar:50}
         # en de uitlegregel verschijnt. De toets was fout, niet de app. De
         # eindstand "69 van 69" in actielijst.md van 11-09-2026 klopte dus niet.
         check("bij nul treffers wordt de straal verruimd",
@@ -586,8 +586,10 @@ def blok_browser():
               "245, 197, 24" not in wiel["bandKleur"], wiel["bandKleur"])
         check("het wiel houdt zijn eigen scrollbeweging vast",
               wiel["overscroll"] == "contain", wiel["overscroll"])
-        check("het zoekscherm laat verticaal scrollen aan de browser",
-              "pan-y" in wiel["touchActie"], wiel["touchActie"])
+        # TT-520: het vegen tussen de zoektabbladen is weg; het zoekscherm
+        # houdt geen horizontale beweging meer vast.
+        check("het zoekscherm laat alle beweging aan de browser (geen veeg meer, TT-520)",
+              wiel["touchActie"] == "auto", wiel["touchActie"])
         page.evaluate("closeWheelSheet()")
 
         print("\nBlok 12 — veldfouten (TT-247) en zoeken op naam (TT-257)")
@@ -783,7 +785,7 @@ def blok_browser():
         check("zonder naam verruimt de app nog steeds wel (TT-62)",
               len(straal["zonderNaam"]) > 1, f"{straal['zonderNaam']}")
         check("de lege staat wijst dan naar de naam, niet naar de filters",
-              "Deze muzikant staat er niet" in straal["metNaam"]["tekst"]
+              "Deze naam staat er niet" in straal["metNaam"]["tekst"]
               and "binnen 5 km" in straal["metNaam"]["tekst"],
               straal["metNaam"]["tekst"][:200])
         page.evaluate("document.getElementById('filterName').value = ''")
@@ -1514,11 +1516,12 @@ def blok_browser():
         std = {
           "code": page.evaluate("STRAAL_STANDAARD"),
           "velden": [re.search(r'id="%s" value="([^"]*)"' % i, html_bron).group(1)
-                     for i in ("filterRadius", "filterBandRadius", "filterSetlistRadius")]
+                     for i in ("filterRadius", "filterSetlistRadius")]
         }
         check("standaardstraal is 10 km in de code", std["code"] == 10, str(std["code"]))
-        check("de drie straalvelden beginnen op 10 km",
-              std["velden"] == ["10", "10", "10"], str(std["velden"]))
+        # TT-520: Muzikanten en Bands zijn één scherm; twee straalvelden over.
+        check("de straalvelden beginnen op 10 km",
+              std["velden"] == ["10", "10"], str(std["velden"]))
         sctx = browser.new_context(viewport={"width": 412, "height": 900})
         sp = sctx.new_page()
         sp.route("**/supabase.js*", lambda r: r.fulfill(
@@ -1633,11 +1636,12 @@ def blok_browser():
                   up.evaluate("""() => { const k = [...document.querySelectorAll('#navMenuDropdown .nav-menu-item')];
                     return k.indexOf(document.getElementById('navMenuLogin')) === k.length - 1; }"""), "")
 
-        # TT-280 — vegen over een tekstveld wisselt van tabblad.
-        up.evaluate("showView('search')")
+        # TT-520 (26-10-2026, akkoord Ronald): het vegen tussen de zoektabbladen
+        # (TT-170, TT-280, TT-368) is vervallen. Een veeg over Muzikanten
+        # verandert niets: niet het scherm, niet Alles · Muzikanten · Bands.
+        up.evaluate("showView('search'); openZoekScherm('muzikanten')")
         up.wait_for_timeout(300)
-        veld = up.evaluate("""() => { const v = document.getElementById('filterName')
-            || document.querySelector('#searchModeMusician input[type=text]');
+        veld = up.evaluate("""() => { const v = document.getElementById('filterName');
           v.blur(); const b = v.getBoundingClientRect();
           return { id: v.id, x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width }; }""")
         cdp = up.context.new_cdp_session(up)
@@ -1647,19 +1651,14 @@ def blok_browser():
                 cdp.send("Input.dispatchTouchEvent", {"type": "touchMove",
                          "touchPoints": [{"x": x0 + (x1 - x0) * i / 6, "y": y}]})
             cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
-            up.wait_for_timeout(450)  # TT-368: het paneel glijdt eerst uit, hooguit 300 ms
+            up.wait_for_timeout(450)
         veeg(veld["x"] + 80, veld["x"] - 80, veld["y"])
-        check("vegen over een leeg, niet aangetikt veld wisselt van tabblad (TT-280)",
-              up.evaluate("currentSearchMode") == "band",
-              f"tabblad {up.evaluate('currentSearchMode')}, veld {veld['id']}")
+        stand = up.evaluate("({ scherm: zoekScherm, soort: zoekSoort, veeg: typeof initZoekVeeg })")
+        check("een veeg over Muzikanten wisselt niets meer (TT-520)",
+              stand == {"scherm": "muzikanten", "soort": "alles", "veeg": "undefined"}, json.dumps(stand))
         check("en het veld krijgt daarbij geen focus",
               up.evaluate("document.activeElement?.tagName") not in ("INPUT", "TEXTAREA"),
               up.evaluate("document.activeElement?.id || ''"))
-        up.evaluate("setSearchMode('musician')")
-        up.evaluate(f"document.getElementById('{veld['id']}').focus()")
-        veeg(veld["x"] + 80, veld["x"] - 80, veld["y"])
-        check("in een aangetikt veld wisselt vegen niet van tabblad",
-              up.evaluate("currentSearchMode") == "musician", up.evaluate("currentSearchMode"))
         check("geen paginafouten uitgelogd", not uf, "; ".join(uf)[:200])
         uc.close()
 
@@ -1680,13 +1679,14 @@ def blok_browser():
             check(f"verversen op '{v}' blijft op '{v}' (TT-279)",
                   actieve_view(ip) == f"view-{v}", str(actieve_view(ip)))
         # Terug na verversen: de vorige stap is niet ongevraagd Mijn Profiel.
-        ip.evaluate("setSearchMode('band')")
-        ip.evaluate("showView('search')")
+        ip.evaluate("showView('search'); openZoekScherm('muzikanten'); setZoekSoort('bands')")
         ip.wait_for_timeout(150)
         ip.reload(wait_until="load")
         ip.wait_for_timeout(600)
-        check("verversen houdt het zoektabblad vast",
-              ip.evaluate("currentSearchMode") == "band", ip.evaluate("currentSearchMode"))
+        stand = ip.evaluate("({ scherm: zoekScherm, soort: zoekSoort })")
+        check("verversen houdt het zoekscherm en Alles · Muzikanten · Bands vast (TT-279, TT-520)",
+              stand == {"scherm": "muzikanten", "soort": "bands"}, json.dumps(stand))
+        ip.evaluate("zetZoekSoortKnoppen('alles'); zetZoekScherm('start')")
         # Een open gesprek blijft open na verversen.
         ip.evaluate("""() => { const l = [];
           for (let i = 0; i < 30; i++) l.push({ id: 'x' + i, sender_id: i % 2 ? 'm1' : 'm2',
@@ -1844,7 +1844,7 @@ def blok_browser():
             instrument_levels: [], genres: [], songs: nummers[id]
           }));
           showView('search');
-          setSearchMode('setlist');
+          openZoekScherm('mixmatch');
         }""")
         page.wait_for_timeout(300)
         check("blok 21 draait uitgelogd", page.evaluate("hasOwnProfile === false"), "")
@@ -1868,17 +1868,18 @@ def blok_browser():
           const st = id => { const c = getComputedStyle(document.getElementById(id)); return [c.backgroundColor, c.borderTopColor, c.color]; };
           const r = id => document.getElementById(id).getBoundingClientRect();
           const a = r('setlistSoortMuzikantenBtn'), b = r('setlistSoortNummersBtn');
-          const h1 = r('searchModeMusicianBtn'), h3 = r('searchModeSetlistBtn');
-          document.getElementById('searchModeSetlistBtn').style.transition = 'none';
-          return { hoofd: st('searchModeSetlistBtn'), sub: st('setlistSoortMuzikantenBtn'),
+          // TT-520: de hoofdtabbladen zijn weg. De standknoppen lijnen uit
+          // met het paneel eronder; de gekozen stand is die van Alles.
+          const p = document.querySelector('#setlistDeelMuzikanten .search-filters').getBoundingClientRect();
+          return { hoofd: st('zoekSoortAllesBtn'), sub: st('setlistSoortMuzikantenBtn'),
                    tussen: Math.round(b.left - a.right),
-                   randen: [Math.round(a.left - h1.left), Math.round(b.right - h3.right)] };
+                   randen: [Math.round(a.left - p.left), Math.round(b.right - p.right)] };
         }""")
         check("standknoppen staan los van elkaar, met 14px ertussen",
               vorm["tussen"] == 14, json.dumps(vorm))
-        check("actieve standknop heeft dezelfde kleuren als het tabblad Setlist",
+        check("actieve standknop heeft dezelfde kleuren als de gekozen Alles",
               vorm["hoofd"] == vorm["sub"], json.dumps(vorm))
-        check("standknoppen lijnen uit met de hoofdtabbladen",
+        check("standknoppen lijnen uit met het paneel eronder",
               vorm["randen"] == [0, 0], json.dumps(vorm))
         check("standaard staat de stand Zoek muzikanten aan",
               sch["gekozen"] == ["true", "false"] and sch["muzZichtbaar"] and not sch["numZichtbaar"],
@@ -2106,9 +2107,9 @@ def blok_browser():
         page.wait_for_timeout(700)
         page.evaluate("addGedeeldMuzikant('m3')")
         page.wait_for_timeout(200)
-        page.evaluate("setSearchMode('musician')")
+        page.evaluate("openZoekScherm('muzikanten')")
         page.wait_for_timeout(100)
-        page.evaluate("""() => { window.TT_STUB.calls = []; document.getElementById('gedeeldResults').innerHTML = ''; setSearchMode('setlist'); }""")
+        page.evaluate("""() => { window.TT_STUB.calls = []; document.getElementById('gedeeldResults').innerHTML = ''; openZoekScherm('mixmatch'); }""")
         page.wait_for_timeout(250)
         terug = page.evaluate("""() => ({
           stand: document.getElementById('setlistSoortNummersBtn').getAttribute('aria-selected'),
@@ -2267,7 +2268,7 @@ def blok_browser():
           await runSearch();
           await new Promise(r => setTimeout(r, 200));
           return { tekst: document.getElementById('searchResults').innerText,
-                   ids: lastMusicianResults.map(m => m.id) };
+                   ids: lastZoekResultaten.map(m => m.id) };
         }""")
         check("een geblokkeerde muzikant valt uit het zoekresultaat",
               zoek["ids"] == ["m4"], json.dumps(zoek["ids"]))
@@ -3444,7 +3445,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         tags = page.evaluate("""() => {
           const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
           plek.innerHTML = tagSolid('Drums') + tagSolid('Rock')
-            + '<span class="level-pill">Basis</span><span class="band-status-badge band-status-zoekend">Zoekend</span>';
+            + '<span class="level-pill">Basis</span>' + tagSolid('Zoekend'); // TT-520: .band-status-badge is weg
           const uit = [...plek.children].map(e => { const cs = getComputedStyle(e);
             return [cs.backgroundColor, cs.borderTopWidth + ' ' + cs.borderTopStyle + ' ' + cs.borderTopColor, cs.color]; });
           plek.remove(); return uit; }""")
@@ -3505,11 +3506,11 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
                       Math.round(r.height), e.textContent.trim()]; })""", sel)
         page.evaluate("showView('landing')"); page.wait_for_timeout(450)
         hoofd = vorm("#view-landing .btn-primary")
-        page.evaluate("showView('search')"); page.wait_for_timeout(450)
-        hoofd += vorm("#view-search .btn-row .btn-primary")
+        # TT-520: Zoeken heeft geen hoofdknop meer (Zoek muzikanten vervalt;
+        # het resultaat verschijnt vanzelf).
         page.evaluate("showView('register')"); page.wait_for_timeout(450)
         hoofd += vorm("#view-register .wizard-action-bar .btn-primary")
-        check("K1: er staan hoofdknoppen in beeld op landing, zoeken en wizard", len(hoofd) >= 3, json.dumps(hoofd)[:200])
+        check("K1: er staan hoofdknoppen in beeld op landing en wizard", len(hoofd) >= 2, json.dumps(hoofd)[:200])
         # TT-341 stap 2 (besluit Ronald, 26-09-2026): gewone letters, 16px. Was 14px, hoofdletters.
         check("K1: elke hoofdknop 16px, vet, gewone letters, zwart op goud",
               all(h[:5] == ["16px", "700", "none", "rgb(0, 0, 0)", "rgb(245, 197, 24)"] for h in hoofd),
@@ -4039,25 +4040,47 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           searchSortMode = 'distance';
           await runSearch();
           await new Promise(r => setTimeout(r, 200));
-          uit.afstand = lastMusicianResults.map(m => m.id);
+          uit.afstand = lastZoekResultaten.map(m => m.id);
           uit.vraag = S.calls.filter(c => c.kind === 'rpc' && c.name === 'tt_actief_stand').map(c => c.params.ids.slice().sort().join(','));
           setSearchSortMode('actief');
-          uit.laatstActief = lastMusicianResults.map(m => m.id);
+          uit.laatstActief = lastZoekResultaten.map(m => m.id);
 
           // Mislukt de vraag, dan geldt gewoon de gekozen sortering.
           S.rpcErrors.tt_actief_stand = { code: 'PGRST202', message: 'Could not find the function' };
           setSearchSortMode('distance');
           await runSearch();
           await new Promise(r => setTimeout(r, 200));
-          uit.zonderStand = lastMusicianResults.map(m => m.id);
+          uit.zonderStand = lastZoekResultaten.map(m => m.id);
           delete S.rpcErrors.tt_actief_stand;
 
           // Bands: de beheerder telt, via een eigen functie.
+          S.calls = [];
           S.rpcResults.tt_band_actief_stand = (p) => p.ids.map(id => ({ id, groep: id === 'b1' ? 2 : 0, rang: id === 'b1' ? 2 : 1 }));
-          const banden = [{ id: 'b1', distance_km: 1, matchScore: 5 }, { id: 'b2', distance_km: 9, matchScore: 1 }];
+          const banden = [{ id: 'b1', soort: 'band' }, { id: 'b2', soort: 'band' }];
           await zetActiefStand('band', banden);
-          bandSearchSortMode = 'score';
-          uit.bands = sortBandList(banden).map(b => b.id);
+          uit.bands = banden.map(b => b.id + ':' + b.actiefGroep);
+          uit.bandVraag = S.calls.filter(c => c.kind === 'rpc' && c.name === 'tt_band_actief_stand').length;
+
+          // TT-520, Beste match (besluit Ronald 26-10-2026): ring van 5 km →
+          // zoekende band boven complete band → laatst actief → km → punten → naam.
+          const z = (id, soort, km, groep, score, zoekt) => ({ id, soort, name: id, username: id,
+            distance_km: km, actiefGroep: groep, actiefRang: 1, matchScore: score,
+            band_wanted: zoekt ? [{ instrument: 'Drums' }] : [] });
+          searchSortMode = 'score';
+          uit.beste = sortZoekLijst([
+            z('A', 'muzikant', 6.0, 0, 0), z('B', 'band', 4.9, 2, 0, true), z('C', 'band', 1.0, 0, 9, false),
+            z('D', 'muzikant', 3.2, 0, 3), z('E', 'muzikant', 3.4, 0, 5), z('F', 'muzikant', 9.9, 1, 0)
+          ]).map(x => x.id);
+          // Zonder vertrekpunt is er één ring: dan beslist de rest.
+          uit.zonderAfstand = sortZoekLijst([
+            z('b', 'muzikant', null, 1, 0), z('a', 'muzikant', null, 0, 0), z('c', 'band', null, 0, 0, false)
+          ]).map(x => x.id);
+          // Punten: instrument 3, genre 2; bij een band telt het gezochte instrument.
+          filterInstruments.push('Drums'); filterGenres.push('Rock');
+          uit.punten = [musicianFilterScore({ musician_instruments: [{ instrument: 'Drums' }], musician_genres: [{ genre: 'Rock' }] }),
+                        bandFilterScore({ band_wanted: [{ instrument: 'Drums' }], genres: ['Rock'] }),
+                        bandFilterScore({ band_wanted: [], genres: ['Rock'] })];
+          filterInstruments.length = 0; filterGenres.length = 0;
 
           // Setlist: zelfde regel, ook bij meer gematchte nummers.
           const set = [{ id: 'm2', matchCount: 5, distance_km: 1 }, { id: 'm5', matchCount: 1, distance_km: 9 }];
@@ -4066,7 +4089,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           uit.setlist = sortSetlistList(set).map(m => m.id);
 
           // Elke sorteerkeuzelijst heeft "Laatst actief", geen "Nieuwste".
-          uit.opties = ['filterSortMode', 'filterBandSortMode', 'filterSetlistSortMode'].map(id =>
+          uit.opties = ['filterSortMode', 'filterSetlistSortMode'].map(id =>
             [...document.getElementById(id).options].map(o => o.value + '=' + o.textContent));
 
           // Inloggen of opstarten met een sessie markeert je als actief.
@@ -4090,11 +4113,17 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               actief["laatstActief"] == ["m5", "m3", "m4", "m2"], json.dumps(actief["laatstActief"]))
         check("mislukt de vraag, dan blijft de gekozen sortering staan",
               actief["zonderStand"] == ["m2", "m3", "m4", "m5"], json.dumps(actief["zonderStand"]))
-        check("bij bands telt de stand van de beheerder, vóór de matchscore",
-              actief["bands"] == ["b2", "b1"], json.dumps(actief["bands"]))
+        check("bij bands vraagt de app de stand van de beheerder op",
+              actief["bands"] == ["b1:2", "b2:0"] and actief["bandVraag"] == 1, json.dumps(actief["bands"]))
+        check("Beste match: ring van 5 km, zoekende band boven complete, dan laatst actief, km, punten (TT-520)",
+              actief["beste"] == ["E", "D", "B", "C", "A", "F"], json.dumps(actief["beste"]))
+        check("Beste match zonder vertrekpunt: complete band onderaan, dan laatst actief",
+              actief["zonderAfstand"] == ["a", "b", "c"], json.dumps(actief["zonderAfstand"]))
+        check("punten: instrument 3 en genre 2, ook bij een band die het instrument zoekt",
+              actief["punten"] == [5, 5, 2], json.dumps(actief["punten"]))
         check("bij Setlist gaat de groep vóór het aantal gematchte nummers",
               actief["setlist"] == ["m5", "m2"], json.dumps(actief["setlist"]))
-        check("alle drie de keuzelijsten tonen 'Laatst actief', niet 'Nieuwste'",
+        check("beide keuzelijsten tonen 'Laatst actief', niet 'Nieuwste'",
               all("actief=Laatst actief" in o and not any(x.startswith("newest") for x in o)
                   for o in actief["opties"]), json.dumps(actief["opties"]))
         check("markeerActief() roept tt_markeer_actief aan", actief["markeer"] == 1, str(actief["markeer"]))
@@ -4148,6 +4177,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               window.TT_STUB.rpcResults.tt_search_musicians = (p) => p.radius_km < 25 ? []
                 : [{ musician_id: 'm2', distance_km: 19.1, score: 0.5, is_stale: false }];
               showView('search');
+              openZoekScherm('muzikanten', { geenZoek: true });
             }""")
             pg.wait_for_timeout(200)
 
@@ -4266,7 +4296,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           if (thema) html.dataset.theme = thema; else delete html.dataset.theme;
           const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
           plek.innerHTML = '<div class="result-row-avatar">T</div><div class="message-bubble own">x</div>'
-            + '<button class="bottom-nav-btn active">Zoeken</button><span class="unread-badge">2</span>'
+            + '<button class="bottom-nav-btn active"><svg></svg><span>Zoeken</span></button><span class="unread-badge">2</span>'
             + '<button class="btn btn-primary">Opslaan</button><div class="search-mode-tab active">Band</div>'
             + '<label>Plaats</label><div class="logo"><span style="color:var(--text);">TALENT</span>TENT</div>';
           const k = [...plek.children].map(e => getComputedStyle(e));
@@ -4275,7 +4305,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             bg: getComputedStyle(document.body).backgroundColor,
             accent: getComputedStyle(html).getPropertyValue('--accent').trim(),
             avatar: [k[0].backgroundColor, k[0].color], eigen: k[1].backgroundColor,
-            tab: [k[2].backgroundColor, k[2].color], ongelezen: k[3].backgroundColor,
+            tab: [k[2].backgroundColor, k[2].color, getComputedStyle(plek.querySelector('.bottom-nav-btn span'), '::after').backgroundColor],
+            ongelezen: k[3].backgroundColor,
             knop: [k[4].backgroundColor, k[4].color, k[4].textTransform],
             gekozen: [k[5].backgroundColor, k[5].color], label: [k[6].textTransform, k[6].color],
             woordmerk: [k[7].color, span.color] };
@@ -4288,8 +4319,11 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         check("donker: profielvlak geel met zwarte T", d40["avatar"] == ["rgb(245, 197, 24)", "rgb(0, 0, 0)"], json.dumps(d40["avatar"]))
         # TT-371 (variant C) en TT-440 (Ronald, 08-10-2026, "1 - rustig"): niet grijs, warm goud, niet het merkgeel. Blok 47 toetst de kleur.
         check("donker: je eigen bericht is warm goud #E0B52A, niet het merkgeel", d40["eigen"] == "rgb(224, 181, 42)", d40["eigen"])
-        check("donker: actieve tab onderin is een geel vlak met zwarte tekst",
-              d40["tab"] == ["rgb(245, 197, 24)", "rgb(0, 0, 0)"], json.dumps(d40["tab"]))
+        # TT-520 (besluit Ronald 25-10-2026, richting A): de gekozen knop blijft
+        # grijs, met een gele streep onder het woord. Was een geel vlak.
+        check("donker en licht: actieve tab onderin blijft grijs, met een gele streep onder het woord (TT-520)",
+              d40["tab"] == ["rgba(0, 0, 0, 0)", "rgb(168, 168, 168)", "rgb(245, 197, 24)"]
+              and l40["tab"] == ["rgba(0, 0, 0, 0)", "rgb(82, 78, 72)", "rgb(245, 197, 24)"], json.dumps([d40["tab"], l40["tab"]]))
         check("donker: ongelezen blijft het rode rondje", d40["ongelezen"] == "rgb(229, 83, 61)", d40["ongelezen"])
         check("donker: gekozen tabblad houdt de gouden stand", d40["gekozen"][1] == "rgb(245, 197, 24)", json.dumps(d40["gekozen"]))
         # Besluit Ronald, 26-09-2026 ("1 B", "2 B mits niet vetgedrukt", "3 B"): vorm in beide thema's gelijk.
@@ -4918,7 +4952,7 @@ window.TT_STUB.fnAntwoord = {};
             const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
             plek.innerHTML = '<button class="btn btn-ghost">A</button><button class="btn btn-primary" disabled>B</button>'
               + '<div class="melding"><p class="melding-kop">K</p><p class="melding-tekst">T</p></div>'
-              + '<span class="band-status-badge band-status-zoekend">Zoekend</span>';
+              + tagSolid('Zoekend'); // TT-520: de status in Zoeken was .band-status-badge; die is weg
             const [g, pr, m, st] = plek.children; const cs = x => getComputedStyle(x);
             const uit = { accent: cs(document.documentElement).getPropertyValue('--accent').trim(),
               ghost: cs(g).borderTopColor, uitgeschakeld: [cs(pr).opacity, cs(pr).cursor],
@@ -5128,93 +5162,22 @@ window.TT_STUB.fnAntwoord = {};
         check("bevindingen 28-09-2026: geen paginafouten", not f47, "; ".join(f47)[:300])
         c47.close()
 
-        print("\nBlok 48 — vegen tussen de zoektabbladen volgt de vinger (TT-368)")
-        # Bevinding Ronald, 28-09-2026: "dat moet lekker soepel gaan, net als
-        # naar boven-beneden." Besluit Ronald, 29-09-2026: "doe wat gebruikelijk is."
-        c48 = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
-        p48 = c48.new_page(); f48 = []; p48.on("pageerror", lambda e: f48.append(str(e)))
-        p48.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
-        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
-            p48.route(pat, lambda r: r.abort())
-        p48.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load"); p48.wait_for_timeout(500)
-        p48.evaluate("showView('search'); setSearchMode('musician'); document.activeElement && document.activeElement.blur()")
-        p48.wait_for_timeout(300)
-        cdp48 = c48.new_cdp_session(p48)
-        Y48 = p48.evaluate("Math.round(document.querySelector('.search-mode-tabs-outer').getBoundingClientRect().bottom + 12)")
-        def raak(soort, x, y=None):
-            y = Y48 if y is None else y
-            pts = [] if soort in ("touchEnd", "touchCancel") else [{"x": x, "y": y}]
-            cdp48.send("Input.dispatchTouchEvent", {"type": soort, "touchPoints": pts})
-        def sleep(x0, x1, stappen=8, y1=None):
-            raak("touchStart", x0)
-            for i in range(1, stappen + 1):
-                yy = None if y1 is None else round(Y48 + (y1 - Y48) * i / stappen)
-                raak("touchMove", round(x0 + (x1 - x0) * i / stappen), yy)
-                p48.wait_for_timeout(16)
-            p48.wait_for_timeout(50)
-        stand48 = """() => { const x = el => { const m = getComputedStyle(el).transform;
-            return m === 'none' ? 0 : Math.round(new DOMMatrix(m).m41); };
-          const p = id => document.getElementById(id);
-          return { tab: currentSearchMode,
-            muz: x(p('searchModeMusician')), band: x(p('searchModeBand')), set: x(p('searchModeSetlist')),
-            bandZicht: getComputedStyle(p('searchModeBand')).display, muzZicht: getComputedStyle(p('searchModeMusician')).display,
-            setZicht: getComputedStyle(p('searchModeSetlist')).display,
-            view: p('view-search').style.position }; }"""
-
-        # 1. Tijdens het slepen volgt het paneel de vinger, het buurtabblad schuift ernaast mee.
-        # De browser meldt de eerste millimeters niet (de "slop"); vanaf de eerste
-        # gemelde beweging volgt het paneel de vinger precies.
-        sleep(300, 200)
-        s1a = p48.evaluate(stand48)
-        raak("touchMove", 150); p48.wait_for_timeout(50)
-        s1 = p48.evaluate(stand48)
-        check("tijdens het slepen schuift het paneel precies mee met de vinger",
-              s1a["muz"] < -50 and s1["muz"] - s1a["muz"] == -50, json.dumps([s1a, s1]))
-        check("en het buurtabblad staat er direct naast, zichtbaar",
-              s1["bandZicht"] == "block" and s1["band"] == 390 + s1["muz"], json.dumps(s1))
-        # 2. Stilhouden en loslaten na een kort stuk: terugveren.
-        p48.wait_for_timeout(200); raak("touchEnd", 150); p48.wait_for_timeout(450)
-        s2 = p48.evaluate(stand48)
-        check("kort stuk, stilgehouden, losgelaten: het paneel veert terug",
-              s2["tab"] == "musician" and s2["muz"] == 0 and s2["bandZicht"] == "none" and s2["view"] == "", json.dumps(s2))
-        # 3. Een flink stuk (meer dan een derde): doorglijden.
-        sleep(330, 110); p48.wait_for_timeout(200); raak("touchEnd", 110); p48.wait_for_timeout(450)
-        s3 = p48.evaluate(stand48)
-        check("meer dan een derde gesleept en losgelaten: het volgende tabblad staat er",
-              s3["tab"] == "band" and s3["muzZicht"] == "none" and s3["bandZicht"] == "block"
-              and s3["band"] == 0 and s3["muz"] == 0 and s3["view"] == "", json.dumps(s3))
-        # 4. Een snelle, korte veeg glijdt ook door.
-        # (Elke stap via CDP kost zo'n 30 ms; daarom grote stappen, zonder wachten.)
-        raak("touchStart", 260)
-        for x in (230, 190, 150): raak("touchMove", x)
-        raak("touchEnd", 150); p48.wait_for_timeout(450)
-        s4 = p48.evaluate(stand48)
-        check("een snelle veeg van minder dan een derde (110px) glijdt ook door", s4["tab"] == "setlist", json.dumps(s4))
-        # 5. Aan het uiteinde beweegt er niets.
-        sleep(300, 150)
-        s5 = p48.evaluate(stand48)
-        raak("touchEnd", 150); p48.wait_for_timeout(450)
-        s5b = p48.evaluate(stand48)
-        check("aan het uiteinde (Setlist) beweegt niets en blijft het tabblad staan",
-              s5["set"] == 0 and s5b["tab"] == "setlist" and s5b["muzZicht"] == "none", json.dumps([s5, s5b]))
-        # 6. Neemt het toestel de veeg over (terugveeg van Android): terugveren.
-        sleep(100, 250)
-        s6a = p48.evaluate(stand48)
-        raak("touchCancel", 250); p48.wait_for_timeout(450)
-        s6 = p48.evaluate(stand48)
-        check("veeg overgenomen door het toestel (touchcancel): het paneel veert terug",
-              s6a["set"] > 100 and s6["tab"] == "setlist" and s6["set"] == 0 and s6["bandZicht"] == "none", json.dumps([s6a, s6]))
-        # 7. Een verticale beweging schuift niets opzij.
-        sleep(200, 205, y1=Y48 + 150)
-        s7 = p48.evaluate(stand48)
-        raak("touchEnd", 205, Y48 + 150); p48.wait_for_timeout(300)
-        check("een verticale veeg schuift het paneel niet opzij", s7["set"] == 0 and s7["bandZicht"] == "none", json.dumps(s7))
-        # 8. De oude sprong-animatie is weg (dode code, TT-368).
-        oud48 = p48.evaluate("""() => typeof animeerZoekPaneel === 'undefined'
-          && ![...document.styleSheets].some(sh => { try { return [...sh.cssRules].some(r => r.name === 'searchPaneVanRechts'); } catch (e) { return false; } })""")
-        check("de oude sprong van 24px na het loslaten bestaat niet meer", oud48, "")
-        check("vegen (TT-368): geen paginafouten", not f48, "; ".join(f48)[:300])
-        c48.close()
+        print("\nBlok 48 — vegen tussen de zoektabbladen is vervallen (TT-520)")
+        # TT-170/TT-368 bouwden het vegen tussen Muzikant, Band en Setlist. Die
+        # tabbladen zijn in TT-520 vervangen door het startscherm Zoeken met
+        # twee tegels; vegen vervalt (akkoord Ronald, 26-10-2026). Dode code is
+        # meteen weg (projectinstructies §2 regel 10).
+        weg48 = page.evaluate("""() => ({
+          veeg: ['initZoekVeeg', 'veegAfbreken', 'veegGlijden', 'setSearchMode', 'veegMagBewegen']
+            .filter(f => typeof window[f] !== 'undefined'),
+          oudeTabbladen: ['searchModeMusicianBtn', 'searchModeBandBtn', 'searchModeSetlistBtn', 'searchModeBand']
+            .filter(id => document.getElementById(id)),
+          touch: getComputedStyle(document.getElementById('view-search')).touchAction })""")
+        check("geen veegcode en geen oude tabbladen meer",
+              weg48 == {"veeg": [], "oudeTabbladen": [], "touch": "auto"}, json.dumps(weg48))
+        bron48 = open(os.path.join(ROOT, "core.js"), encoding="utf-8").read() + open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
+        check("geen VEEG_-constanten of touch-action op het zoekscherm in de bron",
+              "VEEG_" not in bron48 and "touch-action: pan-y pinch-zoom" not in bron48, "")
 
         print("\nBlok 49 — de landingspagina, richting F (TT-61)")
         # Besluiten Ronald, 29 en 30-09-2026: "Zoek een <woord>" (zonder punt), tien woorden
@@ -5308,9 +5271,9 @@ window.TT_STUB.fnAntwoord = {};
           klasse: document.getElementById('appRoot').classList.contains('landing-op-foto'),
           pos: getComputedStyle(document.querySelector('.app-topbar')).position,
           talent: getComputedStyle(document.querySelector('header .logo span')).color,
-          modus: currentSearchMode })""")
-        check("de knop opent Zoeken, ook bij \"band\" (besluit Ronald 30-09-2026)",
-              weg49["view"] == "view-search" and weg49["modus"] == "musician", json.dumps(weg49))
+          modus: zoekScherm })""")
+        check("de knop opent Zoeken → Muzikanten, ook bij \"band\" (besluit Ronald 30-09-2026; TT-520)",
+              weg49["view"] == "view-search" and weg49["modus"] == "muzikanten", json.dumps(weg49))
         check("buiten de landingspagina: wisselen gestopt, de kop weer gewoon en in de tekstkleur",
               not weg49["klok"] and not weg49["klasse"] and weg49["pos"] == "sticky"
               and weg49["talent"] == "rgb(240, 240, 240)", json.dumps(weg49))
@@ -5767,7 +5730,7 @@ window.TT_STUB.fnAntwoord = {};
         geblokkeerd = bp.evaluate("""() => { try { localStorage; return false; } catch (e) { return true; } }""")
         check("de proef blokkeert opslag echt", geblokkeerd, "")
         check("search.js laadt helemaal, ook zonder opslag (TT-387)",
-              not b_fouten and bp.evaluate("typeof musicianViewMode === 'string' && typeof bandViewMode === 'string' && typeof setlistViewMode === 'string'"),
+              not b_fouten and bp.evaluate("typeof musicianViewMode === 'string' && typeof setlistViewMode === 'string'"),
               "; ".join(b_fouten)[:300])
         zonder = bp.evaluate("""async () => {
           window.TT_STUB.rpcResults.tt_resolve_search_origin = [{ lat: 52.0, lng: 4.3 }];
@@ -5786,8 +5749,10 @@ window.TT_STUB.fnAntwoord = {};
         }""")
         check("zoeken zonder opslag geeft gewoon resultaat (TT-387)",
               "1 muzikant gevonden" in zonder and not b_fouten, (zonder[:150] + " | " + "; ".join(b_fouten))[:300])
-        check("zonder opslag geldt de standaardweergave: kaarten op een telefoon",
-              bp.evaluate("musicianViewMode") == "grid", bp.evaluate("musicianViewMode"))
+        # TT-520: de beginstand van Muzikanten is de lijst, ook op een telefoon
+        # (één regel per treffer). Setlist houdt kaarten op een telefoon (TT-U13).
+        check("zonder opslag geldt de beginstand: lijst bij Muzikanten, kaarten bij Setlist op een telefoon",
+              bp.evaluate("[musicianViewMode, setlistViewMode]") == ["list", "grid"], json.dumps(bp.evaluate("[musicianViewMode, setlistViewMode]")))
         bctx.close()
 
         # TT-389: een stap in de geschiedenis die de app niet zelf maakte.
@@ -6506,7 +6471,7 @@ window.TT_STUB.fnAntwoord = {};
         # Zelfde opzet als blok 59: een band krijgt zijn geneste tabellen.
         page.evaluate(r"""() => {
           const S = window.TT_STUB;
-          window.__b60 = { from: db.from, hasOwnProfile, myMusicianId, currentUser, view: bandViewMode, rpc: JSON.parse(JSON.stringify(S.rpcResults || {})) };
+          window.__b60 = { from: db.from, hasOwnProfile, myMusicianId, currentUser, view: musicianViewMode, rpc: JSON.parse(JSON.stringify(S.rpcResults || {})) };
           const echt = db.from.bind(db);
           const kind = ['band_wanted', 'band_members', 'band_invallers'];
           db.from = (t) => { const q = echt(t); const run = q._run.bind(q);
@@ -6538,37 +6503,52 @@ window.TT_STUB.fnAntwoord = {};
         d60 = page.evaluate(r"""async () => {
           const S = window.TT_STUB, w = (n = 150) => new Promise(r => setTimeout(r, n)), u = {};
           const $ = id => document.getElementById(id), r = el => el.getBoundingClientRect();
-          showView('search'); await w(200); setSearchMode('band'); await w(100);
-          setBandViewMode('list'); await runBandSearch(); await w(200);
-          const rijen = () => [...$('bandSearchResults').querySelectorAll('.result-row')];
-          const rij = n => rijen().find(x => x.querySelector('.result-row-name').textContent === n);
+          // TT-520: Bands in het ene zoekscherm Muzikanten.
+          showView('search'); await w(200); openZoekScherm('muzikanten', { geenZoek: true }); zetZoekSoortKnoppen('bands'); await w(100);
+          filterInstruments.length = 0; filterGenres.length = 0; // een eerder blok zocht via een open rol
+          setMusicianViewMode('list'); await runSearch(); await w(200);
+          const rijen = () => [...$('searchResults').querySelectorAll('.result-row')];
+          const naamVan = x => x.querySelector('.result-row-naam').textContent;
+          const rij = n => rijen().find(x => naamVan(x) === n);
+          const rechts = el => (el.querySelector('.result-row-zoekt') || {}).textContent || null;
           const tags = el => [...el.querySelectorAll('.tag-solid')].map(t => t.textContent);
-          u.namen = rijen().map(x => x.querySelector('.result-row-name').textContent);
+          u.namen = rijen().map(naamVan);
           const n = rij('Nachtploeg'), z = rij('Zoutwater'), s = rij('Solo');
-          u.nacht = { tags: tags(n), status: (n.querySelector('.band-status-badge') || {}).textContent, foto: !!n.querySelector('.result-row-avatar img'),
-                      hoek: getComputedStyle(n.querySelector('.result-row-avatar')).borderRadius, meta: n.querySelector('.result-row-meta').firstChild.textContent.trim() };
-          u.zout = { tags: tags(z), status: (z.querySelector('.band-status-badge') || {}).textContent, t: !!z.querySelector('.result-row-avatar .avatar-t') };
-          u.solo = { tags: tags(s), status: !!s.querySelector('.band-status-badge') };
-          // UI: de badge staat 8px na de plaats; foto 44px; tags 8px onder de naamregel.
-          const badge = n.querySelector('.band-status-badge'), av = n.querySelector('.result-row-avatar');
-          u.maten = { badgeLinks: getComputedStyle(badge).marginLeft, badgeLetter: getComputedStyle(badge).fontSize, foto: [Math.round(r(av).width), Math.round(r(av).height)],
+          if (!n || !z || !s) throw new Error('blok 60, namen: ' + JSON.stringify(u.namen));
+          u.nacht = { tags: n.querySelectorAll('.tag-solid').length, rechts: rechts(n), soort: (n.querySelector('.result-row-soort') || {}).textContent,
+                      foto: !!n.querySelector('.result-row-avatar img'), hoek: getComputedStyle(n.querySelector('.result-row-avatar')).borderRadius,
+                      meta: n.querySelector('.result-row-meta').textContent.trim(), bericht: !!n.querySelector('.result-row-msg-btn') };
+          u.zout = { rechts: rechts(z), meta: z.querySelector('.result-row-meta').textContent.trim(), t: !!z.querySelector('.result-row-avatar .avatar-t') };
+          u.solo = { rechts: rechts(s), meta: s.querySelector('.result-row-meta').textContent.trim() };
+          // UI: foto 44px, naam 16px, BAND 11px, Zoekt rechts in de rij.
+          const av = n.querySelector('.result-row-avatar'), zk = n.querySelector('.result-row-zoekt');
+          u.maten = { foto: [Math.round(r(av).width), Math.round(r(av).height)],
                       naam: getComputedStyle(n.querySelector('.result-row-name')).fontSize,
-                      tagsUitlijning: Math.round(r(n.querySelector('.result-row-badges .tag-solid')).left - r(n.querySelector('.result-row-name')).left) };
+                      soort: getComputedStyle(n.querySelector('.result-row-soort')).fontSize,
+                      zoektRechts: Math.round(r(n).right - r(zk).right) };
+          // Een gekozen instrument dat de band zoekt, staat rechts; een band die het niet zoekt, valt eruit.
+          filterInstruments.push('Drums'); await runSearch(); await w(200);
+          u.drums = rijen().map(x => naamVan(x) + ':' + rechts(x));
+          filterInstruments.length = 0;
+          // Een leeftijd gekozen: geen bands (besluit Ronald 26-10-2026, punt 5).
+          $('filterAgeMin').value = '16'; await runSearch(); await w(200);
+          u.leeftijd = { rijen: rijen().length, kop: ($('searchResults').querySelector('.no-results p') || {}).textContent };
+          $('filterAgeMin').value = ''; await runSearch(); await w(200);
           // Kaartweergave: vierkante foto, één regel tags.
-          setBandViewMode('grid'); await w(100);
-          const kaarten = [...$('bandSearchResults').querySelectorAll('.result-card')];
+          setMusicianViewMode('grid'); await w(100);
+          const kaarten = [...$('searchResults').querySelectorAll('.result-card')];
           const kaart = nm => kaarten.find(x => x.querySelector('.result-card-name').textContent === nm);
           const kf = kaart('Nachtploeg').querySelector('.result-card-photo');
           u.kaart = { namen: kaarten.map(x => x.querySelector('.result-card-name').textContent), vierkant: Math.round(r(kf).width) === Math.round(r(kf).height),
                       nacht: tags(kaart('Nachtploeg')), zout: tags(kaart('Zoutwater')), solo: kaart('Solo').querySelectorAll('.result-card-badges-line').length,
                       regels: kaart('Nachtploeg').querySelectorAll('.result-card-badges-line').length };
-          setBandViewMode('list');
+          setMusicianViewMode('list');
           // Alles op pauze: de app verruimt eerst, dan de lege staat (TT-62).
           S.data.bands.forEach(b => { b.pauze = true; b.status = 'inactief'; });
           const voor = S.calls.filter(c => c.kind === 'rpc' && c.name === 'tt_search_bands_for_musician').length;
-          await runBandSearch(); await w(300);
+          await runSearch(); await w(300);
           u.allesPauze = { stappen: S.calls.filter(c => c.kind === 'rpc' && c.name === 'tt_search_bands_for_musician').length - voor,
-                           kop: ($('bandSearchResults').querySelector('.no-results p') || {}).textContent };
+                           kop: ($('searchResults').querySelector('.no-results p') || {}).textContent };
           S.data.bands.forEach(b => { b.pauze = b.id === 'b7'; b.status = b.id === 'b7' ? 'inactief' : 'zoekend'; });
           // Zonder eigen profiel: de publieke functie, zelfde kaart; de bandfoto is leeg bij afscherming.
           hasOwnProfile = false;
@@ -6577,9 +6557,10 @@ window.TT_STUB.fnAntwoord = {};
               afgeschermd: true, members: [{ id: 'm1', role: 'Oprichter', instruments: ['Gitaar'] }, { id: 'm2', role: 'Lid', instruments: [] }], wanted: ['Basgitaar'],
               invallers: [{ instrument: 'Drums', datum: window.__b60datum.morgen }] },
             b7: { id: 'b7', name: 'Stille Week', city: 'Delft', genres: [], status: 'inactief', pauze: true, members: [], wanted: [], invallers: [] } }[id])).filter(Boolean);
-          await runBandSearch(); await w(200);
-          u.anon = { namen: rijen().map(x => x.querySelector('.result-row-name').textContent), tags: rijen()[0] ? tags(rijen()[0]) : [],
-                     t: !!(rijen()[0] && rijen()[0].querySelector('.result-row-avatar .avatar-t')), status: rijen()[0] && (rijen()[0].querySelector('.band-status-badge') || {}).textContent };
+          await runSearch(); await w(200);
+          u.anon = { namen: rijen().map(naamVan), rechts: rijen()[0] ? rechts(rijen()[0]) : null,
+                     t: !!(rijen()[0] && rijen()[0].querySelector('.result-row-avatar .avatar-t')) };
+          zetZoekSoortKnoppen('alles');
           hasOwnProfile = true;
           // Het blok Bands op Mijn Profiel.
           S.rpcResults.tt_musician_band_ids = (p) => p.mid === 'm1' ? [{ band_id: 'b5' }, { band_id: 'b8' }] : [];
@@ -6632,28 +6613,32 @@ window.TT_STUB.fnAntwoord = {};
         }""")
         page.evaluate("""() => { const S = window.TT_STUB, w = window.__b60;
           db.from = w.from; hasOwnProfile = w.hasOwnProfile; myMusicianId = w.myMusicianId; currentUser = w.currentUser;
-          S.rpcResults = w.rpc; setBandViewMode(w.view);
+          S.rpcResults = w.rpc; setMusicianViewMode(w.view);
           ['bands', 'band_members', 'band_wanted', 'band_invallers'].forEach(k => { S.data[k] = []; });
           showView('about'); }""")
         j60 = lambda k: json.dumps(d60.get(k), ensure_ascii=False)
-        check("Zoeken: een band die niet beschikbaar is (pauze) staat er gewoon tussen (TT-457)",
-              d60["namen"] == ["Nachtploeg", "Zoutwater", "Stille Week", "Solo"], j60("namen"))
-        check("bandrij: vierkante bandfoto (hoek 10px), Zoekend achter de plaats, open rol en invaller als tag, dan twee genres en +1",
-              d60["nacht"] == {"tags": ["+ Basgitaar", "Invaller drums", "Indie", "Rock", "+1"], "status": "Zoekend", "foto": True, "hoek": "10px", "meta": "Den Haag · 2.0 km"}, j60("nacht"))
-        check("bandrij: een invaller van gisteren telt niet; zonder foto de T; Compleet",
-              d60["zout"] == {"tags": ["Pop"], "status": "Compleet", "t": True}, j60("zout"))
-        check("bandrij: beheerder alleen zonder open rol: geen statustag; DJ blijft DJ",
-              d60["solo"] == {"tags": ["Invaller DJ", "Folk"], "status": False}, j60("solo"))
+        check("Zoeken: een band die niet beschikbaar is (pauze) staat er gewoon tussen (TT-457); zoekende bands boven complete binnen de ring van 5 km (TT-520)",
+              d60["namen"] == ["Nachtploeg", "Stille Week", "Zoutwater", "Solo"], j60("namen"))
+        check("bandrij (TT-520): vierkante foto (hoek 10px), BAND achter de naam, genre · plaats · afstand, rechts Zoekt basgitaar, geen tags en geen berichtknop",
+              d60["nacht"] == {"tags": 0, "rechts": "Zoekt basgitaar", "soort": "BAND", "foto": True, "hoek": "10px",
+                               "meta": "Indie · Den Haag · 2.0 km", "bericht": False}, j60("nacht"))
+        check("bandrij: zonder open rol niets rechts (een invaller telt niet als open rol); zonder foto de T",
+              d60["zout"] == {"rechts": None, "meta": "Pop · Rijswijk · 3.0 km", "t": True}
+              and d60["solo"] == {"rechts": None, "meta": "Folk · Delft · 5.0 km"}, json.dumps([d60["zout"], d60["solo"]]))
         mt = d60["maten"]
-        check("UI: statustag 8px na de plaats, 11px; foto 44×44; naam 16px; tags op één lijn met de naam",
-              mt["badgeLinks"] == "8px" and mt["badgeLetter"] == "11px" and mt["foto"] == [44, 44] and mt["naam"] == "16px" and mt["tagsUitlijning"] == 0, j60("maten"))
+        check("UI: foto 44×44; naam 16px; BAND 11px; Zoekt tegen de rechterkant (12px opvulling + 1px rand)",
+              mt["foto"] == [44, 44] and mt["naam"] == "16px" and mt["soort"] == "11px" and mt["zoektRechts"] == 13, j60("maten"))
+        check("instrument gekozen: alleen bands die het zoeken, met dat instrument rechts",
+              d60["drums"] == ["Stille Week:Zoekt drums"], j60("drums"))
+        check("leeftijd gekozen onder Bands: geen bands, met een lege staat die het zegt (TT-520)",
+              d60["leeftijd"] == {"rijen": 0, "kop": "Geen bands bij deze leeftijd"}, j60("leeftijd"))
         check("kaartweergave: vierkante foto, één regel tags (eerste open rol met +N, anders de status)",
-              d60["kaart"] == {"namen": ["Nachtploeg", "Zoutwater", "Stille Week", "Solo"], "vierkant": True, "nacht": ["+ Basgitaar", "+1"],
+              d60["kaart"] == {"namen": ["Nachtploeg", "Stille Week", "Zoutwater", "Solo"], "vierkant": True, "nacht": ["+ Basgitaar", "+1"],
                                "zout": ["Compleet"], "solo": 1, "regels": 1}, j60("kaart"))
         check("alle bands niet beschikbaar (TT-457): ze staan er allemaal, de app verruimt niet en toont geen lege staat",
               d60["allesPauze"]["stappen"] == 1 and d60["allesPauze"]["kop"] is None, j60("allesPauze"))
-        check("zonder eigen profiel: zelfde kaart uit tt_get_bands_public; afgeschermd de T; pauze eruit",
-              d60["anon"] == {"namen": ["Nachtploeg", "Stille Week"], "tags": ["+ Basgitaar", "Invaller drums", "Indie"], "t": True, "status": "Zoekend"}, j60("anon"))
+        check("zonder eigen profiel: zelfde rij uit tt_get_bands_public; afgeschermd de T",
+              d60["anon"] == {"namen": ["Nachtploeg", "Stille Week"], "rechts": "Zoekt basgitaar", "t": True}, j60("anon"))
         b = d60["blok"]
         check("Mijn Profiel: blok Bands direct onder de bio, vóór het repertoire; één knop per band",
               b["er"] and b["naBio"] and b["voorRepertoire"] and b["knop"] == "BUTTON", j60("blok"))
@@ -6756,7 +6741,7 @@ window.TT_STUB.fnAntwoord = {};
           S.rpcResults.tt_get_musicians_public = ids.map(id => ({ id, username: 'u' + id, age: 30, city: 'Delft', bio: '', goal: null,
             profile_color: '#f5c518', avatar_url: null, updated_at: new Date().toISOString(),
             instrument_levels: [{ instrument: 'Drums', niveau: 3 }], genres: ['Rock'], songs: [] }));
-          showView('search'); setSearchMode('musician'); await w(700);
+          showView('search'); openZoekScherm('muzikanten'); await w(700);
           document.getElementById('filterCity').value = 'Delft'; document.getElementById('filterRadius').value = '50';
           hasOwnProfile = false;
           await runSearch(); await w(300);
@@ -7892,12 +7877,12 @@ window.TT_STUB.fnAntwoord = {};
           S.rpcResults.tt_search_musicians = treffers;
           S.rpcResults.tt_musicians_ages = [];
           // 1. Zoek muzikanten
-          showView('search'); setSearchMode('musician'); await w(500);
+          showView('search'); openZoekScherm('muzikanten'); await w(500);
           document.getElementById('filterRadius').value = '10';
           await runSearch(); await w(300);
           const tekst = $('searchResults').textContent;
           u.muz = { ik: /Ronald/.test(tekst), colin: /Colin/.test(tekst), tester: /Tester1/.test(tekst) };
-          u.muzLijst = lastMusicianResults.map(m => m.id);
+          u.muzLijst = lastZoekResultaten.map(m => m.id);
           // 2. Zoek muzikanten via een setlist, ook met een getypte Plaats
           S.rpcResults.tt_search_musicians_by_songlist_anon = () => treffers();
           S.rpcResults.tt_search_musicians_anon = () => treffers();
@@ -7909,7 +7894,7 @@ window.TT_STUB.fnAntwoord = {};
           // 3. Zonder profiel verandert er niets: niemand valt weg
           myMusicianId = null; hasOwnProfile = false;
           await runSearch(); await w(300);
-          u.zonderProfiel = lastMusicianResults.length;
+          u.zonderProfiel = lastZoekResultaten.length;
           // 4. De bannertekst
           currentUser = currentUser || { id: 'u1' }; myMusicianId = 'm1'; hasOwnProfile = true;
           showView('profieltegels'); openTegelScreen('mediahoek'); await w(250);
@@ -8623,7 +8608,7 @@ window.TT_STUB.fnAntwoord = {};
             musician_instruments: [], musician_genres: [], musician_songs: [], musician_media: [] }];
           const kop = () => document.querySelector('header').getBoundingClientRect().bottom;
           const top = sel => { const e = document.querySelector(sel); return e ? Math.round((e.getBoundingClientRect().top - kop()) * 10) / 10 : null; };
-          showView('search'); await w(); u.zoeken = top('#view-search .search-mode-tab');
+          showView('search'); await w(); u.zoeken = top('#zoekStart .zoek-titel'); // TT-520: de titel Zoeken
           showView('messages'); await w(); u.berichten = top('#messagesInboxPanel .filter-title');
           showView('bands'); await w(); u.bands = top('#mijnBandsKop .btn');
           const sub = document.querySelector('.mijn-bands-sub').getBoundingClientRect(), knop = document.querySelector('#mijnBandsKop .btn').getBoundingClientRect(),
@@ -8634,7 +8619,7 @@ window.TT_STUB.fnAntwoord = {};
           currentUser = keep.currentUser; myMusicianId = keep.myMusicianId; hasOwnProfile = keep.hasOwnProfile; S.data.musicians = keep.musicians;
           return u;
         }""")
-        check("de eerste knop of titel staat op Zoeken, Berichten, Bands en Mijn Profiel (zonder bannerbalk) 20px onder de kop",
+        check("de eerste knop of titel (Zoeken: de titel van het startscherm, TT-520) staat op Zoeken, Berichten, Bands en Mijn Profiel (zonder bannerbalk) 20px onder de kop",
               d83["zoeken"] == d83["berichten"] == d83["bands"] == d83["profiel"] == 20, json.dumps(d83))
         check("Mijn bands: de ondertitel staat onder de titel en stopt vóór de knop; titel en knop op één middellijn",
               d83["sub"]["rechtsVoorKnop"] and d83["sub"]["onderTitel"] and d83["sub"]["links"] == 16
@@ -9641,6 +9626,201 @@ window.TT_STUB.fnAntwoord = {};
         check("geen paginafouten in blok 94", not page_errors, "; ".join(page_errors)[:300])
         page_errors.clear()
 
+        # ────────────────────────────────────────────────────────────
+        # Blok 95 — TT-520 bouwsessie a (26-10-2026, besluiten Ronald 25 en
+        # 26-10-2026): startscherm Zoeken, scherm Muzikanten met Alles ·
+        # Muzikanten · Bands, Filters op verzoek, Wissen, één regel per treffer
+        # in een eigen vlak, ronde berichtknop, gele streep onderin.
+        # ────────────────────────────────────────────────────────────
+        print("\nBlok 95 — startscherm Zoeken en scherm Muzikanten (TT-520)")
+        c95 = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+        p95 = c95.new_page(); f95 = []; p95.on("pageerror", lambda e: f95.append(str(e)))
+        p95.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+            p95.route(pat, lambda r: r.abort())
+        p95.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load"); p95.wait_for_timeout(400)
+        d95 = p95.evaluate(r"""async () => {
+          const S = window.TT_STUB, w = (n = 200) => new Promise(r => setTimeout(r, n)), u = {};
+          const $ = id => document.getElementById(id), r = el => el.getBoundingClientRect();
+          const zicht = el => !!el && el.offsetParent !== null && getComputedStyle(el).display !== 'none';
+          S.rpcResults.tt_resolve_search_origin = [{ lat: 52.07, lng: 4.3 }];
+          S.rpcResults.tt_search_musicians_anon = () => ([{ musician_id: 'm2', distance_km: 8.7 }, { musician_id: 'm3', distance_km: 5.4 }]);
+          const pub = (id, naam, stad, instr) => ({ id, username: naam, age: 17, city: stad, bio: '', goal: null, avatar_url: null,
+            instrument_levels: [{ instrument: instr, niveau: 3 }], genres: ['Rock'], songs: [] });
+          S.rpcResults.tt_get_musicians_public = [pub('m2', 'sam', 'Delft', 'Drums'), pub('m3', 'noor', 'Rijswijk', 'Gitaar')];
+          S.rpcResults.tt_search_bands_anon = () => ([{ band_id: 'b1', distance_km: 3.2 }]);
+          S.rpcResults.tt_get_bands_public = [{ id: 'b1', name: 'Silver Earring', city: 'Den Haag', genres: ['Rock'], status: 'zoekend',
+            niveau: 3, avatar_url: null, members: [1, 2], wanted: ['Drums'], invallers: [] }];
+
+          // 1. Het startscherm: titel en twee tegels, icoon op een grijs vlak, geen pijl.
+          showView('search'); await w();
+          const tegels = [...document.querySelectorAll('#zoekStart .zoek-tegel')];
+          const icoon = tegels[0].querySelector('.zoek-tegel-icoon');
+          u.start = { scherm: zoekScherm, titel: document.querySelector('#zoekStart .zoek-titel').textContent,
+            tegels: tegels.map(t => t.querySelector('.tile-title').textContent + '|' + t.querySelector('.tile-sub').textContent),
+            knoppen: tegels.map(t => t.tagName), svgs: tegels.map(t => t.querySelectorAll('svg').length),
+            vlak: getComputedStyle(icoon).backgroundColor, icoonKleur: getComputedStyle(icoon).color,
+            muzZicht: zicht($('searchModeMusician')), titelBoven: Math.round(r(document.querySelector('#zoekStart .zoek-titel')).top - r(document.querySelector('header')).bottom) };
+          // 2. De onderbalk: gekozen knop grijs, gele streep zo breed als het woord.
+          const nav = $('bottomNavSearch'), woord = nav.querySelector('span:last-child'), streep = getComputedStyle(woord, '::after');
+          u.balk = { vlak: getComputedStyle(nav).backgroundColor, tekst: getComputedStyle(nav).color, streep: streep.backgroundColor,
+            breed: Math.round(parseFloat(streep.width)), woord: Math.round(r(woord).width), hoog: streep.height };
+          // 3. Een tik op Muzikanten: één stap dieper; terug gaat naar het startscherm, daar doet terug niets.
+          $('zoekTegelMuzikanten').click(); await w(400);
+          u.open = { scherm: zoekScherm, muz: zicht($('searchModeMusician')), start: zicht($('zoekStart')),
+                     titel: document.querySelector('#searchModeMusician .zoek-titel').textContent };
+          $('navTerugBtn').click(); await w();
+          u.terug1 = { scherm: zoekScherm, view: huidigeView };
+          $('navTerugBtn').click(); await w();
+          u.terug2 = { scherm: zoekScherm, view: huidigeView };
+          $('zoekTegelMuzikanten').click(); await w(400);
+          $('bottomNavSearch').click(); await w();
+          u.tab = zoekScherm;
+          $('zoekTegelMuzikanten').click(); await w(500);
+          $('filterCity').value = 'Den Haag'; await runSearch(); await w(300);
+
+          // 4. Alles · Muzikanten · Bands: losse knoppen van 44px, Alles gekozen.
+          const soort = ['zoekSoortAllesBtn', 'zoekSoortMuzikantenBtn', 'zoekSoortBandsBtn'].map($);
+          u.soort = { tekst: soort.map(b => b.textContent), hoog: soort.map(b => Math.round(r(b).height)),
+            tussen: [Math.round(r(soort[1]).left - r(soort[0]).right), Math.round(r(soort[2]).left - r(soort[1]).right)],
+            gekozen: soort.map(b => b.getAttribute('aria-selected')),
+            kleur: getComputedStyle(soort[0]).color, rand: getComputedStyle(soort[0]).borderTopColor };
+
+          // 5. Zichtbaar: Naam, Plaats + Straal. Filters op de labelregel van Naam, Wissen eronder.
+          const veld = $('filterName'), knop = $('zoekFiltersKnop'), wis = $('zoekWissenKnop'), label = document.querySelector('label[for="filterName"]');
+          const pijl = knop.querySelector('.zoek-filters-pijl');
+          const straal = $('filterRadiusField');
+          u.dicht = { vak: zicht($('zoekFilterVak')), instrument: zicht($('filterInstrumentsField')), aria: knop.getAttribute('aria-expanded'),
+            tekst: knop.textContent.trim(), kleur: getComputedStyle(knop).color, letter: getComputedStyle(knop).fontSize,
+            label: [getComputedStyle(label).fontSize, getComputedStyle(label).fontWeight, getComputedStyle(label).color],
+            knopRechts: Math.round(r(veld).right - r(pijl).right), wisRechts: Math.round(r(veld).right - r(wis).right),
+            knopMidden: Math.round((r(knop).top + r(knop).bottom) / 2 - (r(label).top + r(label).bottom) / 2),
+            wisOnder: Math.round(r(wis).top - r(straal).bottom), wisZicht: zicht(wis),
+            oudeKnoppen: document.querySelectorAll('#searchModeMusician .btn-row, #searchModeMusician .field-hint, #searchModeMusician .results-section-divider').length };
+          knop.click(); await w();
+          const labels = [...document.querySelectorAll('#zoekFilterVak .field > label')];
+          const velden = [...document.querySelectorAll('#zoekFilterVak .wheel-field')];
+          u.openF = { vak: zicht($('zoekFilterVak')), aria: knop.getAttribute('aria-expanded'), draai: getComputedStyle(pijl).transform,
+            labels: labels.map(l => (l.querySelector('span') || l).textContent.trim()), waarden: velden.map(v => v.querySelector('.wheel-field-label').textContent),
+            paren: [0, 2, 4].map(i => Math.round(r(velden[i]).top) === Math.round(r(velden[i + 1]).top)),
+            kolommen: [0, 1].map(i => Math.round(r(velden[i]).width)),
+            wisOnder: Math.round(r(wis).top - r(velden[5]).bottom) };
+
+          // 6. Instrument en Genre tonen de keuze in het veld; een band die het instrument zoekt is een treffer.
+          openPickerList('filterInstruments'); choosePickerListValue('Drums'); await w(400);
+          u.instrument = { tekst: $('filterInstrumentsFieldLabel').textContent, aan: $('filterInstrumentsField').classList.contains('is-set'),
+            treffers: lastZoekResultaten.map(x => x.id) };
+
+          // 7. Wissen wist alles behalve Plaats en Straal.
+          $('filterName').value = 'sam'; filterGenres.push('Rock');
+          setWheelFieldValues('leeftijd', [16, 21], false); setWheelFieldValues('niveau', [2, 4], false);
+          setWheelFieldValues('radius', [25], false); $('filterCity').value = 'Delft';
+          selectSortModeByValue('filterSortMode', 'distance'); setMusicianViewMode('grid');
+          wis.click(); await w(400);
+          u.gewist = { naam: $('filterName').value, inst: filterInstruments.slice(), genre: filterGenres.slice(),
+            leeftijd: [$('filterAgeMin').value, $('filterAgeMax').value], niveau: [$('filterNiveauMin').value, $('filterNiveauMax').value],
+            plaats: $('filterCity').value, straal: $('filterRadius').value, volgorde: $('filterSortMode').value, weergave: musicianViewMode,
+            instTekst: $('filterInstrumentsFieldLabel').textContent };
+          setMusicianViewMode('list'); $('filterCity').value = 'Den Haag'; setWheelFieldValues('radius', [10], false);
+          await runSearch(); await w(300);
+
+          // 8. Eén regel per treffer, elk in een eigen vlak, zonder lijn; ronde berichtknop.
+          const rijen = [...document.querySelectorAll('#searchResults .result-row')];
+          const muzRij = rijen.find(x => x.querySelector('.result-row-msg-btn'));
+          const bandRij = rijen.find(x => x.querySelector('.result-row-soort'));
+          const bk = muzRij.querySelector('.result-row-msg-btn'), cs = getComputedStyle(rijen[0]);
+          u.rijen = { aantal: rijen.length, tussen: Math.round(r(rijen[1]).top - r(rijen[0]).bottom),
+            rand: [cs.borderLeftWidth, cs.borderTopWidth, cs.borderTopLeftRadius, cs.paddingTop],
+            bk: [getComputedStyle(bk).borderRadius, Math.round(r(bk).width), getComputedStyle(bk.querySelector('svg')).color],
+            tekstKleur: getComputedStyle(document.body).color,
+            meta: muzRij.querySelector('.result-row-meta').textContent.trim(),
+            band: { soort: bandRij.querySelector('.result-row-soort').textContent, zoekt: (bandRij.querySelector('.result-row-zoekt') || {}).textContent,
+                    bericht: !!bandRij.querySelector('.result-row-msg-btn'), tags: bandRij.querySelectorAll('.tag-solid').length },
+            telling: document.querySelector('#searchResults .results-count').textContent };
+
+          // 9. De soort kiest wat er staat.
+          setZoekSoort('muzikanten'); await w(400);
+          u.muzikanten = [...new Set(lastZoekResultaten.map(x => x.soort))];
+          setZoekSoort('bands'); await w(400);
+          u.bands = { soorten: [...new Set(lastZoekResultaten.map(x => x.soort))], seintje: !!$('seintjePlek') };
+          setZoekSoort('alles'); await w(400);
+
+          // 10. Mix & Match opent het Setlist-scherm, met de titel erboven.
+          $('navTerugBtn').click(); await w();
+          $('zoekTegelMixMatch').click(); await w(300);
+          u.mix = { scherm: zoekScherm, zicht: zicht($('searchModeSetlist')), titel: document.querySelector('#searchModeSetlist .zoek-titel').textContent };
+          $('navTerugBtn').click(); await w();
+
+          // 11. De landingsknop opent Muzikanten direct.
+          showView('landing'); await w();
+          document.querySelector('.landing-knop').click(); await w(400);
+          u.landing = { view: huidigeView, scherm: zoekScherm };
+          return u;
+        }""")
+        j95 = lambda k: json.dumps(d95.get(k), ensure_ascii=False)
+        check("startscherm: titel Zoeken en twee tegels met hun regel (Laag 2)",
+              d95["start"]["scherm"] == "start" and d95["start"]["titel"] == "Zoeken"
+              and d95["start"]["tegels"] == ["Muzikanten|Muzikanten en bands bij jou in de buurt", "Mix & Match|Ontdek wat jullie samen kunnen spelen"]
+              and not d95["start"]["muzZicht"], j95("start"))
+        check("tegels: echte knoppen, één icoon en geen pijl; icoon op een grijs vlak (--surface2), goud in donker",
+              d95["start"]["knoppen"] == ["BUTTON", "BUTTON"] and d95["start"]["svgs"] == [1, 1]
+              and d95["start"]["vlak"] == "rgb(30, 30, 30)" and d95["start"]["icoonKleur"] == "rgb(245, 197, 24)", j95("start"))
+        check("de titel Zoeken staat 20px onder de kop", d95["start"]["titelBoven"] == 20, j95("start"))
+        check("onderbalk: gekozen knop grijs, gele streep van 3px zo breed als het woord",
+              d95["balk"]["vlak"] == "rgba(0, 0, 0, 0)" and d95["balk"]["tekst"] == "rgb(168, 168, 168)"
+              and d95["balk"]["streep"] == "rgb(245, 197, 24)" and abs(d95["balk"]["breed"] - d95["balk"]["woord"]) <= 1 and d95["balk"]["hoog"] == "3px", j95("balk"))
+        check("een tik op Muzikanten opent het scherm, met de titel Muzikanten",
+              d95["open"] == {"scherm": "muzikanten", "muz": True, "start": False, "titel": "Muzikanten"}, j95("open"))
+        check("terug op Muzikanten gaat naar het startscherm; daar doet terug niets",
+              d95["terug1"] == {"scherm": "start", "view": "search"} and d95["terug2"] == {"scherm": "start", "view": "search"},
+              json.dumps([d95["terug1"], d95["terug2"]]))
+        check("een tik op Zoeken onderin brengt je naar het startscherm", d95["tab"] == "start", j95("tab"))
+        s95 = d95["soort"]
+        check("Alles · Muzikanten · Bands: losse knoppen van 44px, 8px ertussen, Alles gekozen in goud",
+              s95["tekst"] == ["Alles", "Muzikanten", "Bands"] and min(s95["hoog"]) >= 44 and s95["tussen"] == [8, 8]
+              and s95["gekozen"] == ["true", "false", "false"] and s95["kleur"] == "rgb(245, 197, 24)", j95("soort"))
+        dt = d95["dicht"]
+        check("Filters dicht: alleen Naam en Plaats + Straal; Instrument zit erachter; geen zoekknop, uitlegregels of scheiding",
+              not dt["vak"] and not dt["instrument"] and dt["aria"] == "false" and dt["oudeKnoppen"] == 0, j95("dicht"))
+        check("Filters: het woord met een pijltje, zonder getal, 14px, goud in donker",
+              dt["tekst"] == "Filters" and dt["kleur"] == "rgb(245, 197, 24)" and dt["letter"] == "14px", j95("dicht"))
+        check("labels 14px, gewone letter, tekstkleur (huisstijl §7)", dt["label"] == ["14px", "400", "rgb(240, 240, 240)"], j95("dicht"))
+        check("Filters en Wissen lijnen rechts uit met de tekst in het veld (10px), Filters op de middellijn van het label",
+              dt["knopRechts"] == 10 and dt["wisRechts"] == 10 and abs(dt["knopMidden"]) <= 1, j95("dicht"))
+        check("Wissen staat altijd, direct onder het laatste zichtbare veld (20px)",
+              dt["wisZicht"] and dt["wisOnder"] == 20 and d95["openF"]["wisOnder"] == 20, json.dumps([dt["wisOnder"], d95["openF"]["wisOnder"]]))
+        of = d95["openF"]
+        check("Filters open: pijltje omgedraaid, zes velden in twee kolommen, in de vaste volgorde",
+              of["vak"] and of["aria"] == "true" and of["draai"].startswith("matrix(-1")
+              and of["labels"] == ["Instrument", "Niveau", "Leeftijd", "Genre", "Volgorde", "Weergave"]
+              and all(of["paren"]) and of["kolommen"][0] == of["kolommen"][1], j95("openF"))
+        check("beginstand van de filters: Alle, Alle, Alle, Alle, Beste match, Lijst",
+              of["waarden"] == ["Alle", "Alle", "Alle", "Alle", "Beste match", "Lijst"], j95("openF"))
+        check("Instrument toont de keuze in het veld; een band die het zoekt, blijft staan; wie het niet speelt, valt weg",
+              d95["instrument"]["tekst"] == "Drums" and d95["instrument"]["aan"] and sorted(d95["instrument"]["treffers"]) == ["b1", "m2"], j95("instrument"))
+        check("Wissen wist alles behalve Plaats en Straal; de weergave blijft",
+              d95["gewist"] == {"naam": "", "inst": [], "genre": [], "leeftijd": ["", ""], "niveau": ["", ""], "plaats": "Delft",
+                                "straal": "25", "volgorde": "score", "weergave": "grid", "instTekst": "Alle"}, j95("gewist"))
+        rj = d95["rijen"]
+        check("elke treffer een eigen vlak: rand 1px rondom, hoek 10px, 12px opvulling, 8px ertussen, geen gele streep links",
+              rj["tussen"] == 8 and rj["rand"] == ["1px", "1px", "10px", "12px"], j95("rijen"))
+        check("berichtknop rond, 44px, icoon in de tekstkleur",
+              rj["bk"][0] == "50%" and rj["bk"][1] == 44 and rj["bk"][2] == rj["tekstKleur"], j95("rijen"))
+        check("muzikant: instrument · plaats · afstand onder de naam; band: BAND, Zoekt drums, geen berichtknop en geen tags",
+              rj["meta"] == "Gitaar · Rijswijk · 5.4 km" and rj["band"] == {"soort": "BAND", "zoekt": "Zoekt drums", "bericht": False, "tags": 0}, j95("rijen"))
+        check("de telling noemt muzikanten en bands", rj["telling"] == "2 muzikanten en 1 band gevonden", j95("rijen"))
+        check("Muzikanten toont alleen muzikanten, Bands alleen bands (zonder het mailblok)",
+              d95["muzikanten"] == ["muzikant"] and d95["bands"] == {"soorten": ["band"], "seintje": False}, json.dumps([d95["muzikanten"], d95["bands"]]))
+        check("Mix & Match opent het Setlist-scherm, met de titel Mix & Match",
+              d95["mix"] == {"scherm": "mixmatch", "zicht": True, "titel": "Mix & Match"}, j95("mix"))
+        check("de landingsknop opent Zoeken → Muzikanten", d95["landing"] == {"view": "search", "scherm": "muzikanten"}, j95("landing"))
+        bron95 = {f: open(os.path.join(ROOT, f), encoding="utf-8").read() for f in ("messages.js", "veiligheid.js", "index.html")}
+        check("Muzikanten zoeken → in een lege staat opent Muzikanten direct",
+              bron95["messages.js"].count("openZoekMuzikanten()") == 3 and "openZoekMuzikanten()" in bron95["veiligheid.js"]
+              and "onclick=\"openZoekMuzikanten()\"" in bron95["index.html"], "")
+        check("blok 95: geen paginafouten", not f95, "; ".join(f95)[:300])
+        c95.close()
+
         print("\nBlok 8 — elke view opent zonder fout")
         for v in VIEWS:
             naam = v.replace("view-", "")
@@ -9732,11 +9912,11 @@ XSS_SCAN = r"""() => {
 # Elke stap opent een scherm. De volgorde is bewust: eerst zoeken en profielen,
 # dan de band in al haar tabbladen, dan Mijn profiel, berichten en instellingen.
 XSS_STAPPEN = [
-    ("zoeken muzikanten", "showView('search'); await runSearch();"),
-    ("zoeken op een getypte naam", "showView('search'); document.getElementById('filterName').value = window.__P('filterName'); await runSearch();"),
+    ("zoeken muzikanten", "showView('search'); openZoekScherm('muzikanten', { geenZoek: true }); zetZoekSoortKnoppen('muzikanten'); await runSearch();"),
+    ("zoeken op een getypte naam", "showView('search'); openZoekScherm('muzikanten', { geenZoek: true }); document.getElementById('filterName').value = window.__P('filterName'); await runSearch();"),
     ("zoeken setlist", "await runSetlistSearch();"),
     ("profiel van een ander", "openProfielScherm('m2');"),
-    ("zoeken bands", "showView('search'); await runBandSearch();"),
+    ("zoeken bands", "showView('search'); openZoekScherm('muzikanten', { geenZoek: true }); zetZoekSoortKnoppen('bands'); await runSearch(); zetZoekSoortKnoppen('alles');"),
     ("bandprofiel", "openBandScherm('b1');"),
     ("band tegels", "openBandTegels('b1');"),
     ("band wie", "await openBandWie();"),
