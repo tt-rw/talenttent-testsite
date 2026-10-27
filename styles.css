@@ -3517,6 +3517,7 @@
     text-align: left;
     cursor: pointer;
   }
+  .gedeeld-rij { transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .gedeeld-rij.open .gedeeld-rij-kop { border-bottom: 1px solid var(--border); }
   /* Opengeklapt komt de rij los van de pagina (besluit Ronald 27-10-2026,
      sessie 21: "het spannende moment … het mag wat meer van het scherm
@@ -3531,8 +3532,13 @@
   }
   :root[data-theme="licht"] .gedeeld-rij.open { box-shadow: 0 10px 28px rgba(30, 30, 30, 0.16); }
   .gedeeld-paneel {
-    padding: 8px 12px 12px;
     background: var(--surface2);
+    overflow: hidden;
+    transition: height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .gedeeld-paneel-binnen { padding: 8px 12px 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    .gedeeld-rij, .gedeeld-paneel { transition: none; }
   }
   /* Per gekozen muzikant: foto, naam, rechts het niveau of "Speelt dit niet".
      Wie het speelt: naam vet. Wie het niet speelt: naam gewoon, in de

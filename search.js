@@ -2131,20 +2131,55 @@ function gedeeldRijHTML(n, i) {
       </div>`;
   }).join('');
   return `
-    <div class="gedeeld-rij${open ? ' open' : ''}">
+    <div class="gedeeld-rij${open ? ' open' : ''}" data-sleutel="${escHtml(n.sleutel)}">
       <button type="button" class="gedeeld-rij-kop" aria-expanded="${open}" aria-controls="${paneelId}"
         onclick="toggleGedeeldRij('${jsAttr(n.sleutel)}')">
         ${nummerTekstHTML(n.artiest, n.titel)}
         ${mmTellingHTML(gedeeldAantal(n), gedeeldGekozen.length)}
       </button>
-      ${open ? `<div class="gedeeld-paneel" id="${paneelId}">${spelers}</div>` : ''}
+      ${open ? `<div class="gedeeld-paneel" id="${paneelId}"><div class="gedeeld-paneel-binnen">${spelers}</div></div>` : ''}
     </div>`;
 }
 
+// Openen en dichtklappen gaat vloeiend, in één beweging (besluit Ronald
+// 27-10-2026: "nu klapt ie open als een knipmes"): het paneel groeit van 0
+// naar zijn hoogte, de rij krijgt tegelijk rand en schaduw. Dicht: andersom,
+// daarna pas opnieuw tekenen. Met "beweging verminderen" gaat het meteen.
+const GEDEELD_KLAP_MS = 250;
+function gedeeldRijEl(sleutel) {
+  return [...document.querySelectorAll('#gedeeldResults .gedeeld-rij')].find(r => r.dataset.sleutel === sleutel);
+}
+function gedeeldZonderBeweging() {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+}
 function toggleGedeeldRij(sleutel) {
-  if (gedeeldOpen.has(sleutel)) gedeeldOpen.delete(sleutel);
-  else gedeeldOpen.add(sleutel);
+  const rust = gedeeldZonderBeweging();
+  if (gedeeldOpen.has(sleutel)) {
+    gedeeldOpen.delete(sleutel);
+    const rij = gedeeldRijEl(sleutel);
+    const paneel = rij && rij.querySelector('.gedeeld-paneel');
+    if (rust || !paneel) { renderGedeeldResults(); return; }
+    rij.classList.remove('open');
+    rij.querySelector('.gedeeld-rij-kop').setAttribute('aria-expanded', 'false');
+    paneel.style.height = paneel.offsetHeight + 'px';
+    void paneel.offsetHeight; // de beginhoogte vastleggen vóór de overgang
+    paneel.style.height = '0px';
+    setTimeout(() => { if (!gedeeldOpen.has(sleutel)) renderGedeeldResults(); }, GEDEELD_KLAP_MS);
+    return;
+  }
+  gedeeldOpen.add(sleutel);
   renderGedeeldResults();
+  if (rust) return;
+  const rij = gedeeldRijEl(sleutel);
+  const paneel = rij && rij.querySelector('.gedeeld-paneel');
+  if (!paneel) return;
+  const hoog = paneel.scrollHeight;
+  rij.classList.remove('open');
+  paneel.style.height = '0px';
+  void paneel.offsetHeight;
+  rij.classList.add('open');
+  paneel.style.height = hoog + 'px';
+  setTimeout(() => { paneel.style.height = ''; }, GEDEELD_KLAP_MS);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

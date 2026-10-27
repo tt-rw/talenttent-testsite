@@ -1990,7 +1990,15 @@ def blok_browser():
         check("drie muzikanten: meeste spelers bovenaan", drie == ["alpha:3 van 3", "beta:2 van 3"], json.dumps(drie))
 
         page.click("#gedeeldResults .gedeeld-rij:nth-child(2) .gedeeld-rij-kop")
-        page.wait_for_timeout(100)
+        # Vloeiend openen (besluit Ronald 27-10-2026: "niet als een knipmes"):
+        # direct na de tik groeit het paneel nog; na 0,3 s staat het helemaal open.
+        klap = page.evaluate("""() => { const p = document.querySelector('#gedeeldResults .gedeeld-rij.open .gedeeld-paneel');
+          return { duur: getComputedStyle(p).transitionDuration, groeit: p.style.height !== '' && p.offsetHeight < p.scrollHeight }; }""")
+        page.wait_for_timeout(350)
+        klap["klaar"] = page.evaluate("""() => { const p = document.querySelector('#gedeeldResults .gedeeld-rij.open .gedeeld-paneel');
+          return p.style.height === '' && p.offsetHeight === p.scrollHeight; }""")
+        check("openklappen gaat vloeiend in één beweging van 0,25 s en eindigt helemaal open",
+              klap["duur"] == "0.25s" and klap["groeit"] and klap["klaar"], json.dumps(klap))
         pan = page.evaluate("""() => {
           const r = document.querySelector('#gedeeldResults .gedeeld-rij.open');
           if (!r) return null;
@@ -2042,6 +2050,9 @@ def blok_browser():
         page.click("#gedeeldResults .gedeeld-rij.open .gedeeld-rij-kop")
         check("nog een tik klapt hem dicht",
               not page.evaluate("!!document.querySelector('#gedeeldResults .gedeeld-rij.open')"), "")
+        page.wait_for_timeout(350)
+        check("dichtklappen: na 0,3 s is het paneel weg",
+              page.evaluate("document.querySelectorAll('#gedeeldResults .gedeeld-paneel').length") == 0, "")
 
         srt = page.evaluate("""() => {
           const l = sortGedeeldList([
