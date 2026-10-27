@@ -1388,6 +1388,17 @@
 
   .profile-song-row:last-child { padding-bottom: 0; }
 
+  /* Een nummer op twee regels: artiest groot en bovenaan, het nummer eronder
+     (besluit Ronald, 27-10-2026, sessie 21: "vanuit consistentie"; geldt voor
+     elke rij waar artiest en nummer onder elkaar staan; een lijst op één regel,
+     zoals het repertoire op een profiel, blijft). Maten gelijk aan Je setlist
+     (.setlist-artiest, .setlist-titel). Eén regel per tekst, daarna "…".
+     Opgebouwd door nummerTekstHTML() in utils.js. */
+  .song-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; }
+  .song-artiest, .song-titel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song-artiest { font-size: 16px; font-weight: 700; line-height: 20px; color: var(--text); }
+  .song-titel { font-size: 13px; font-weight: 400; line-height: 17px; color: var(--muted); margin-top: 2px; }
+
   /* Meer dan zeven nummers op een profiel: ingeklapt tot zeven (besluit
      Ronald, 26-10-2026, optie 1; nummerLijstHTML() in utils.js). Repertoire
      van een muzikant en covers van een band. De hele lijst is het tikvlak.
@@ -3437,71 +3448,68 @@
   /* De bewaarde zoekopdracht in woorden, direct onder de kop, in de tekstkleur. */
   .voorkeur-uitleg.bewaard-zoek-tekst { margin: 0; color: var(--text); }
 
-  /* ── TT-289 (17-09-2026): Setlist-tabblad in twee standen ────────────────
-     Twee losse knoppen met de vorm en kleuren van de hoofdtabbladen
-     (.search-mode-tab), zodat de actieve stand er precies zo uitziet als
-     "Setlist" erboven (Ronald, 17-09-2026). Zelfde breedte en tussenruimte als
-     .search-mode-tabs. Iets lager: dit is het tweede niveau, en 44px is het
-     tikdoel (huisstijl §6). */
-  .setlist-soort {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto 20px;
-  }
-  .setlist-soort .search-mode-tab {
+  /* ── Mix & Match (TT-520 bouwsessie b, besluiten Ronald 25 en 27-10-2026) ──
+     Twee knoppen "Wat spelen we?" · "Wie speelt dit?", de losse knoppen van
+     Alles · Muzikanten · Bands (.zoek-soort), in twee kolommen. Daaronder de
+     vraag in één regel, in de signaalkleur (--accent: donker goud, licht
+     zwart; Ronald: de minst bekende functie, kleur keuze UX), op de
+     inspringing van de labels. 12px onder de knoppen, 20px boven het veld. */
+  .mm-soort { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
+  .mm-vraag {
+    margin: 0 0 20px;
+    padding: 0 var(--field-inset);
     font-size: 14px;
+    line-height: 18px;
+    color: var(--accent);
+  }
+  /* De gekozen muzikanten of nummers: rijen van het resultaat (8px ertussen),
+     20px boven de regel van Wissen. */
+  .search-filters > .mm-gekozen { margin-bottom: 20px; }
+  .mm-gekozen[hidden] { display: none; }
+  /* "Kies nog 1 muzikant." links op de regel van Wissen, zoals de vink bij
+     Muzikanten: 14px, gedempt, op de inspringing van de labels. */
+  .mm-nog { font-size: 14px; line-height: 18px; color: var(--muted); padding-left: var(--field-inset); }
+  /* Het ✕ in een rij: het teken op de rechterlijn van de tekst rechts in de
+     andere rijen (12px binnen de rand); het tikvlak blijft 44px. */
+  .mm-gekozen .song-remove { margin: -4px -14px -4px 0; }
+  /* Het filtervak van Wie speelt dit?: Plaats + Straal, dan Instrument, 20px
+     ertussen (§3), zoals de rijen in het filtervak van Muzikanten. */
+  .zoek-filter-vak > .field { margin-bottom: 20px; }
+  /* Een gekozen nummer: de vorm van een resultaatrij (.result-row). */
+  .mm-nummer-rij {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-field);
+  }
+  /* "3 van 3", rechts in de rij, in beide vragen. */
+  .mm-telling {
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 18px;
+    color: var(--accent);
+    white-space: nowrap;
   }
 
-  /* Eén vorm voor een zelf samengestelde lijst in een zoekfilter: de setlist
-     bij "Zoek muzikanten" en de gekozen muzikanten bij "Zoek setlist".
-     Opgebouwd door zoekLijstHTML() in search.js. Waarden overgenomen uit de
-     inline stijl die renderSetlistSongsList() tot 17-09-2026 had. */
-  .zoek-lijst {
-    background: var(--surface2);
+  /* Resultaat van Wat spelen we?: één rij per nummer, de vorm van een
+     resultaatrij; een tik klapt hem open (Ronald, 17-09-2026: optie A). */
+  .gedeeld-rij {
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-field);
     overflow: hidden;
   }
-  .zoek-lijst-kop {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .zoek-lijst-rij {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-  }
-  .zoek-lijst-voor { width: 26px; flex-shrink: 0; }
-  .zoek-lijst-nr { font-size: 14px; font-weight: 700; color: var(--accent); }
-  .zoek-lijst-hoofd { flex: 1; min-width: 0; }
-  .zoek-lijst-titel { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-  .zoek-lijst-sub { font-size: 13px; color: var(--muted); }
-  .gedeeld-teller { text-align: right; padding-right: var(--field-inset); margin: 0; }
-  .gedeeld-teller:empty { display: none; }
-
-  /* Resultaat van "Zoek setlist": één regel per nummer, een tik klapt hem
-     open (Ronald, 17-09-2026: optie A). */
-  .gedeeld-rij {
-    background: var(--surface);
-  }
   .gedeeld-rij-kop {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     width: 100%;
-    min-height: 56px;
-    padding: 8px 16px;
+    min-height: 44px;
+    padding: 12px;
     background: none;
     border: none;
     color: var(--text);
@@ -3509,31 +3517,9 @@
     text-align: left;
     cursor: pointer;
   }
-  .gedeeld-rij-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .gedeeld-rij-titel {
-    font-size: 15px;
-    font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .gedeeld-rij-artiest {
-    font-size: var(--fs-sm);
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .gedeeld-rij-telling {
-    flex-shrink: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-    white-space: nowrap;
-  }
   .gedeeld-rij.open .gedeeld-rij-kop { border-bottom: 1px solid var(--border); }
   .gedeeld-paneel {
-    padding: 4px 16px 8px;
+    padding: 4px 12px 8px;
     background: var(--surface2);
   }
   .gedeeld-speler {

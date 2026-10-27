@@ -840,6 +840,17 @@ function nummersInklapWissel(lijst) {
     catch (e) { lijst.scrollIntoView(); }
   }
 }
+// ─── Een nummer: artiest groot en bovenaan, het nummer eronder ───────────────
+// Besluit Ronald, 27-10-2026 (sessie 21, TT-520): "vanuit consistentie", zoals
+// Je setlist. Geldt voor elke rij waar artiest en nummer onder elkaar staan (nu
+// de nummers in Mix & Match); een lijst op één regel, zoals het repertoire op
+// een profiel, blijft zoals hij is. Een eigen opmaak per plek is een fout.
+// Zonder titel staat er alleen de artiest; de plek kan een eigen tekst
+// meegeven ("Alle nummers").
+function nummerTekstHTML(artiest, titel) {
+  return `<span class="song-tekst"><span class="song-artiest">${escHtml(artiest || '')}</span>` +
+    (titel ? `<span class="song-titel">${escHtml(titel)}</span>` : '') + `</span>`;
+}
 const PERSONEN_TEKEN ='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>';
 
 // Geeft de veldfout terug als er te weinig nummers zijn, anders een lege

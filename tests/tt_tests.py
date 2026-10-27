@@ -1811,7 +1811,7 @@ def blok_browser():
         # Blok 21 — Maak setlist (tot 29-09-2026 "Zoek setlist"): van muzikanten naar gedeelde nummers
         # (TT-289, 17-09-2026). Tegen de stub, uitgelogd.
         # ─────────────────────────────────────────────────────────────
-        print("\nBlok 21 — Maak setlist: muzikanten kiezen, gedeelde nummers")
+        print("\nBlok 21 — Mix & Match: twee vragen, gedeelde nummers (TT-289, TT-520 bouwsessie b)")
         page_errors.clear()
         page.evaluate("window.TT_STUB.reset()")
         # Uitgelogd: eerdere blokken loggen in. Zonder sessie zet het
@@ -1829,6 +1829,7 @@ def blok_browser():
             ? [{ musician_id: 'm2', distance_km: 8.2, is_stale: false },
                { musician_id: 'm3', distance_km: 3.1, is_stale: false },
                { musician_id: 'm1', distance_km: 12, is_stale: false }] : [];
+          S.tt_search_musicians = () => [{ musician_id: 'm2', distance_km: 8.2 }, { musician_id: 'm3', distance_km: 3.1 }];
           const nummers = {
             m1: [{ song_title: 'Alpha', song_artist: 'Xband', mastery_level: 'basis' },
                  { song_title: 'Beta', song_artist: 'Yband', mastery_level: 'podium' },
@@ -1838,10 +1839,11 @@ def blok_browser():
             m3: [{ song_title: 'Alpha', song_artist: 'Xband', mastery_level: 'podium' }],
           };
           const namen = { m1: ['ronnie', 'Den Haag'], m2: ['dylan', 'Delft'], m3: ['sanne', 'Rijswijk'] };
+          const instr = { m1: ['Gitaar'], m2: ['Drums', 'Zang'], m3: [] };
           S.tt_get_musicians_public = (p) => (p.ids || []).filter(id => namen[id]).map(id => ({
             id, username: namen[id][0], city: namen[id][1], fname: 'GEHEIM',
             profile_color: '#f5c518', avatar_url: null, updated_at: nu,
-            instrument_levels: [], genres: [], songs: nummers[id]
+            instrument_levels: instr[id].map(i => ({ instrument: i, niveau: 3 })), genres: [], songs: nummers[id]
           }));
           showView('search');
           openZoekScherm('mixmatch');
@@ -1850,71 +1852,58 @@ def blok_browser():
         check("blok 21 draait uitgelogd", page.evaluate("hasOwnProfile === false"), "")
 
         sch = page.evaluate("""() => {
-          const b = ['setlistSoortMuzikantenBtn', 'setlistSoortNummersBtn'].map(id => document.getElementById(id));
+          const b = [...document.querySelectorAll('#searchModeSetlist .mm-soort .search-mode-tab')];
           const r = b.map(x => x.getBoundingClientRect());
-          return { tekst: b.map(x => x.textContent.trim()), hoog: r.map(x => Math.round(x.height)),
-                   breed: r.map(x => Math.round(x.width)),
+          const p = document.querySelector('#setlistDeelNummers .search-filters').getBoundingClientRect();
+          const st = el => { const c = getComputedStyle(el); return [c.backgroundColor, c.borderTopColor, c.color]; };
+          return { ids: b.map(x => x.id), tekst: b.map(x => x.textContent.trim()), hoog: r.map(x => Math.round(x.height)),
+                   breed: r.map(x => Math.round(x.width)), tussen: Math.round(r[1].left - r[0].right),
+                   randen: [Math.round(r[0].left - p.left), Math.round(r[1].right - p.right)],
                    gekozen: b.map(x => x.getAttribute('aria-selected')),
+                   kleur: st(b[0]), alles: st(document.getElementById('zoekSoortAllesBtn')),
                    muzZichtbaar: getComputedStyle(document.getElementById('setlistDeelMuzikanten')).display !== 'none',
-                   numZichtbaar: getComputedStyle(document.getElementById('setlistDeelNummers')).display !== 'none',
-                   knop: [...document.querySelectorAll('#setlistDeelMuzikanten .btn-row .btn-primary')].map(x => x.textContent.trim()),
-                   titel: document.querySelector('#setlistDeelMuzikanten .filter-title').textContent.trim() };
+                   numZichtbaar: getComputedStyle(document.getElementById('setlistDeelNummers')).display !== 'none' };
         }""")
-        check("schakelaar heeft de labels Zoek muzikanten en Maak setlist",
-              sch["tekst"] == ["Zoek muzikanten", "Maak setlist"], json.dumps(sch))
-        check("schakelaar: knoppen minstens 44px hoog en even breed",
-              min(sch["hoog"]) >= 44 and sch["breed"][0] == sch["breed"][1], json.dumps(sch))
-        vorm = page.evaluate("""() => {
-          const st = id => { const c = getComputedStyle(document.getElementById(id)); return [c.backgroundColor, c.borderTopColor, c.color]; };
-          const r = id => document.getElementById(id).getBoundingClientRect();
-          const a = r('setlistSoortMuzikantenBtn'), b = r('setlistSoortNummersBtn');
-          // TT-520: de hoofdtabbladen zijn weg. De standknoppen lijnen uit
-          // met het paneel eronder; de gekozen stand is die van Alles.
-          const p = document.querySelector('#setlistDeelMuzikanten .search-filters').getBoundingClientRect();
-          return { hoofd: st('zoekSoortAllesBtn'), sub: st('setlistSoortMuzikantenBtn'),
-                   tussen: Math.round(b.left - a.right),
-                   randen: [Math.round(a.left - p.left), Math.round(b.right - p.right)] };
+        check("twee knoppen: Wat spelen we? links, Wie speelt dit? rechts",
+              sch["tekst"] == ["Wat spelen we?", "Wie speelt dit?"]
+              and sch["ids"] == ["setlistSoortNummersBtn", "setlistSoortMuzikantenBtn"], json.dumps(sch))
+        check("knoppen 44px hoog, even breed, 8px ertussen, op de lijnen van de velden",
+              min(sch["hoog"]) >= 44 and sch["breed"][0] == sch["breed"][1] and sch["tussen"] == 8
+              and sch["randen"] == [0, 0], json.dumps(sch))
+        check("de gekozen knop heeft de kleuren van de gekozen Alles", sch["kleur"] == sch["alles"], json.dumps(sch))
+        check("beginstand is Wat spelen we?",
+              sch["gekozen"] == ["true", "false"] and sch["numZichtbaar"] and not sch["muzZichtbaar"], json.dumps(sch))
+
+        vr = page.evaluate("""() => {
+          const v = document.getElementById('mmVraag');
+          const tekstX = el => { const rg = document.createRange(); rg.selectNodeContents(el); return Math.round(rg.getBoundingClientRect().left); };
+          const lab = document.querySelector('#setlistDeelNummers label[for="gedeeldNaam"]');
+          const kn = document.getElementById('setlistSoortNummersBtn').getBoundingClientRect();
+          const c = getComputedStyle(v);
+          return { tekst: v.textContent.trim(), kleur: c.color, maat: c.fontSize,
+                   accent: getComputedStyle(document.querySelector('#setlistDeelNummers .zoek-wissen-knop')).color,
+                   x: tekstX(v), labelX: tekstX(lab), label: lab.textContent.trim(),
+                   boven: Math.round(v.getBoundingClientRect().top - kn.bottom),
+                   onder: Math.round(lab.getBoundingClientRect().top - v.getBoundingClientRect().bottom) };
         }""")
-        check("standknoppen staan los van elkaar, met 14px ertussen",
-              vorm["tussen"] == 14, json.dumps(vorm))
-        check("actieve standknop heeft dezelfde kleuren als de gekozen Alles",
-              vorm["hoofd"] == vorm["sub"], json.dumps(vorm))
-        check("standknoppen lijnen uit met het paneel eronder",
-              vorm["randen"] == [0, 0], json.dumps(vorm))
-        check("standaard staat de stand Zoek muzikanten aan",
-              sch["gekozen"] == ["true", "false"] and sch["muzZichtbaar"] and not sch["numZichtbaar"],
-              json.dumps(sch))
-        check("bestaande stand heet Zoek muzikanten, knop ook",
-              sch["titel"] == "Zoek muzikanten" and sch["knop"] == ["Zoek muzikanten"], json.dumps(sch))
-        sub1 = page.evaluate("() => document.querySelector('#setlistDeelMuzikanten .filter-sub').textContent.trim()")
-        check("uitleg van Zoek muzikanten (TT-413)",
-              sub1 == "Maak een setlist en ontdek wie deze nummers speelt.", sub1)
+        check("de vraag staat eronder: Kies de muzikanten. De nummers verschijnen vanzelf.",
+              vr["tekst"] == "Kies de muzikanten. De nummers verschijnen vanzelf.", json.dumps(vr))
+        check("de vraag in de signaalkleur, 14px, op de lijn van de labels",
+              vr["kleur"] == vr["accent"] and vr["maat"] == "14px" and vr["x"] == vr["labelX"], json.dumps(vr))
+        check("de vraag 12px onder de knoppen, 20px boven het label", vr["boven"] == 12 and vr["onder"] == 20, json.dumps(vr))
+        check("het veld heet Naam muzikant", vr["label"] == "Naam muzikant", json.dumps(vr))
+        weg = page.evaluate("""() => ({
+          knoppen: document.querySelectorAll('#searchModeSetlist .btn').length,
+          velden: ['filterGedeeldCity', 'filterGedeeldRadiusField', 'gedeeldSortModeField', 'filterSetlistSortModeField',
+                   'setlistViewToggleField', 'sortBarSetlist', 'sortBarGedeeld'].filter(id => document.getElementById(id)),
+          deler: document.querySelectorAll('#searchModeSetlist .results-section-divider').length,
+          wissen: [...document.querySelectorAll('#searchModeSetlist .zoek-wissen-knop')].map(x => x.textContent.trim()) })""")
+        check("geen zoekknop, geen sorteren, geen weergave, geen plaats bij Wat spelen we?",
+              weg["knoppen"] == 0 and weg["velden"] == [] and weg["deler"] == 0, json.dumps(weg))
+        check("beide vragen hebben Wissen", weg["wissen"] == ["Wissen", "Wissen"], json.dumps(weg))
+        check("zonder gekozen muzikanten geen resultaat",
+              page.evaluate("document.getElementById('gedeeldResults').innerHTML.trim()") == "", "")
 
-        page.click("#setlistSoortNummersBtn")
-        page.wait_for_timeout(100)
-        st = page.evaluate("""() => ({
-          gekozen: ['setlistSoortMuzikantenBtn', 'setlistSoortNummersBtn'].map(id => document.getElementById(id).getAttribute('aria-selected')),
-          muz: getComputedStyle(document.getElementById('setlistDeelMuzikanten')).display,
-          num: getComputedStyle(document.getElementById('setlistDeelNummers')).display,
-          titel: document.querySelector('#setlistDeelNummers .filter-title').textContent.trim(),
-          sub: document.querySelector('#setlistDeelNummers .filter-sub').textContent.trim(),
-          straal: document.querySelector('#filterGedeeldRadiusField .wheel-field-label').textContent.trim(),
-          sorteer: document.querySelector('#gedeeldSortModeField .wheel-field-label').textContent.trim(),
-          knoppen: [...document.querySelectorAll('#setlistDeelNummers .btn-row button')].map(x => x.textContent.trim()),
-          resultaat: document.getElementById('gedeeldResults').innerHTML.trim()
-        })""")
-        check("tik op Maak setlist wisselt de stand",
-              st["gekozen"] == ["false", "true"] and st["muz"] == "none" and st["num"] != "none", json.dumps(st))
-        check("kop en uitleg van Maak setlist",
-              st["titel"] == "Maak setlist" and st["sub"] == "Kies een groep muzikanten en ontdek jullie gezamenlijke setlist.", json.dumps(st))
-        check("straalwiel staat op 10 km, sorteren op Meeste spelers",
-              st["straal"] == "10 km" and st["sorteer"] == "Meeste spelers", json.dumps(st))
-        check("knoppenrij: Lijst wissen links, Maak setlist rechts (TT-374)",
-              st["knoppen"] == ["Lijst wissen", "Maak setlist"], json.dumps(st))
-        check("zonder gekozen muzikanten geen resultaat", st["resultaat"] == "", st["resultaat"][:100])
-
-        page.fill("#filterGedeeldCity", "Delft")
-        page.wait_for_timeout(50)
         page.fill("#gedeeldNaam", "n")
         page.wait_for_timeout(500)
         check("één letter geeft nog geen suggesties",
@@ -1924,67 +1913,68 @@ def blok_browser():
         sug = page.evaluate("""() => [...document.querySelectorAll('#acGedeeldNaamList .ac-item')]
           .map(x => ({ naam: x.querySelector('strong')?.textContent, meta: x.querySelector('span')?.textContent,
                        hoog: Math.round(x.getBoundingClientRect().height) }))""")
-        check("suggesties: alleen wie op de naam matcht, dichtstbij eerst",
-              [x["naam"] for x in sug] == ["sanne", "dylan"], json.dumps(sug))
-        check("suggestie toont plaats en afstand",
-              sug and sug[1]["meta"] == "Delft · 8 km", json.dumps(sug))
-        check("uitgelogd geen voornaam in de suggestie",
-              all(x["naam"] != "GEHEIM" for x in sug), json.dumps(sug))
+        check("suggesties: alleen wie op de naam matcht; uitgelogd zonder afstand, op naam",
+              [x["naam"] for x in sug] == ["dylan", "sanne"], json.dumps(sug))
+        check("suggestie toont de plaats", sug and sug[0]["meta"] == "Delft", json.dumps(sug))
+        check("uitgelogd geen voornaam in de suggestie", all(x["naam"] != "GEHEIM" for x in sug), json.dumps(sug))
         check("suggestieregel minstens 44px hoog", sug and min(x["hoog"] for x in sug) >= 44, json.dumps(sug))
-        straal_arg = page.evaluate("""() => window.TT_STUB.calls
-          .filter(c => c.kind === 'rpc' && c.name === 'tt_search_musicians_anon').map(c => c.params.radius_km)""")
-        check("de straal gaat mee naar de database", straal_arg and straal_arg[-1] == 10, json.dumps(straal_arg))
+        arg = page.evaluate("""() => window.TT_STUB.calls
+          .filter(c => c.kind === 'rpc' && c.name === 'tt_search_musicians_anon').map(c => c.params).pop()""")
+        check("iedereen in Nederland: geen vertrekpunt en geen straal",
+              arg and arg.get("radius_km") is None and arg.get("origin_lat") is None, json.dumps(arg))
 
         page.keyboard.press("Enter")
         page.wait_for_timeout(200)
-        een = page.evaluate("""() => ({
-          gekozen: gedeeldGekozen.map(g => g.naam), veld: document.getElementById('gedeeldNaam').value,
-          lijst: document.getElementById('gedeeldGekozenList').innerText,
-          teller: document.getElementById('gedeeldTeller').textContent,
-          resultaat: document.getElementById('gedeeldResults').innerHTML.trim(),
-          x: [...document.querySelectorAll('#gedeeldGekozenList .song-remove')].map(b => Math.round(b.getBoundingClientRect().width))
-        })""")
+        een = page.evaluate("""() => {
+          const rij = document.querySelector('#gedeeldGekozenList .result-row');
+          return { gekozen: gedeeldGekozen.map(g => g.naam), veld: document.getElementById('gedeeldNaam').value,
+            naam: rij?.querySelector('.result-row-naam')?.textContent, meta: rij?.querySelector('.result-row-meta')?.textContent,
+            foto: !!rij?.querySelector('.result-row-avatar .avatar-t, .result-row-avatar img, .result-row-avatar'),
+            teller: document.getElementById('gedeeldTeller').textContent,
+            resultaat: document.getElementById('gedeeldResults').innerHTML.trim(),
+            x: [...document.querySelectorAll('#gedeeldGekozenList .song-remove')].map(b => Math.round(b.getBoundingClientRect().width)) };
+        }""")
         check("Enter kiest de eerste suggestie en leegt het veld",
-              een["gekozen"] == ["sanne"] and een["veld"] == "", json.dumps(een))
-        check("gekozen lijst toont naam en plaats, met ✕ van 44px",
-              "sanne" in een["lijst"] and "Rijswijk" in een["lijst"] and een["x"] == [44], json.dumps(een))
-        check("teller zegt dat er nog één nodig is",
-              een["teller"] == "1 van 20 · kies er nog 1", een["teller"])
+              een["gekozen"] == ["dylan"] and een["veld"] == "", json.dumps(een))
+        check("gekozen muzikant: een rij met foto, naam, instrument · plaats, en ✕ van 44px",
+              een["naam"] == "dylan" and een["meta"] == "Drums · Delft" and een["foto"] and een["x"] == [44], json.dumps(een))
+        check("links op de regel van Wissen: Kies nog 1 muzikant.", een["teller"] == "Kies nog 1 muzikant.", een["teller"])
         check("met één muzikant nog geen resultaat", een["resultaat"] == "", een["resultaat"][:100])
 
         page.fill("#gedeeldNaam", "an")
         page.wait_for_timeout(700)
         sug2 = page.evaluate("[...document.querySelectorAll('#acGedeeldNaamList .ac-item strong')].map(x => x.textContent)")
-        check("wie al gekozen is, staat niet meer tussen de suggesties", sug2 == ["dylan"], json.dumps(sug2))
-        page.evaluate("addGedeeldMuzikant('m2')")
+        check("wie al gekozen is, staat niet meer tussen de suggesties", sug2 == ["sanne"], json.dumps(sug2))
+        page.evaluate("addGedeeldMuzikant('m3')")
         page.wait_for_function("document.querySelector('#gedeeldResults .results-count')", timeout=3000)
-        res = page.evaluate("""() => ({
-          kop: document.querySelector('#gedeeldResults .results-count')?.textContent,
-          rijen: [...document.querySelectorAll('#gedeeldResults .gedeeld-rij')].map(r => ({
-            titel: r.querySelector('.gedeeld-rij-titel').textContent,
-            artiest: r.querySelector('.gedeeld-rij-artiest').textContent,
-            tel: r.querySelector('.gedeeld-rij-telling').textContent,
-            hoog: Math.round(r.querySelector('.gedeeld-rij-kop').getBoundingClientRect().height) })),
-          teller: document.getElementById('gedeeldTeller').textContent
-        })""")
+        res = page.evaluate("""() => {
+          const rijen = [...document.querySelectorAll('#gedeeldResults .gedeeld-rij')];
+          return { kop: document.querySelector('#gedeeldResults .results-count')?.textContent,
+            rijen: rijen.map(r => {
+              const a = r.querySelector('.song-artiest'), t = r.querySelector('.song-titel'), n = r.querySelector('.mm-telling');
+              return { artiest: a.textContent, titel: t.textContent, tel: n.textContent,
+                       boven: a.getBoundingClientRect().top < t.getBoundingClientRect().top,
+                       artMaat: getComputedStyle(a).fontSize, artVet: getComputedStyle(a).fontWeight,
+                       telKleur: getComputedStyle(n).color,
+                       hoog: Math.round(r.querySelector('.gedeeld-rij-kop').getBoundingClientRect().height) }; }),
+            accent: getComputedStyle(document.querySelector('#setlistDeelNummers .zoek-wissen-knop')).color,
+            teller: document.getElementById('gedeeldTeller').textContent };
+        }""")
         check("twee muzikanten: resultaat verschijnt vanzelf",
-              res["kop"] == "1 nummer die minstens 2 van hen spelen", json.dumps(res))
-        # sanne speelt "Alpha", dylan "alpha": dat is hetzelfde nummer.
+              res["kop"] == "1 nummer dat jullie samen spelen", json.dumps(res))
         check("hoofdletters maken niet uit bij het vergelijken",
-              [r["titel"] for r in res["rijen"]] == ["Alpha"], json.dumps(res))
-        check("een nummer van één muzikant staat er niet",
-              all(r["titel"] != "Gamma" for r in res["rijen"]), json.dumps(res))
-        check("elke regel toont 2 van 2 en is minstens 44px hoog",
-              all(r["tel"] == "2 van 2" and r["hoog"] >= 44 for r in res["rijen"]), json.dumps(res))
-        check("teller zonder aanvulling bij twee", res["teller"] == "2 van 20", res["teller"])
+              [r["artiest"].lower() + "/" + r["titel"].lower() for r in res["rijen"]] == ["xband/alpha"], json.dumps(res))
+        check("de artiest staat groot en bovenaan, het nummer eronder (besluit 27-10-2026)",
+              all(r["boven"] and r["artMaat"] == "16px" and r["artVet"] == "700" for r in res["rijen"]), json.dumps(res))
+        check("rechts 2 van 2 in de signaalkleur; rij minstens 44px hoog",
+              all(r["tel"] == "2 van 2" and r["telKleur"] == res["accent"] and r["hoog"] >= 44 for r in res["rijen"]), json.dumps(res))
+        check("bij twee muzikanten geen regel meer links van Wissen", res["teller"] == "", res["teller"])
 
-        # De suggestiecache bevat iedereen binnen de straal, ook ronnie.
         page.evaluate("addGedeeldMuzikant('m1')")
         page.wait_for_function("document.querySelectorAll('#gedeeldResults .gedeeld-rij').length === 2", timeout=3000)
         drie = page.evaluate("""() => [...document.querySelectorAll('#gedeeldResults .gedeeld-rij')].map(r =>
-          r.querySelector('.gedeeld-rij-titel').textContent + ':' + r.querySelector('.gedeeld-rij-telling').textContent)""")
-        check("drie muzikanten: meeste spelers bovenaan",
-              drie == ["Alpha:3 van 3", "Beta:2 van 3"], json.dumps(drie))
+          r.querySelector('.song-titel').textContent.toLowerCase() + ':' + r.querySelector('.mm-telling').textContent)""")
+        check("drie muzikanten: meeste spelers bovenaan", drie == ["alpha:3 van 3", "beta:2 van 3"], json.dumps(drie))
 
         page.click("#gedeeldResults .gedeeld-rij:nth-child(2) .gedeeld-rij-kop")
         page.wait_for_timeout(100)
@@ -2003,73 +1993,58 @@ def blok_browser():
         }""")
         check("een tik klapt de regel open", pan and pan["uitgeklapt"] == "true", json.dumps(pan))
         check("paneel toont alle gekozen muzikanten in volgorde van kiezen",
-              pan and [x["naam"] for x in pan["spelers"]] == ["sanne", "dylan", "ronnie"], json.dumps(pan))
+              pan and [x["naam"] for x in pan["spelers"]] == ["dylan", "sanne", "ronnie"], json.dumps(pan))
         check("niveau staat rechts naast de naam",
-              pan and pan["spelers"][1]["niveau"] == "Basis" and pan["spelers"][2]["niveau"] == "Podium"
-              and pan["spelers"][1]["rechts"] == 0, json.dumps(pan))
+              pan and pan["spelers"][0]["niveau"] == "Basis" and pan["spelers"][2]["niveau"] == "Podium"
+              and pan["spelers"][0]["rechts"] == 0, json.dumps(pan))
         check("wie het niet speelt, staat grijs met 'Speelt dit niet'",
-              pan and pan["spelers"][0]["niet"] and pan["spelers"][0]["tekst"] == "Speelt dit niet"
-              and pan["spelers"][0]["niveau"] == "", json.dumps(pan))
+              pan and pan["spelers"][1]["niet"] and pan["spelers"][1]["tekst"] == "Speelt dit niet"
+              and pan["spelers"][1]["niveau"] == "", json.dumps(pan))
         check("naam in het paneel is een tikdoel van 44px",
               pan and min(x["hoog"] for x in pan["spelers"]) >= 44, json.dumps(pan))
-        page.evaluate("setGedeeldSortMode('spelers')")
-        check("opengeklapte regel blijft open na opnieuw sorteren",
+        page.evaluate("renderGedeeldResults()")
+        check("opengeklapte regel blijft open na opnieuw tekenen",
               page.evaluate("!!document.querySelector('#gedeeldResults .gedeeld-rij.open')"), "")
         page.click("#gedeeldResults .gedeeld-rij.open .gedeeld-rij-kop")
         check("nog een tik klapt hem dicht",
               not page.evaluate("!!document.querySelector('#gedeeldResults .gedeeld-rij.open')"), "")
 
         srt = page.evaluate("""() => {
-          const S = window.TT_STUB.rpcResults;
-          const oud = S.tt_get_musicians_public;
-          gedeeldResultaat = sortGedeeldList([
+          const l = sortGedeeldList([
             { sleutel: '1', titel: 'Zulu', artiest: 'Abba', spelers: { a: '', b: '' } },
             { sleutel: '2', titel: 'Echo', artiest: 'Muse', spelers: { a: '', b: '', c: '' } },
             { sleutel: '3', titel: 'Alfa', artiest: 'Abba', spelers: { a: '', b: '' } },
             { sleutel: '4', titel: 'Kilo', artiest: 'Muse', spelers: { a: '', b: '' } },
           ]);
-          const volg = () => gedeeldResultaat.map(n => n.artiest + '/' + n.titel).join(',');
-          const uit = {};
-          setGedeeldSortMode('spelers'); uit.spelers = volg();
-          setGedeeldSortMode('artiest'); uit.artiest = volg();
-          setGedeeldSortMode('az'); uit.az = volg();
-          uit.label = document.querySelector('#gedeeldSortModeField .wheel-field-label').textContent.trim();
-          uit.opties = [...document.getElementById('gedeeldSortMode').options].map(o => o.textContent);
-          setGedeeldSortMode('spelers');
-          return uit;
+          return { volg: l.map(n => n.artiest + '/' + n.titel).join(','),
+                   oud: ['setGedeeldSortMode', 'initGedeeldSearchFilters', 'gedeeldKandidatenVergeten', 'zoekLijstHTML',
+                         'setSetlistViewMode', 'setSetlistSearchSortMode', 'musicianSetlistCardHTML', 'setlistMatchBadge',
+                         'bewaardeWeergave', 'standaardWeergave'].filter(f => typeof window[f] === 'function') };
         }""")
-        check("sorteren: Meeste spelers", srt["spelers"] == "Muse/Echo,Abba/Alfa,Abba/Zulu,Muse/Kilo", json.dumps(srt))
-        check("sorteren: Artiest, meeste spelers", srt["artiest"] == "Muse/Echo,Muse/Kilo,Abba/Alfa,Abba/Zulu", json.dumps(srt))
-        check("sorteren: Artiest A–Z", srt["az"] == "Abba/Alfa,Abba/Zulu,Muse/Echo,Muse/Kilo", json.dumps(srt))
-        check("sorteeropties hebben de afgesproken namen",
-              srt["opties"] == ["Meeste spelers", "Artiest, meeste spelers", "Artiest A–Z"] and srt["label"] == "Artiest A–Z",
-              json.dumps(srt))
+        check("vaste volgorde: meeste spelers, dan artiest, dan titel",
+              srt["volg"] == "Muse/Echo,Abba/Alfa,Abba/Zulu,Muse/Kilo", json.dumps(srt))
+        check("de oude functies (sorteren, weergave, straal, lijstvorm) zijn weg", srt["oud"] == [], json.dumps(srt))
 
         page.evaluate("runGedeeldSearch()")
         page.wait_for_timeout(200)
         wis = page.evaluate("""async () => {
           const uit = {};
-          document.getElementById('filterGedeeldRadius').value = '25';
-          gedeeldKandidatenVergeten();
-          uit.naVerandering = gedeeldGekozen.length;
-          uit.cache = gedeeldKandidaten;
-          removeGedeeldMuzikant(0);
+          removeGedeeldMuzikant(1);
           await new Promise(r => setTimeout(r, 150));
           uit.naEen = document.querySelectorAll('#gedeeldResults .gedeeld-rij').length;
           removeGedeeldMuzikant(0);
           await new Promise(r => setTimeout(r, 50));
           uit.naTwee = document.getElementById('gedeeldResults').innerHTML.trim();
+          uit.teller = document.getElementById('gedeeldTeller').textContent;
           return uit;
         }""")
-        check("straal wijzigen laat gekozen muzikanten staan en vergeet de suggesties",
-              wis["naVerandering"] == 3 and wis["cache"] is None, json.dumps(wis))
         # sanne eruit: dylan en ronnie delen Alpha én Beta.
         check("muzikant weghalen rekent opnieuw", wis["naEen"] == 2, json.dumps(wis))
-        check("onder twee muzikanten verdwijnt het resultaat", wis["naTwee"] == "", json.dumps(wis))
+        check("onder twee muzikanten verdwijnt het resultaat", wis["naTwee"] == "" and wis["teller"] == "Kies nog 1 muzikant.", json.dumps(wis))
 
         grens = page.evaluate("""() => {
-          gedeeldGekozen = Array.from({ length: 20 }, (_, i) => ({ id: 'x' + i, naam: 'x' + i, city: '', distance_km: null }));
-          gedeeldKandidaten = { sleutel: 'x', straalActief: true,
+          gedeeldGekozen = Array.from({ length: 20 }, (_, i) => ({ id: 'x' + i, naam: 'x' + i, city: '', distance_km: null, foto: '', instrument: '' }));
+          gedeeldKandidaten = { sleutel: 'bezoeker',
             lijst: [{ id: 'm9', username: 'extra', city: '', distance_km: null }] };
           addGedeeldMuzikant('m9');
           return { n: gedeeldGekozen.length, toast: document.getElementById('appToast')?.textContent || '' };
@@ -2077,34 +2052,22 @@ def blok_browser():
         check("de 21e muzikant wordt geweigerd", grens["n"] == 20, json.dumps(grens))
         check("met een melding over de grens van 20", "maximaal 20" in grens["toast"], json.dumps(grens))
 
-        page.evaluate("resetGedeeldSearch()")
+        page.evaluate("gedeeldKandidaten = null; resetGedeeldSearch()")
         page.wait_for_timeout(50)
         rst = page.evaluate("""() => ({ n: gedeeldGekozen.length,
-          rij: getComputedStyle(document.getElementById('gedeeldGekozenRow')).display,
-          plaats: document.getElementById('filterGedeeldCity').value,
-          straal: document.getElementById('filterGedeeldRadius').value,
+          lijst: document.getElementById('gedeeldGekozenList').hidden,
           res: document.getElementById('gedeeldResults').innerHTML.trim() })""")
-        check("Lijst wissen zet alles terug",
-              rst["n"] == 0 and rst["rij"] == "none" and rst["plaats"] == "" and rst["straal"] == "10" and rst["res"] == "",
-              json.dumps(rst))
+        check("Wissen zet alles terug", rst["n"] == 0 and rst["lijst"] and rst["res"] == "", json.dumps(rst))
 
         page.fill("#gedeeldNaam", '"dyl"')
         page.wait_for_timeout(700)
         exact = page.evaluate("document.getElementById('acGedeeldNaamList').innerText")
-        check("zonder plaats en uitgelogd: geen straal in de lege melding",
-              exact.strip() == "Niemand met deze naam.", exact)
+        check("niemand gevonden: één korte regel", exact.strip() == "Niemand met deze naam.", exact)
         page.fill("#gedeeldNaam", '"dylan"')
         page.wait_for_timeout(700)
         exact2 = page.evaluate("[...document.querySelectorAll('#acGedeeldNaamList .ac-item strong')].map(x => x.textContent)")
         check("tussen aanhalingstekens alleen de exacte naam", exact2 == ["dylan"], json.dumps(exact2))
-        straal_leeg = page.evaluate("""() => window.TT_STUB.calls
-          .filter(c => c.kind === 'rpc' && c.name === 'tt_search_musicians_anon').map(c => c.params.radius_km).pop()""")
-        check("uitgelogd zonder plaats: geen straalbeperking", straal_leeg is None, json.dumps(straal_leeg))
         page.evaluate("addGedeeldMuzikant('m2'); closeAC('acGedeeldNaamList')")
-
-        page.evaluate("""() => { gedeeldKandidaten = null; }""")
-        page.fill("#gedeeldNaam", "sanne")
-        page.wait_for_timeout(700)
         page.evaluate("addGedeeldMuzikant('m3')")
         page.wait_for_timeout(200)
         page.evaluate("openZoekScherm('muzikanten')")
@@ -2115,18 +2078,76 @@ def blok_browser():
           stand: document.getElementById('setlistSoortNummersBtn').getAttribute('aria-selected'),
           n: gedeeldGekozen.length,
           rijen: document.querySelectorAll('#gedeeldResults .gedeeld-rij').length })""")
-        check("terug naar Setlist: stand en keuze blijven, resultaat ververst",
+        check("terug naar Mix & Match: stand en keuze blijven, resultaat ververst",
               terug["stand"] == "true" and terug["n"] == 2 and terug["rijen"] == 1, json.dumps(terug))
+
+        # Wie speelt dit?
         page.evaluate("setSetlistSoort('muzikanten')")
-        check("terug naar Zoek muzikanten toont die stand weer",
-              page.evaluate("getComputedStyle(document.getElementById('setlistDeelMuzikanten')).display !== 'none'"), "")
-        check("setlistlijst gebruikt dezelfde lijstvorm",
-              page.evaluate("""() => { setlistWantedSongs = [{ title: 'T"1', artist: 'A' }]; renderSetlistSongsList();
-                const ok = !!document.querySelector('#setlistSongsList .zoek-lijst .zoek-lijst-nr')
-                  && document.querySelector('#setlistSongsList .song-remove').getAttribute('aria-label') === 'Verwijder T"1';
-                setlistWantedSongs = []; renderSetlistSongsList(); return ok; }"""), "")
+        wsd = page.evaluate("""() => {
+          const knop = document.getElementById('mmFiltersKnop');
+          const uit = { zichtbaar: getComputedStyle(document.getElementById('setlistDeelMuzikanten')).display !== 'none',
+            vraag: document.getElementById('mmVraag').textContent.trim(),
+            label: document.querySelector('label[for="setlistArtistSearch"]').textContent.trim(),
+            filters: knop.textContent.trim(), dicht: document.getElementById('mmFilterVak').hidden,
+            regelGelijk: knop.parentElement === document.querySelector('label[for="setlistArtistSearch"]').parentElement };
+          toggleMmFilters();
+          uit.open = !document.getElementById('mmFilterVak').hidden && knop.getAttribute('aria-expanded') === 'true';
+          uit.inVak = ['filterSetlistCity', 'filterSetlistRadiusField', 'filterSetlistInstrumentsField']
+            .every(id => document.getElementById('mmFilterVak').contains(document.getElementById(id)));
+          uit.instrument = document.getElementById('filterSetlistInstrumentsFieldLabel').textContent.trim();
+          uit.straal = document.querySelector('#filterSetlistRadiusField .wheel-field-label').textContent.trim();
+          filterSetlistInstruments = ['Drums']; renderPickerBadges(PICKERS.filterSetlistInstruments); zetMmFiltersTeller();
+          uit.teller = document.getElementById('mmFiltersTekst').textContent;
+          uit.inVeld = document.getElementById('filterSetlistInstrumentsFieldLabel').textContent.trim();
+          toggleMmFilters();
+          return uit;
+        }""")
+        check("Wie speelt dit?: de vraag wisselt mee",
+              wsd["zichtbaar"] and wsd["vraag"] == "Kies de nummers. De muzikanten verschijnen vanzelf.", json.dumps(wsd))
+        check("Filters rechts op de regel van Band of artiest, dicht bij openen",
+              wsd["label"] == "Band of artiest" and wsd["filters"] == "Filters" and wsd["regelGelijk"] and wsd["dicht"], json.dumps(wsd))
+        check("Filters opent Plaats, Straal en Instrument",
+              wsd["open"] and wsd["inVak"] and wsd["straal"] == "10 km", json.dumps(wsd))
+        check("Instrument toont de keuze in het veld; Filters (1)",
+              wsd["instrument"] == "–" and wsd["inVeld"] == "Drums" and wsd["teller"] == "Filters (1)", json.dumps(wsd))
+
+        lst = page.evaluate("""() => {
+          setlistWantedSongs = [{ title: 'T"1', artist: 'A' }, { title: '', artist: 'B' }]; renderSetlistSongsList();
+          const rijen = [...document.querySelectorAll('#setlistSongsList .mm-nummer-rij')];
+          const uit = { n: rijen.length, zichtbaar: !document.getElementById('setlistSongsList').hidden,
+            tekst: rijen.map(r => r.querySelector('.song-artiest').textContent + '|' + (r.querySelector('.song-titel')?.textContent || '')),
+            label: rijen[0].querySelector('.song-remove').getAttribute('aria-label'),
+            nr: document.querySelectorAll('#setlistSongsList .zoek-lijst-nr').length };
+          lastSetlistResults = [{ id: 'm2', username: 'dylan', weergavenaam: 'dylan', city: 'Delft', distance_km: 8.2,
+            musician_instruments: [{ instrument: 'Zang' }, { instrument: 'Drums' }], matchCount: 1, actiefRang: 0 }];
+          renderCappedSetlistResults();
+          const r = document.querySelector('#setlistSearchResults .result-row');
+          uit.rij = { meta: r.querySelector('.result-row-meta').textContent, tel: r.querySelector('.mm-telling')?.textContent,
+            bericht: !!r.querySelector('.result-row-msg-btn'),
+            kaart: document.querySelectorAll('#setlistSearchResults .zoek-kaart, #setlistSearchResults .result-card').length };
+          selectSetlistArtist('1', 'Metallica');
+          uit.nummerLabel = document.getElementById('setlistTrackSearchLabel').textContent;
+          document.getElementById('filterSetlistCity').value = 'Delft';
+          resetSetlistSearch();
+          uit.naWissen = { plaats: document.getElementById('filterSetlistCity').value, n: setlistWantedSongs.length,
+            instr: filterSetlistInstruments.length, filters: document.getElementById('mmFiltersTekst').textContent,
+            lijst: document.getElementById('setlistSongsList').hidden };
+          document.getElementById('filterSetlistCity').value = '';
+          return uit;
+        }""")
+        check("gekozen nummers: artiest boven, nummer eronder, zonder nummer 'Alle nummers'; geen volgnummer",
+              lst["n"] == 2 and lst["zichtbaar"] and lst["tekst"] == ['A|T"1', "B|Alle nummers"] and lst["nr"] == 0
+              and lst["label"] == 'Verwijder T"1', json.dumps(lst))
+        check("resultaat: één rij per muzikant, gekozen instrument, rechts 1 van 2, geen berichtknop, geen kaarten",
+              lst["rij"]["meta"] == "Drums · Delft · 8.2 km" and lst["rij"]["tel"] == "1 van 2"
+              and not lst["rij"]["bericht"] and lst["rij"]["kaart"] == 0, json.dumps(lst))
+        check("het nummerveld heet Nummer van <artiest>, zonder uitleg", lst["nummerLabel"] == "Nummer van Metallica", json.dumps(lst))
+        check("Wissen wist nummers en filters, Plaats blijft staan",
+              lst["naWissen"] == {"plaats": "Delft", "n": 0, "instr": 0, "filters": "Filters", "lijst": True}, json.dumps(lst))
+        page.evaluate("setSetlistSoort('nummers')")
+
         # 08-10-2026 (bevinding Ronald): wie een profiel heeft, staat als eerste
-        # vanzelf in Maak setlist; met het ✕ haal je jezelf weg.
+        # vanzelf in Wat spelen we?; met het ✕ haal je jezelf weg.
         page.evaluate("""() => {
           window.getMyMusicianId = async () => 'm1';
           hasOwnProfile = true; myMusicianId = 'm1';
@@ -2137,10 +2158,16 @@ def blok_browser():
         page.wait_for_timeout(300)
         eigen = page.evaluate("""() => ({ namen: gedeeldGekozen.map(g => g.naam), lijst: document.getElementById('gedeeldGekozenList').innerText,
           teller: document.getElementById('gedeeldTeller').textContent, kruis: document.querySelectorAll('#gedeeldGekozenList .song-remove').length })""")
-        check("Maak setlist: je eigen naam staat vanzelf als eerste, met ✕, teller 1 van 20",
-              eigen["namen"] == ["ronnie"] and "ronnie" in eigen["lijst"] and eigen["kruis"] == 1 and eigen["teller"].startswith("1 van 20"), json.dumps(eigen))
-        page.evaluate("""() => { gedeeldKandidaten = { sleutel: 'x', straalActief: true, lijst: [{ id: 'm2', username: 'dylan', city: 'Delft', distance_km: 8 }] };
-          addGedeeldMuzikant('m2'); }""")
+        check("je eigen naam staat vanzelf als eerste, met ✕; Kies nog 1 muzikant.",
+              eigen["namen"] == ["ronnie"] and "ronnie" in eigen["lijst"] and eigen["kruis"] == 1 and eigen["teller"] == "Kies nog 1 muzikant.", json.dumps(eigen))
+        page.evaluate("gedeeldKandidaten = null")
+        page.fill("#gedeeldNaam", "dyl")
+        page.wait_for_timeout(700)
+        afst = page.evaluate("""() => ({ meta: [...document.querySelectorAll('#acGedeeldNaamList .ac-item span')].map(x => x.textContent),
+          straal: window.TT_STUB.calls.filter(c => c.kind === 'rpc' && c.name === 'tt_search_musicians').map(c => c.params.radius_km).pop() })""")
+        check("met een profiel: afstand vanaf je eigen postcode, landelijke straal",
+              afst["meta"] == ["Delft · 8 km"] and afst["straal"] == 500, json.dumps(afst))
+        page.evaluate("addGedeeldMuzikant('m2'); closeAC('acGedeeldNaamList')")
         page.evaluate("removeGedeeldMuzikant(0)")
         page.evaluate("setSetlistSoort('muzikanten'); setSetlistSoort('nummers')")
         page.wait_for_timeout(300)
@@ -2149,13 +2176,13 @@ def blok_browser():
         page.evaluate("resetGedeeldSearch()")
         page.wait_for_timeout(300)
         wis2 = page.evaluate("gedeeldGekozen.map(g => g.naam)")
-        check("Lijst wissen: terug naar alleen jezelf", wis2 == ["ronnie"], json.dumps(wis2))
+        check("Wissen: terug naar alleen jezelf", wis2 == ["ronnie"], json.dumps(wis2))
         page.evaluate("() => { hasOwnProfile = false; }")
         page.evaluate("gedeeldEigenToevoegen()")
         page.wait_for_timeout(200)
         uit = page.evaluate("gedeeldGekozen.length")
         check("uitgelogd of zonder profiel: jezelf staat er niet in", uit == 0, str(uit))
-        page.evaluate("hasOwnProfile = false; myMusicianId = null; gedeeldEigenId = null; resetGedeeldSearch()")
+        page.evaluate("hasOwnProfile = false; myMusicianId = null; gedeeldEigenId = null; gedeeldKandidaten = null; resetGedeeldSearch()")
         check("geen paginafouten in blok 21", not page_errors, "; ".join(page_errors)[:300])
         page.evaluate("window.TT_STUB.reset()")
 
@@ -4089,11 +4116,11 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           // Setlist: zelfde regel, ook bij meer gematchte nummers.
           const set = [{ id: 'm2', matchCount: 5, distance_km: 1 }, { id: 'm5', matchCount: 1, distance_km: 9 }];
           await zetActiefStand('muzikant', set);
-          setlistSearchSortMode = 'score';
           uit.setlist = sortSetlistList(set).map(m => m.id);
 
           // Elke sorteerkeuzelijst heeft "Laatst actief", geen "Nieuwste".
-          uit.opties = ['filterSortMode', 'filterSetlistSortMode'].map(id =>
+          // Mix & Match heeft sinds TT-520 bouwsessie b geen sorteerkeuze meer.
+          uit.opties = ['filterSortMode'].map(id =>
             [...document.getElementById(id).options].map(o => o.value + '=' + o.textContent));
 
           // Inloggen of opstarten met een sessie markeert je als actief.
@@ -4125,9 +4152,9 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               actief["zonderAfstand"] == ["a", "b", "c"], json.dumps(actief["zonderAfstand"]))
         check("punten: instrument 3 en genre 2, ook bij een band die het instrument zoekt",
               actief["punten"] == [5, 5, 2], json.dumps(actief["punten"]))
-        check("bij Setlist gaat de groep vóór het aantal gematchte nummers",
+        check("bij Mix & Match (Wie speelt dit?) gaat de groep vóór het aantal gematchte nummers",
               actief["setlist"] == ["m5", "m2"], json.dumps(actief["setlist"]))
-        check("beide keuzelijsten tonen 'Laatst actief', niet 'Nieuwste'",
+        check("de keuzelijst Volgorde toont 'Laatst actief', niet 'Nieuwste'",
               all("actief=Laatst actief" in o and not any(x.startswith("newest") for x in o)
                   for o in actief["opties"]), json.dumps(actief["opties"]))
         check("markeerActief() roept tt_markeer_actief aan", actief["markeer"] == 1, str(actief["markeer"]))
@@ -5168,14 +5195,13 @@ window.TT_STUB.fnAntwoord = {};
               tb["vlak"] == "rgba(0, 0, 0, 0)" and tb["rand"] == "rgba(0, 0, 0, 0)" and tb["zichtbaar"] == "visible"
               and tb["view"] == "view-search", json.dumps(tb))
 
-        # 9. "Zoek setlist" heet "Maak setlist": knop en paneeltitel.
+        # 9. "Zoek setlist" heette "Maak setlist" en heet sinds TT-520
+        #    bouwsessie b (27-10-2026) "Wat spelen we?", zonder knop onderin.
         ms = p47.evaluate("""() => ({ knop: document.getElementById('setlistSoortNummersBtn').textContent.trim(),
-          titel: document.querySelector('#setlistDeelNummers .filter-title').textContent.trim(),
-          actie: document.querySelector('#setlistDeelNummers .btn-row .btn-primary').textContent.trim(),
-          oud: document.getElementById('appRoot').innerText.includes('Zoek setlist') })""")
-        check("de tweede stand van Setlist heet Maak setlist: knop, titel en de hoofdknop onderin",
-              ms["knop"] == "Maak setlist" and ms["titel"] == "Maak setlist" and ms["actie"] == "Maak setlist"
-              and not ms["oud"], json.dumps(ms))
+          actie: document.querySelectorAll('#setlistDeelNummers .btn').length,
+          oud: ['Zoek setlist', 'Maak setlist'].filter(t => document.getElementById('appRoot').innerText.includes(t)) })""")
+        check("de vraag heet Wat spelen we?, zonder knop onderin; de oude namen staan nergens",
+              ms["knop"] == "Wat spelen we?" and ms["actie"] == 0 and ms["oud"] == [], json.dumps(ms))
 
         # 6. Je eigen bericht: gedempt goud met zwarte tekst (variant C, besluit Ronald 29-09-2026).
         #    En compacter: een bericht van één regel is hooguit 34px hoog, de tijd staat ernaast.
@@ -5781,7 +5807,7 @@ window.TT_STUB.fnAntwoord = {};
         geblokkeerd = bp.evaluate("""() => { try { localStorage; return false; } catch (e) { return true; } }""")
         check("de proef blokkeert opslag echt", geblokkeerd, "")
         check("search.js laadt helemaal, ook zonder opslag (TT-387)",
-              not b_fouten and bp.evaluate("typeof musicianViewMode === 'string' && typeof setlistViewMode === 'string'"),
+              not b_fouten and bp.evaluate("typeof musicianViewMode === 'string'"),
               "; ".join(b_fouten)[:300])
         zonder = bp.evaluate("""async () => {
           window.TT_STUB.rpcResults.tt_resolve_search_origin = [{ lat: 52.0, lng: 4.3 }];
@@ -5801,9 +5827,9 @@ window.TT_STUB.fnAntwoord = {};
         check("zoeken zonder opslag geeft gewoon resultaat (TT-387)",
               "1 muzikant gevonden" in zonder and not b_fouten, (zonder[:150] + " | " + "; ".join(b_fouten))[:300])
         # TT-520: de beginstand van Muzikanten is de lijst, ook op een telefoon
-        # (één regel per treffer). Setlist houdt kaarten op een telefoon (TT-U13).
-        check("zonder opslag geldt de beginstand: lijst bij Muzikanten, kaarten bij Setlist op een telefoon",
-              bp.evaluate("[musicianViewMode, setlistViewMode]") == ["list", "grid"], json.dumps(bp.evaluate("[musicianViewMode, setlistViewMode]")))
+        # (één regel per treffer). Mix & Match heeft alleen de lijst (27-10-2026).
+        check("zonder opslag geldt de beginstand: lijst bij Muzikanten",
+              bp.evaluate("musicianViewMode") == "list", json.dumps(bp.evaluate("musicianViewMode")))
         bctx.close()
 
         # TT-389: een stap in de geschiedenis die de app niet zelf maakte.
@@ -7464,6 +7490,8 @@ window.TT_STUB.fnAntwoord = {};
           showView('search'); await w(150);
           hasOwnProfile = false;
           resetSetlistSearch();
+          // Wissen laat Plaats staan (TT-520 bouwsessie b); deze proef zoekt zonder plaats.
+          document.getElementById('filterSetlistCity').value = '';
           selectSetlistArtist(1, 'Metallica'); await w(400);
           u.naArtiest = { rijen: setlistWantedSongs.slice(), lijst: document.getElementById('setlistSongsList').textContent.replace(/\s+/g, ' ').trim(),
                           aanroep: aanroepen[aanroepen.length - 1], gevonden: lastSetlistResults.length,
@@ -9974,7 +10002,8 @@ window.TT_STUB.fnAntwoord = {};
           S.data.postcode_cache = [{ postcode: '2611', city: 'Delft', alternatieve_schrijfwijzen: [] }];
           openZoekScherm('muzikanten', { geenZoek: true }); showView('search', 'pop'); await w();
           const st = $('filterCityStatus');
-          u.plekken = ['filterCityStatus', 'filterSetlistCityStatus', 'filterGedeeldCityStatus', 'memberSearchCityStatus']
+          // Drie plaatsvelden sinds TT-520 bouwsessie b (Wat spelen we? heeft geen Plaats meer).
+          u.plekken = ['filterCityStatus', 'filterSetlistCityStatus', 'memberSearchCityStatus']
             .map(id => { const e = $(id); return !!e && e.classList.contains('plaats-achter') && e.parentElement.classList.contains('city-search-wrap'); });
           u.oudeRegel = document.querySelectorAll('.city-status').length;
           $('filterCity').value = '2611'; await updateSearchCityStatus('filterCity', 'filterCityStatus');
@@ -10061,8 +10090,8 @@ window.TT_STUB.fnAntwoord = {};
           return u;
         }""")
         j97 = lambda k: json.dumps(d97.get(k), ensure_ascii=False)
-        check("de gevonden plaats staat op alle vier de plekken in het veld (optie a); de regel eronder is weg",
-              d97["plekken"] == [True, True, True, True] and d97["oudeRegel"] == 0, j97("plekken"))
+        check("de gevonden plaats staat op alle drie de plekken in het veld (optie a); de regel eronder is weg",
+              d97["plekken"] == [True, True, True] and d97["oudeRegel"] == 0, j97("plekken"))
         check("bij een postcode: 'Delft' grijs in het veld, 8px achter de cijfers, op dezelfde regel; Plaats en Straal blijven op één lijn",
               d97["postcode"] == {"tekst": "Delft", "grijs": True, "afstand": 8, "midden": 0, "binnen": True, "labelLijn": 0, "veldLijn": 0}, j97("postcode"))
         check("toont het veld de plaats al ('delft'), dan geen uitslag", d97["zelfde"] == "", j97("zelfde"))

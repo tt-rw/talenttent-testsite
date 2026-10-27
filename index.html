@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261027d">
+<link rel="stylesheet" href="styles.css?v=20261027e">
 </head>
 <body>
 
@@ -1490,240 +1490,120 @@
 
   <div id="searchModeSetlist" style="display:none;">
   <div class="search-wrap">
-    <!-- TT-520: Mix & Match opent voorlopig het Setlist-scherm zoals het was
-         (bouwsessie b herbouwt het). Alleen de titel staat er nu boven, op
-         dezelfde plek als bij Zoeken en Muzikanten. -->
+    <!-- TT-520 bouwsessie b (besluiten Ronald 25 en 27-10-2026, op schets):
+         Mix & Match. Twee knoppen, de vraag als regel eronder; geen zoekknop,
+         geen sortering, geen weergave (alleen de lijst). Het resultaat
+         verschijnt vanzelf onder wat je koos. -->
     <h1 class="filter-title zoek-titel">Mix &amp; Match</h1>
-    <!-- TT-289 (17-09-2026, schets Ronald): twee standen. "Zoek muzikanten"
-         zoekt van nummers naar muzikanten. "Maak setlist" zoekt van
-         muzikanten naar de nummers die ze delen. -->
-    <div class="setlist-soort" role="tablist" aria-label="Soort setlist-zoeken">
-      <button type="button" role="tab" class="search-mode-tab active" id="setlistSoortMuzikantenBtn" aria-selected="true" onclick="setSetlistSoort('muzikanten')">Zoek muzikanten</button>
-      <button type="button" role="tab" class="search-mode-tab" id="setlistSoortNummersBtn" aria-selected="false" onclick="setSetlistSoort('nummers')">Maak setlist</button>
+    <div class="zoek-soort mm-soort" role="tablist" aria-label="Wat wil je weten?">
+      <button type="button" role="tab" class="search-mode-tab active" id="setlistSoortNummersBtn" aria-selected="true" onclick="setSetlistSoort('nummers')">Wat spelen we?</button>
+      <button type="button" role="tab" class="search-mode-tab" id="setlistSoortMuzikantenBtn" aria-selected="false" onclick="setSetlistSoort('muzikanten')">Wie speelt dit?</button>
+    </div>
+    <!-- De vraag in één regel, in de signaalkleur: Mix & Match is de minst
+         bekende functie (Ronald, 27-10-2026; kleur keuze UX: --accent,
+         donker goud, licht zwart). setSetlistSoort() zet de tekst. -->
+    <p class="mm-vraag" id="mmVraag">Kies de muzikanten. De nummers verschijnen vanzelf.</p>
+
+    <!-- Wat spelen we? Van muzikanten naar de nummers die minstens twee van
+         hen spelen (TT-289). Alleen het naamveld: iedereen in Nederland is te
+         vinden, dichtstbij bovenaan (Laag 3.2.b.3). Je eigen naam staat er
+         vanzelf als eerste (TT-441). -->
+    <div id="setlistDeelNummers">
+    <div class="search-filters">
+      <div class="field">
+        <label for="gedeeldNaam">Naam muzikant</label>
+        <div class="song-search-wrap">
+          <input type="text" id="gedeeldNaam" placeholder="Bijv. Sanne" autocomplete="off"
+            oninput="onGedeeldNaamInput(this.value)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault(); selectFirstAC('acGedeeldNaamList');}"
+            onblur="setTimeout(()=>closeAC('acGedeeldNaamList'),200)">
+          <div class="autocomplete-list" id="acGedeeldNaamList"></div>
+        </div>
+      </div>
+      <!-- De gekozen muzikanten, met hun profielfoto (Laag 3.2.b.4). Verborgen
+           zolang er niemand gekozen is; renderGedeeldGekozen() schakelt. -->
+      <div class="results-list mm-gekozen" id="gedeeldGekozenList" hidden></div>
+      <!-- Links op de regel van Wissen: "Kies nog 1 muzikant." zolang er
+           minder dan twee zijn (renderGedeeldGekozen()). -->
+      <div class="zoek-wis-rij">
+        <span class="mm-nog" id="gedeeldTeller"></span>
+        <button type="button" class="zoek-wissen-knop" onclick="resetGedeeldSearch()">Wissen</button>
+      </div>
+    </div>
+    <div id="gedeeldResults"></div>
     </div>
 
-    <div id="setlistDeelMuzikanten">
+    <!-- Wie speelt dit? Van nummers naar muzikanten. Eerst de artiest, dan het
+         nummer (Laag 3.2.b.2). Filters rechts op de regel van het eerste veld,
+         met Plaats, Straal en Instrument (Laag 3.2.b.4). -->
+    <div id="setlistDeelMuzikanten" style="display:none;">
     <div class="search-filters">
-      <!-- TT-239 (10-09-2026, Ronalds schets): dit blok is gelijkgetrokken met
-           het muzikanten-zoekblok. Zelfde velden, zelfde volgorde, zelfde
-           afstanden, zelfde knopvolgorde. De zoeklogica is niet gewijzigd. -->
-      <div class="filter-title has-sub">Zoek muzikanten</div>
-      <!-- TT-239: de inline stijl is weg (huisstijl §3). Anders dan Muzikant en
-           Band houdt dit tabblad een korte toelichting: een setlist
-           samenstellen spreekt niet vanzelf. -->
-      <p class="filter-sub">Maak een setlist en ontdek wie deze nummers speelt.</p>
-
-      <!-- TT-239: zelfde Plaats+Straal-rij als bij Muzikanten en Bands
-           (huisstijl §7.2). Straal is een wielveld met een verborgen
-           invoerveld eronder; dat veld houdt zijn id, dus runSetlistSearch()
-           leest het ongewijzigd uit. -->
       <div class="field">
-        <div class="filter-row-city">
-          <div class="city-search-wrap frc-plaats">
-            <label for="filterSetlistCity">Plaats</label>
-            <input type="text" id="filterSetlistCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
-              oninput="onCitySearchInput(this.value,'acFilterSetlistCityList'); scheduleSetlistAutoSearch(); scheduleSearchCityStatus('filterSetlistCity','filterSetlistCityStatus');"
-              onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterSetlistCityList'); if(setlistWantedSongs.length) runSetlistSearch(); })"
-              onblur="setTimeout(()=>closeAC('acFilterSetlistCityList'),200)">
-            <span id="filterSetlistCityStatus" class="plaats-achter" aria-live="polite"></span>
-            <div class="autocomplete-list" id="acFilterSetlistCityList"></div>
-          </div>
-          <div class="frc-straal">
-            <label>Straal</label>
-            <div class="wheel-field" id="filterSetlistRadiusField">
-              <span class="wheel-field-label"></span>
-            </div>
-            <input type="hidden" id="filterSetlistRadius" value="10">
-          </div>
+        <div class="label-rij zoek-label-rij">
+          <label for="setlistArtistSearch">Band of artiest</label>
+          <button type="button" class="zoek-filters-knop" id="mmFiltersKnop" aria-expanded="false" aria-controls="mmFilterVak" onclick="toggleMmFilters()"><span id="mmFiltersTekst">Filters</span><svg class="zoek-filters-pijl" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
         </div>
-        <!-- TT-239: de regel "Vul in om afstand te tonen/sorteren vanaf deze
-             plaats" is hier weg, op verzoek van Ronald. Muzikant en Band
-             hebben die regel ook niet. -->
+        <div class="song-search-wrap">
+          <input type="text" id="setlistArtistSearch" placeholder="Bijv. Metallica of Adele" autocomplete="off"
+            oninput="onSetlistArtistSearch(this.value)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault(); selectFirstAC('acSetlistArtistList');}"
+            onblur="setTimeout(()=>closeAC('acSetlistArtistList'),200)">
+          <div class="autocomplete-list" id="acSetlistArtistList"></div>
+        </div>
       </div>
 
-      <!-- TT-139: instrumentfilter op Setlist-zoeken, zelfde harde-filter-
-           patroon als bij Muzikanten en Bands (TT-55) — maximaal 1
-           instrument, Zang als losse uitzondering die niet meetelt voor
-           die limiet. -->
-      <div class="filter-row single">
+      <div class="field" id="setlistTrackSearchWrap" style="display:none;">
+        <label for="setlistTrackSearch" id="setlistTrackSearchLabel">Nummer</label>
+        <div class="song-search-wrap">
+          <input type="text" id="setlistTrackSearch" placeholder="Zoek een nummer" autocomplete="off"
+            oninput="onSetlistTrackSearch(this.value)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault(); selectFirstAC('acSetlistTrackList');}"
+            onblur="setTimeout(()=>closeAC('acSetlistTrackList'),200)">
+          <div class="autocomplete-list" id="acSetlistTrackList"></div>
+        </div>
+      </div>
+
+      <!-- Filters: Plaats + Straal, en Instrument (TT-139: hooguit één
+           instrument, Zang en Songwriting erbij). Instrument toont de keuze in
+           het veld, zoals bij Muzikanten. -->
+      <div class="zoek-filter-vak" id="mmFilterVak" hidden>
+        <div class="field">
+          <div class="filter-row-city">
+            <div class="city-search-wrap frc-plaats">
+              <label for="filterSetlistCity">Plaats</label>
+              <input type="text" id="filterSetlistCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
+                oninput="onCitySearchInput(this.value,'acFilterSetlistCityList'); scheduleSetlistAutoSearch(); scheduleSearchCityStatus('filterSetlistCity','filterSetlistCityStatus');"
+                onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterSetlistCityList'); if(setlistWantedSongs.length) runSetlistSearch(); })"
+                onblur="setTimeout(()=>closeAC('acFilterSetlistCityList'),200)">
+              <span id="filterSetlistCityStatus" class="plaats-achter" aria-live="polite"></span>
+              <div class="autocomplete-list" id="acFilterSetlistCityList"></div>
+            </div>
+            <div class="frc-straal">
+              <label>Straal</label>
+              <div class="wheel-field" id="filterSetlistRadiusField">
+                <span class="wheel-field-label"></span>
+              </div>
+              <input type="hidden" id="filterSetlistRadius" value="10">
+            </div>
+          </div>
+        </div>
         <div class="field">
           <label>Instrument</label>
-          <p>Kies maximaal 1 instrument, eventueel aangevuld met Zang en/of Songwriting.</p>
-          <div class="picker-field" id="filterSetlistInstrumentsField">
-            <span class="picker-field-label" id="filterSetlistInstrumentsFieldLabel">Instrument kiezen…</span>
-          </div>
-          <div class="picker-badge-row" id="filterSetlistInstrumentsBadgeRow"></div>
-        </div>
-      </div>
-
-      <!-- TT-239: zelfde opbouw als "Je setlist" op Mijn Profiel — eerst de
-           artiest, dan het nummer, met dezelfde hulpregel erboven. De inline
-           marges zijn weg: .search-filters > .filter-row geeft 20px
-           (huisstijl §3). -->
-      <div class="filter-row single">
-        <div class="field">
-          <label>Band of artiest</label>
-          <p>Kies een band of artiest. Een nummer erbij maakt de zoekopdracht nauwkeuriger.</p>
-          <div class="song-search-wrap">
-            <input type="text" id="setlistArtistSearch" placeholder="Bijv. Metallica, Nirvana, Adele..." autocomplete="off"
-              oninput="onSetlistArtistSearch(this.value)"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); selectFirstAC('acSetlistArtistList');}"
-              onblur="setTimeout(()=>closeAC('acSetlistArtistList'),200)">
-            <div class="autocomplete-list" id="acSetlistArtistList"></div>
+          <div class="wheel-field" id="filterSetlistInstrumentsField">
+            <span class="wheel-field-label" id="filterSetlistInstrumentsFieldLabel"></span>
           </div>
         </div>
       </div>
 
-      <div class="filter-row single" id="setlistTrackSearchWrap" style="display:none;">
-        <div class="field">
-          <label id="setlistTrackSearchLabel">Nummer</label>
-          <div class="song-search-wrap">
-            <input type="text" id="setlistTrackSearch" placeholder="Zoek een nummer..." autocomplete="off"
-              oninput="onSetlistTrackSearch(this.value)"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); selectFirstAC('acSetlistTrackList');}"
-              onblur="setTimeout(()=>closeAC('acSetlistTrackList'),200)">
-            <div class="autocomplete-list" id="acSetlistTrackList"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Deze rij staat verborgen zolang de setlist leeg is. Anders zou een
-           lege rij toch 20px witruimte innemen. renderSetlistSongsList()
-           schakelt hem. -->
-      <div class="filter-row single" id="setlistSongsRow" style="display:none;">
-        <div class="songs-list" id="setlistSongsList"></div>
-      </div>
-
-      <!-- TT-239: primaire knop rechts, secundaire links — huisstijl §10
-           (TT-228). .btn-row zorgt voor twee exact gelijke knoppen. De losse
-           scheidingslijn erboven is weg: Muzikant en Band hebben die ook niet. -->
-      <div class="btn-row">
-        <button class="btn btn-ghost" onclick="resetSetlistSearch()">Filters wissen</button>
-        <button class="btn btn-primary" onclick="runSetlistSearch()">Zoek muzikanten</button>
+      <!-- De gekozen nummers; verborgen zolang er geen is
+           (renderSetlistSongsList()). -->
+      <div class="results-list mm-gekozen" id="setlistSongsList" hidden></div>
+      <div class="zoek-wis-rij">
+        <span></span>
+        <button type="button" class="zoek-wissen-knop" onclick="resetSetlistSearch()">Wissen</button>
       </div>
     </div>
-
-    <div class="results-section-divider"><span>Resultaat</span></div>
-
-    <!-- Sorteren staat bewust bij het resultaat, niet bij de zoekfilters —
-         her-sorteert direct zonder opnieuw te hoeven zoeken. TT-239: zelfde
-         rij-indeling en hetzelfde uiterlijk als bij Muzikanten en Bands. -->
-    <div id="sortBarSetlist" class="field-pair-row">
-      <div class="field">
-        <label>Sorteren op</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="filterSetlistSortModeField" aria-label="Sorteren op">
-            <span class="wheel-field-label"></span>
-          </div>
-          <div class="choice-menu" id="filterSetlistSortModeMenu" role="listbox" aria-label="Sorteren op"></div>
-        </div>
-        <!-- Het <select> blijft verborgen staan als bron van waarheid,
-             huisstijl §7.1. "Beste match" betekent hier: de meeste nummers uit
-             de setlist raak. Die telling komt niet uit de database en werkt
-             dus ook uitgelogd — de optie wordt nooit verborgen. -->
-        <select id="filterSetlistSortMode" style="display:none;" onchange="setSetlistSearchSortMode(this.value)">
-          <option value="score">Beste match</option>
-          <option value="distance">Dichtstbijzijnde</option>
-          <option value="actief">Laatst actief</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Weergave</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="setlistViewToggleField" aria-label="Weergave">
-            <span class="wheel-field-label"></span>
-          </div>
-          <div class="choice-menu" id="setlistViewToggleMenu" role="listbox" aria-label="Weergave"></div>
-        </div>
-        <select id="setlistViewToggle" style="display:none;" onchange="setSetlistViewMode(this.value)">
-          <option value="list">Lijst</option>
-          <option value="grid">Kaarten</option>
-        </select>
-      </div>
-    </div>
-
     <div id="setlistSearchResults"></div>
-    </div>
-
-    <!-- TT-289: de stand "Maak setlist". Plaats en Straal beperken alleen welke
-         namen je als suggestie krijgt; wie gekozen is, blijft staan. -->
-    <div id="setlistDeelNummers" style="display:none;">
-    <div class="search-filters">
-      <div class="filter-title has-sub">Maak setlist</div>
-      <p class="filter-sub">Kies een groep muzikanten en ontdek jullie gezamenlijke setlist.</p>
-
-      <div class="field">
-        <div class="filter-row-city">
-          <div class="city-search-wrap frc-plaats">
-            <label for="filterGedeeldCity">Plaats</label>
-            <input type="text" id="filterGedeeldCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
-              oninput="onCitySearchInput(this.value,'acFilterGedeeldCityList'); gedeeldKandidatenVergeten(); scheduleSearchCityStatus('filterGedeeldCity','filterGedeeldCityStatus');"
-              onkeydown="submitOnEnter(event, () => selectFirstAC('acFilterGedeeldCityList'))"
-              onblur="setTimeout(()=>closeAC('acFilterGedeeldCityList'),200)">
-            <span id="filterGedeeldCityStatus" class="plaats-achter" aria-live="polite"></span>
-            <div class="autocomplete-list" id="acFilterGedeeldCityList"></div>
-          </div>
-          <div class="frc-straal">
-            <label>Straal</label>
-            <div class="wheel-field" id="filterGedeeldRadiusField">
-              <span class="wheel-field-label"></span>
-            </div>
-            <input type="hidden" id="filterGedeeldRadius" value="10">
-          </div>
-        </div>
-      </div>
-
-      <div class="filter-row single">
-        <div class="field">
-          <label for="gedeeldNaam">Muzikanten</label>
-          <div class="song-search-wrap">
-            <input type="text" id="gedeeldNaam" placeholder="Zoek op gebruikersnaam" autocomplete="off"
-              oninput="onGedeeldNaamInput(this.value)"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); selectFirstAC('acGedeeldNaamList');}"
-              onblur="setTimeout(()=>closeAC('acGedeeldNaamList'),200)">
-            <div class="autocomplete-list" id="acGedeeldNaamList"></div>
-          </div>
-          <p class="field-hint">Tussen "aanhalingstekens" zoekt hij op precies die naam.</p>
-        </div>
-      </div>
-
-      <!-- Verborgen zolang er niemand gekozen is; renderGedeeldGekozen() schakelt hem. -->
-      <div class="filter-row single" id="gedeeldGekozenRow" style="display:none;">
-        <div class="field">
-          <div class="songs-list" id="gedeeldGekozenList"></div>
-          <p class="field-status gedeeld-teller" id="gedeeldTeller"></p>
-        </div>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-ghost" onclick="resetGedeeldSearch()">Lijst wissen</button>
-        <button class="btn btn-primary" onclick="runGedeeldSearch()">Maak setlist</button>
-      </div>
-    </div>
-
-    <div class="results-section-divider"><span>Resultaat</span></div>
-
-    <!-- Alleen Sorteren: deze stand kent één weergave, de lijst (Ronald,
-         17-09-2026). De tweede kolom blijft leeg, zodat het veld even breed is
-         als op de andere tabbladen. -->
-    <div id="sortBarGedeeld" class="field-pair-row">
-      <div class="field">
-        <label>Sorteren op</label>
-        <div class="menu-anchor">
-          <div class="wheel-field" id="gedeeldSortModeField" aria-label="Sorteren op">
-            <span class="wheel-field-label"></span>
-          </div>
-          <div class="choice-menu" id="gedeeldSortModeMenu" role="listbox" aria-label="Sorteren op"></div>
-        </div>
-        <select id="gedeeldSortMode" style="display:none;" onchange="setGedeeldSortMode(this.value)">
-          <option value="spelers">Meeste spelers</option>
-          <option value="artiest">Artiest, meeste spelers</option>
-          <option value="az">Artiest A–Z</option>
-        </select>
-      </div>
-    </div>
-
-    <div id="gedeeldResults"></div>
     </div>
   </div>
   </div>
@@ -2627,14 +2507,14 @@
 
 </div><!-- /#appRoot -->
 
-<script src="core.js?v=20261027a"></script>
-<script src="utils.js?v=20261027b"></script>
+<script src="core.js?v=20261027b"></script>
+<script src="utils.js?v=20261027c"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261023b"></script>
-<script src="postcode.js?v=20261027c"></script>
+<script src="postcode.js?v=20261027d"></script>
 <script src="wizard.js?v=20261027a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261027e"></script>
+<script src="search.js?v=20261027f"></script>
 <script src="musicians.js?v=20261027b"></script>
 <script src="bands.js?v=20261027a"></script>
 <script src="messages.js?v=20261026b"></script>

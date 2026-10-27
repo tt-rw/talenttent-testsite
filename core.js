@@ -851,13 +851,6 @@ async function configureSearchAccess() {
         setlistCityField.value = city;
         updateSearchCityStatus('filterSetlistCity', 'filterSetlistCityStatus');
       }
-
-      // TT-289: "Maak setlist" heeft een eigen Plaats-veld, zelfde regel.
-      const gedeeldCityField = document.getElementById('filterGedeeldCity');
-      if (gedeeldCityField && !gedeeldCityField.value.trim()) {
-        gedeeldCityField.value = city;
-        updateSearchCityStatus('filterGedeeldCity', 'filterGedeeldCityStatus');
-      }
     }
   }
 
