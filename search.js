@@ -1762,10 +1762,11 @@ let gedeeldNaamTimeout = null;
 let gedeeldKandidaten = null;      // { sleutel, lijst } — cache per kijker (met of zonder profiel)
 let gedeeldEigenId = null;         // wie er vanzelf is toegevoegd; haal je jezelf weg, dan komt hij niet terug
 
-// De vraag onder de twee knoppen (besluit Ronald 27-10-2026, sessie 21).
+// De vraag onder de twee knoppen (besluit Ronald 27-10-2026, sessie 21:
+// "Kies … en zie …", beide regels even opgebouwd; past op 360px op één regel).
 const MM_VRAAG = {
-  nummers: 'Kies de muzikanten. De nummers verschijnen vanzelf.',
-  muzikanten: 'Kies de nummers. De muzikanten verschijnen vanzelf.'
+  nummers: 'Kies muzikanten en zie wat jullie samen spelen.',
+  muzikanten: 'Kies nummers en zie wie ze ook speelt.'
 };
 
 function setSetlistSoort(soort) {

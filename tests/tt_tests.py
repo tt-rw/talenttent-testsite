@@ -1886,8 +1886,21 @@ def blok_browser():
                    boven: Math.round(v.getBoundingClientRect().top - kn.bottom),
                    onder: Math.round(lab.getBoundingClientRect().top - v.getBoundingClientRect().bottom) };
         }""")
-        check("de vraag staat eronder: Kies de muzikanten. De nummers verschijnen vanzelf.",
-              vr["tekst"] == "Kies de muzikanten. De nummers verschijnen vanzelf.", json.dumps(vr))
+        check("de vraag staat eronder: Kies muzikanten en zie wat jullie samen spelen.",
+              vr["tekst"] == "Kies muzikanten en zie wat jullie samen spelen.", json.dumps(vr))
+        # Beide vragen passen op één regel, ook op een telefoon van 360px breed
+        # (besluit Ronald 27-10-2026: de vorige tekst liep op 375px over twee regels).
+        smal = page.evaluate("""() => {
+          const el = document.getElementById('mmVraag'), cs = getComputedStyle(el);
+          const c = document.createElement('canvas').getContext('2d');
+          c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          const ruimte = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+                         - (document.documentElement.clientWidth - 360);
+          return { ruimte: Math.floor(ruimte), breed: Object.values(MM_VRAAG).map(t => Math.ceil(c.measureText(t).width)),
+                   hoog: Math.round(el.getBoundingClientRect().height) };
+        }""")
+        check("beide vragen passen op één regel, ook op 360px",
+              smal["hoog"] == 18 and max(smal["breed"]) <= smal["ruimte"], json.dumps(smal))
         check("de vraag in de signaalkleur, 14px, op de lijn van de labels",
               vr["kleur"] == vr["accent"] and vr["maat"] == "14px" and vr["x"] == vr["labelX"], json.dumps(vr))
         check("de vraag 12px onder de knoppen, 20px boven het label", vr["boven"] == 12 and vr["onder"] == 20, json.dumps(vr))
@@ -2103,7 +2116,7 @@ def blok_browser():
           return uit;
         }""")
         check("Wie speelt dit?: de vraag wisselt mee",
-              wsd["zichtbaar"] and wsd["vraag"] == "Kies de nummers. De muzikanten verschijnen vanzelf.", json.dumps(wsd))
+              wsd["zichtbaar"] and wsd["vraag"] == "Kies nummers en zie wie ze ook speelt.", json.dumps(wsd))
         check("Filters rechts op de regel van Band of artiest, dicht bij openen",
               wsd["label"] == "Band of artiest" and wsd["filters"] == "Filters" and wsd["regelGelijk"] and wsd["dicht"], json.dumps(wsd))
         check("Filters opent Plaats, Straal en Instrument",
