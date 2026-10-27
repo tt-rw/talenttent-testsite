@@ -9975,12 +9975,18 @@ window.TT_STUB.fnAntwoord = {};
           openZoekScherm('muzikanten', { geenZoek: true }); showView('search', 'pop'); await w();
           const st = $('filterCityStatus');
           u.plekken = ['filterCityStatus', 'filterSetlistCityStatus', 'filterGedeeldCityStatus', 'memberSearchCityStatus']
-            .map(id => { const e = $(id); return !!e && e.classList.contains('field-uitslag') && e.parentElement.classList.contains('label-rij'); });
+            .map(id => { const e = $(id); return !!e && e.classList.contains('plaats-achter') && e.parentElement.classList.contains('city-search-wrap'); });
           u.oudeRegel = document.querySelectorAll('.city-status').length;
           $('filterCity').value = '2611'; await updateSearchCityStatus('filterCity', 'filterCityStatus');
           const pl = r(document.querySelector('.frc-plaats label')), sl = r(document.querySelector('.frc-straal label'));
-          u.postcode = { tekst: st.textContent, goed: st.classList.contains('uitslag-goed'),
-                         rechts: Math.round(r($('filterCity')).right - (r(st).right - parseFloat(getComputedStyle(st).paddingRight))), labelLijn: Math.round(pl.top - sl.top),
+          // Optie a (besluit Ronald 27-10-2026): grijs in het veld, 8px achter de cijfers, op dezelfde regel.
+          const vi = $('filterCity'), vcs = getComputedStyle(vi), mt = document.createElement('canvas').getContext('2d');
+          mt.font = `${vcs.fontWeight} ${vcs.fontSize} ${vcs.fontFamily}`;
+          const tekstEind = r(vi).left + parseFloat(vcs.borderLeftWidth) + parseFloat(vcs.paddingLeft) + mt.measureText('2611').width;
+          const tmp = document.createElement('i'); tmp.style.color = 'var(--muted)'; document.body.appendChild(tmp); const grijs = getComputedStyle(tmp).color; tmp.remove();
+          u.postcode = { tekst: st.textContent, grijs: getComputedStyle(st).color === grijs,
+                         afstand: Math.round(r(st).left - tekstEind), midden: Math.round((r(st).top + r(st).bottom) / 2 - (r(vi).top + r(vi).bottom) / 2),
+                         binnen: r(st).right <= r(vi).right, labelLijn: Math.round(pl.top - sl.top),
                          veldLijn: Math.round(r($('filterCity')).top - r($('filterRadiusField')).top) };
           $('filterCity').value = 'delft'; await updateSearchCityStatus('filterCity', 'filterCityStatus');
           u.zelfde = st.textContent;
@@ -10055,10 +10061,10 @@ window.TT_STUB.fnAntwoord = {};
           return u;
         }""")
         j97 = lambda k: json.dumps(d97.get(k), ensure_ascii=False)
-        check("de gevonden plaats staat op alle vier de plekken rechts op de labelregel; de regel eronder is weg",
+        check("de gevonden plaats staat op alle vier de plekken in het veld (optie a); de regel eronder is weg",
               d97["plekken"] == [True, True, True, True] and d97["oudeRegel"] == 0, j97("plekken"))
-        check("bij een postcode: 'Delft' in de goed-kleur, rechts tegen de tekstlijn van het veld; Plaats en Straal blijven op één lijn",
-              d97["postcode"] == {"tekst": "Delft", "goed": True, "rechts": 10, "labelLijn": 0, "veldLijn": 0}, j97("postcode"))
+        check("bij een postcode: 'Delft' grijs in het veld, 8px achter de cijfers, op dezelfde regel; Plaats en Straal blijven op één lijn",
+              d97["postcode"] == {"tekst": "Delft", "grijs": True, "afstand": 8, "midden": 0, "binnen": True, "labelLijn": 0, "veldLijn": 0}, j97("postcode"))
         check("toont het veld de plaats al ('delft'), dan geen uitslag", d97["zelfde"] == "", j97("zelfde"))
         check("'Zoekt' staat in het midden boven een langer instrument; het geheel rechts", d97["zoekt"]["tekst"] == ["Zoekt", "basgitaar"]
               and d97["zoekt"]["onder"] == 16 and abs(d97["zoekt"]["midden"]) <= 1 and d97["zoekt"]["rechts"] == 0, j97("zoekt"))
@@ -10126,6 +10132,10 @@ window.TT_STUB.fnAntwoord = {};
           // Een dichte lijst met oude suggesties: Enter kiest niets.
           ac.classList.remove('open'); veld.value = '2522';
           selectFirstAC('acFilterCityList'); u.dicht = veld.value;
+          // De bewaarde zoekopdracht noemt de plaats, niet de postcode.
+          $('filterCityStatus').textContent = 'Den Haag';
+          laatsteZoekVertrek = { plaats: '2522', plaatsTekst: '2522', lat: 52.06, lng: 4.33, straal: 10 };
+          u.tekst = zoekTekst(Object.assign({ soort: 'alles' }, huidigeZoek()));
           return u;
         }""")
         j98 = lambda k: json.dumps(d98.get(k), ensure_ascii=False)
@@ -10133,6 +10143,8 @@ window.TT_STUB.fnAntwoord = {};
               d98["na"] == {"waarde": "2522", "open": False, "items": 0}, j98("na"))
         check("een plaatsnaam typen geeft nog wel suggesties", d98["naam"]["open"] and d98["naam"]["items"] > 0, j98("naam"))
         check("Enter kiest nooit uit een dichte lijst", d98["dicht"] == "2522", j98("dicht"))
+        check("een bewaarde zoekopdracht met een postcode noemt de plaats: 'binnen 10 km van Den Haag'",
+              d98["tekst"] == "Muzikanten en bands · Alle instrumenten · binnen 10 km van Den Haag", j98("tekst"))
         check("blok 98: geen paginafouten", not f98, "; ".join(f98)[:300])
         c98.close()
 

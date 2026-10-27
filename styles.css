@@ -969,6 +969,20 @@
   .city-search-wrap {
     position: relative;
   }
+  /* De gevonden plaats in het veld, grijs, achter de getypte tekst (TT-520,
+     besluit Ronald 27-10-2026, optie a). Zelfde letter als het veld, zodat
+     beide op één lijn staan; plek en breedte zet plaatsAchterPlaatsen(). */
+  .plaats-achter {
+    position: absolute;
+    pointer-events: none;
+    font-size: 16px;
+    line-height: 18px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .plaats-achter:empty { display: none; }
 
   .autocomplete-list {
     position: absolute;

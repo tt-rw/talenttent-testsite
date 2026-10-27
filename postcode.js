@@ -292,6 +292,9 @@ const searchCityStatusSeq = {};
 
 function scheduleSearchCityStatus(inputId, statusId) {
   clearTimeout(searchCityStatusTimeouts[statusId]);
+  // Wie typt, ziet geen oude plaats achter de nieuwe tekst.
+  const oud = document.getElementById(statusId);
+  if (oud) oud.textContent = '';
   searchCityStatusTimeouts[statusId] = setTimeout(() => updateSearchCityStatus(inputId, statusId), 300);
 }
 
@@ -308,13 +311,36 @@ async function updateSearchCityStatus(inputId, statusId) {
   // niet, maar de zoekopdracht kan wel voorbij zijn gestreefd)? Dan is dit
   // antwoord verouderd — niet meer tonen.
   if (searchCityStatusSeq[statusId] !== seq) return;
-  // TT-520 (27-10-2026, huisstijl §3, TT-494): een korte uitslag staat rechts
-  // op de labelregel, en alleen als het veld de plaats nog niet toont (bij een
-  // postcode of een andere schrijfwijze). Was een eigen regel "Gevonden: …"
-  // onder het veld, die alles eronder omlaag duwde.
+  // TT-520 (besluit Ronald 27-10-2026, optie a): de gevonden plaats staat in
+  // het veld zelf, grijs, direct achter wat je typte ("2522  Den Haag"), en
+  // alleen als het veld de plaats nog niet toont (een postcode of een andere
+  // schrijfwijze). Was rechts op de labelregel (21-10), en daarvoor een eigen
+  // regel "Gevonden: …" onder het veld.
   const zelfde = display && display.toLowerCase() === raw.toLowerCase();
   statusEl.textContent = display && !zelfde ? display : '';
-  statusEl.classList.toggle('uitslag-goed', !!statusEl.textContent);
+  plaatsAchterPlaatsen(inputEl, statusEl);
+}
+
+// Zet de gevonden plaats direct achter de getypte tekst, 8px ertussen, op
+// dezelfde regel; past hij niet, dan "…" vóór de rechterrand van het veld.
+// Een ResizeObserver per veld zet hem opnieuw neer als het veld van maat
+// verandert of pas later zichtbaar wordt (een ander scherm, een gedraaide
+// telefoon).
+function plaatsAchterPlaatsen(inputEl, statusEl) {
+  if (!inputEl.dataset.plaatsAchter && typeof ResizeObserver === 'function') {
+    inputEl.dataset.plaatsAchter = '1';
+    new ResizeObserver(() => plaatsAchterPlaatsen(inputEl, statusEl)).observe(inputEl);
+  }
+  if (!statusEl.textContent || !inputEl.offsetWidth) return;
+  const cs = getComputedStyle(inputEl);
+  const meet = plaatsAchterPlaatsen.c || (plaatsAchterPlaatsen.c = document.createElement('canvas').getContext('2d'));
+  meet.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const links = inputEl.offsetLeft + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft)
+    + meet.measureText(inputEl.value).width + 8;
+  const rechts = inputEl.offsetLeft + inputEl.offsetWidth - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
+  statusEl.style.left = links + 'px';
+  statusEl.style.maxWidth = Math.max(0, rechts - links) + 'px';
+  statusEl.style.top = (inputEl.offsetTop + (inputEl.offsetHeight - statusEl.offsetHeight) / 2) + 'px';
 }
 
 // Zoekt de kanonieke plaatsnaam op bij een getypte postcode (exacte 4

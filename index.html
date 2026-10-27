@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261027c">
+<link rel="stylesheet" href="styles.css?v=20261027d">
 </head>
 <body>
 
@@ -1384,11 +1384,12 @@
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <div class="label-rij"><label for="filterCity">Plaats</label><span id="filterCityStatus" class="field-uitslag" aria-live="polite"></span></div>
+            <label for="filterCity">Plaats</label>
             <input type="text" id="filterCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterCityList'); scheduleMusicianAutoSearch(); scheduleSearchCityStatus('filterCity','filterCityStatus');"
               onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterCityList'); runSearch(); })"
               onblur="setTimeout(()=>closeAC('acFilterCityList'),200)">
+            <span id="filterCityStatus" class="plaats-achter" aria-live="polite"></span>
             <div class="autocomplete-list" id="acFilterCityList"></div>
           </div>
           <div class="frc-straal">
@@ -1519,11 +1520,12 @@
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <div class="label-rij"><label for="filterSetlistCity">Plaats</label><span id="filterSetlistCityStatus" class="field-uitslag" aria-live="polite"></span></div>
+            <label for="filterSetlistCity">Plaats</label>
             <input type="text" id="filterSetlistCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterSetlistCityList'); scheduleSetlistAutoSearch(); scheduleSearchCityStatus('filterSetlistCity','filterSetlistCityStatus');"
               onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterSetlistCityList'); if(setlistWantedSongs.length) runSetlistSearch(); })"
               onblur="setTimeout(()=>closeAC('acFilterSetlistCityList'),200)">
+            <span id="filterSetlistCityStatus" class="plaats-achter" aria-live="polite"></span>
             <div class="autocomplete-list" id="acFilterSetlistCityList"></div>
           </div>
           <div class="frc-straal">
@@ -1653,11 +1655,12 @@
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <div class="label-rij"><label for="filterGedeeldCity">Plaats</label><span id="filterGedeeldCityStatus" class="field-uitslag" aria-live="polite"></span></div>
+            <label for="filterGedeeldCity">Plaats</label>
             <input type="text" id="filterGedeeldCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterGedeeldCityList'); gedeeldKandidatenVergeten(); scheduleSearchCityStatus('filterGedeeldCity','filterGedeeldCityStatus');"
               onkeydown="submitOnEnter(event, () => selectFirstAC('acFilterGedeeldCityList'))"
               onblur="setTimeout(()=>closeAC('acFilterGedeeldCityList'),200)">
+            <span id="filterGedeeldCityStatus" class="plaats-achter" aria-live="polite"></span>
             <div class="autocomplete-list" id="acFilterGedeeldCityList"></div>
           </div>
           <div class="frc-straal">
@@ -2480,11 +2483,12 @@
     <div class="field">
       <div class="filter-row-city">
         <div class="city-search-wrap frc-plaats">
-          <div class="label-rij"><label for="memberSearchCity">Plaats</label><span id="memberSearchCityStatus" class="field-uitslag" aria-live="polite"></span></div>
+          <label for="memberSearchCity">Plaats</label>
           <input type="text" id="memberSearchCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
             oninput="onCitySearchInput(this.value,'acMemberSearchCityList'); searchMembersToAdd(document.getElementById('memberSearchInput').value); scheduleSearchCityStatus('memberSearchCity','memberSearchCityStatus');"
             onblur="setTimeout(()=>closeAC('acMemberSearchCityList'),200)">
-          <div class="autocomplete-list" id="acMemberSearchCityList"></div>
+          <span id="memberSearchCityStatus" class="plaats-achter" aria-live="polite"></span>
+            <div class="autocomplete-list" id="acMemberSearchCityList"></div>
         </div>
         <div class="frc-straal">
           <label>Straal</label>
@@ -2627,10 +2631,10 @@
 <script src="utils.js?v=20261027b"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261023b"></script>
-<script src="postcode.js?v=20261027b"></script>
+<script src="postcode.js?v=20261027c"></script>
 <script src="wizard.js?v=20261027a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261027d"></script>
+<script src="search.js?v=20261027e"></script>
 <script src="musicians.js?v=20261027b"></script>
 <script src="bands.js?v=20261027a"></script>
 <script src="messages.js?v=20261026b"></script>

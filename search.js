@@ -2332,8 +2332,12 @@ function zetOnthoudVink(aan) {
 }
 
 // De zoekopdracht zoals hij nu op het scherm staat, in de vorm van de tabel.
+// Een postcode krijgt in de tekst de gevonden plaats ("binnen 10 km van Den
+// Haag", niet "van 2522"; gevonden bij de meting op de testsite, 27-10-2026).
 function huidigeZoek() {
   const v = laatsteZoekVertrek;
+  const gevonden = (document.getElementById('filterCityStatus') || {}).textContent || '';
+  const plaatsTekst = /^\d{4}$/.test(v.plaatsTekst || '') && gevonden.trim() ? gevonden.trim() : v.plaatsTekst;
   const getal = (id) => { const x = document.getElementById(id).value; return x ? parseInt(x) : null; };
   return {
     soort: zoekSoort,
@@ -2343,7 +2347,7 @@ function huidigeZoek() {
     age_min: getal('filterAgeMin'), age_max: getal('filterAgeMax'),
     niveau_min: getal('filterNiveauMin'), niveau_max: getal('filterNiveauMax'),
     radius_km: v.straal,
-    plaats: v.plaats, plaats_tekst: v.plaatsTekst,
+    plaats: v.plaats, plaats_tekst: plaatsTekst,
     origin_lat: v.lat, origin_lng: v.lng,
   };
 }
