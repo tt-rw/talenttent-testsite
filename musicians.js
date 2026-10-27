@@ -1223,12 +1223,14 @@ async function openJeSetlist() {
 
 function jstSelectFirstAc(id) {
   const list = document.getElementById(id);
-  const first = list && list.querySelector('.ac-item[onmousedown]');
+  if (!list || !list.classList.contains('open')) return; // TT-526, zoals selectFirstAC
+  const first = list.querySelector('.ac-item[onmousedown]');
   if (first && first.onmousedown) first.onmousedown();
 }
 
 async function jstOnArtistSearch(q, p = 'jst') {
   const ac = document.getElementById(p + 'ArtistAc');
+  clearTimeout(jstSearchTimeout); // TT-526: een oudere vraag tekent niet meer na
   if (q.trim().length < 2) { ac.classList.remove('open'); return; }
   ac.innerHTML = '<div class="ac-item"><span style="color:var(--muted);">Zoeken...</span></div>';
   ac.classList.add('open');
@@ -1237,7 +1239,6 @@ async function jstOnArtistSearch(q, p = 'jst') {
     jstRenderArtistResults(ac, jstArtistCache.get(cacheKey), p);
     return;
   }
-  clearTimeout(jstSearchTimeout);
   jstSearchTimeout = setTimeout(async () => {
     try {
       const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=musicArtist&limit=7&country=NL`);

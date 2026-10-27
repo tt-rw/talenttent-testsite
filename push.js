@@ -175,7 +175,7 @@ async function vulPushInInstellingen() {
     k.classList.toggle('selected', k.dataset.mode === (stand === 'aan' ? 'aan' : 'uit')));
   tekst.textContent = stand === 'geblokkeerd'
     ? 'Meldingen staan uit in je browser. Zet ze aan in de instellingen van je browser, bij Meldingen.'
-    : 'Een stil seintje met een stip op het icoon, bij nieuwe matches.';
+    : 'Een stil seintje met een stip op het icoon, bij nieuwe matches. Daarvoor moeten meldingen ook in je browser aanstaan.';
 }
 async function pushSchakelen(aan) {
   const stand = await ttSeintjeStand();

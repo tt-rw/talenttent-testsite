@@ -4152,7 +4152,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               not mailstijl["functies"], json.dumps(mailstijl["functies"]))
         check("openen leest email_theme niet, opslaan schrijft het niet",
               not mailstijl["lezen"] and not mailstijl["schrijven"], "")
-        check("de keuze Nieuwe-matches e-mail staat er nog", mailstijl["frequentie"], "")
+        check("de keuze Mail bij nieuwe matches staat er nog", mailstijl["frequentie"], "")
         check("geen paginafouten in blok 38", not page_errors, "; ".join(page_errors)[:300])
         page_errors.clear()
 
@@ -4250,7 +4250,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               r.get("soort") == "alles" and r.get("volgorde") == "score" and r.get("instruments") == ["Gitaar"]
               and r.get("genres") == ["Rock"] and r.get("radius_km") == 10 and r.get("plaats") is None
               and "naam" not in r, json.dumps(r))
-        check("de vink zet de mail niet aan (twee aparte dingen): geen mail in de rij, de mailstand blijft uit",
+        check("de vink verandert de mailstand niet (die staat in E-mailvoorkeuren); geen kolom mail meer",
               "mail" not in r and ip39.evaluate("window.TT_STUB.data.musicians[0].email_digest_frequency") == "off", json.dumps(r))
 
         # Vink aan en een andere zoekopdracht: de rij volgt mee.
@@ -4262,53 +4262,46 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               len(rijen) == 1 and rijen[0].get("radius_km") == 50 and rijen[0].get("soort") == "muzikanten",
               json.dumps(rijen))
 
-        # Instellingen → E-mailvoorkeuren: de zoekopdracht en de mailschakelaar.
+        # Instellingen → E-mailvoorkeuren: de zoekopdracht in woorden, geen eigen mailschakelaar.
         ip39.evaluate("openSearchPrefsModal()")
         ip39.wait_for_timeout(400)
         inst = ip39.evaluate("""() => { const p = document.getElementById('bewaardeZoekInstellingen');
             const knoppen = [...p.querySelectorAll('.segmented-btn')];
             return { tekst: p.querySelector('.bewaard-zoek-tekst') ? p.querySelector('.bewaard-zoek-tekst').textContent : null,
-                     label: (p.querySelector('.voorkeur-label') || {}).textContent,
                      knoppen: knoppen.map(k => k.textContent + (k.classList.contains('selected') ? '*' : '')),
                      blokken: document.querySelectorAll('#searchPrefsModal .modal-blok').length }; }""")
         check("Instellingen toont de bewaarde zoekopdracht in woorden, in een eigen blok",
               inst["blokken"] == 3 and inst["tekst"] == "Muzikanten · Gitaar · Rock · binnen 50 km van Den Haag", json.dumps(inst))
-        check("daaronder 'Mail bij nieuwe resultaten' met Uit (gekozen) en Aan",
-              inst["label"] == "Mail bij nieuwe resultaten" and inst["knoppen"] == ["Uit*", "Aan"], json.dumps(inst))
+        check("geen eigen mailschakelaar bij de bewaarde zoekopdracht (besluit Ronald 27-10-2026, optie b)",
+              inst["knoppen"] == [], json.dumps(inst))
+        mailblok = ip39.evaluate("""() => { const b = document.getElementById('digestFrequencyControl').closest('.modal-blok');
+            return [b.querySelector('.voorkeur-kop').textContent, (b.querySelector('.voorkeur-uitleg') || {}).textContent]; }""")
+        check("de mail heet 'Mail bij nieuwe matches' en zegt dat de muzikanten bij je zoekopdracht erin staan",
+              mailblok == ["Mail bij nieuwe matches", "Berichten, bands die jou zoeken en muzikanten bij je bewaarde zoekopdracht."], json.dumps(mailblok))
         # Het venster als geheel (opdracht Ronald 27-10-2026): vette koppen, één
         # linkerlijn, elke keuzeknop even breed, geen knop Opslaan.
         vk = ip39.evaluate("""() => { const m = document.getElementById('searchPrefsModal');
             const L = s => [...m.querySelectorAll(s)].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().left));
             const koppen = [...m.querySelectorAll('.voorkeur-kop')].filter(e => e.offsetParent);
-            return { links: [...new Set(L('.filter-title, .voorkeur-intro, .voorkeur-kop, .voorkeur-label, .voorkeur-uitleg, .segmented-control'))],
+            return { links: [...new Set(L('.filter-title, .voorkeur-intro, .voorkeur-kop, .voorkeur-uitleg, .segmented-control'))],
                      breed: [...new Set([...m.querySelectorAll('.segmented-btn')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width)))],
                      koppen: koppen.map(k => k.textContent + ':' + getComputedStyle(k).fontWeight + ':' + getComputedStyle(k).fontSize),
                      opslaan: [...m.querySelectorAll('button')].some(b => b.textContent.trim() === 'Opslaan') }; }""")
         check("E-mailvoorkeuren: alles op één linkerlijn, elke keuzeknop even breed, vette koppen van 17px, geen knop Opslaan",
               len(vk["links"]) == 1 and len(vk["breed"]) == 1 and not vk["opslaan"]
-              and vk["koppen"] == ["Nieuwe-matches e-mail:700:17px", "Seintje op dit toestel:700:17px", "Bewaarde zoekopdracht:700:17px"], json.dumps(vk))
-        # Een keuze bij Nieuwe-matches e-mail slaat meteen op.
+              and vk["koppen"] == ["Mail bij nieuwe matches:700:17px", "Seintje op dit toestel:700:17px", "Bewaarde zoekopdracht:700:17px"], json.dumps(vk))
+        # Een keuze bij Mail bij nieuwe matches slaat meteen op.
         ip39.click("#digestFrequencyControl .segmented-btn[data-mode='weekly']")
         ip39.wait_for_timeout(400)
-        check("Nieuwe-matches e-mail: een tik slaat meteen op (geen Opslaan)",
+        check("Mail bij nieuwe matches: een tik slaat meteen op (geen Opslaan)",
               ip39.evaluate("window.TT_STUB.data.musicians[0].email_digest_frequency") == "weekly", "")
-        ip39.evaluate("window.TT_STUB.data.musicians[0].email_digest_frequency = 'off'; selectDigestFrequency('off')")
-        ip39.click("#zoekMailControl .segmented-btn[data-mode='aan']")
-        ip39.wait_for_timeout(500)
-        check("Aan zet de mail aan in de rij, en zet een uitgezette mail op dagelijks",
-              ip39.evaluate("window.TT_STUB.data.musician_saved_search[0].mail") is True
-              and ip39.evaluate("window.TT_STUB.data.musicians[0].email_digest_frequency") == "daily"
-              and toast(ip39) == "Je mail stond uit en staat nu op dagelijks.", toast(ip39))
-        check("en de schakelaar toont Aan",
-              ip39.evaluate("[...document.querySelectorAll('#zoekMailControl .segmented-btn')].map(k => k.classList.contains('selected'))") == [False, True], "")
         ip39.evaluate("closeSearchPrefsModal()")
 
-        # Vink uit: de rij gaat weg, en daarmee de mail.
+        # Vink uit: de rij gaat weg.
         ip39.click("label.zoek-onthoud")
         ip39.wait_for_timeout(400)
-        check("de vink uit haalt de rij weg en zegt dat er ook geen mail meer komt",
-              ip39.evaluate("window.TT_STUB.data.musician_saved_search.length") == 0
-              and toast(ip39) == "Je krijgt ook geen mail meer over nieuwe resultaten.", toast(ip39))
+        check("de vink uit haalt de rij weg",
+              ip39.evaluate("window.TT_STUB.data.musician_saved_search.length") == 0, "")
         ip39.evaluate("openSearchPrefsModal()")
         ip39.wait_for_timeout(400)
         check("daarna staat er in Instellingen 'Nog geen', met waar je hem aanzet",
@@ -4320,7 +4313,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         rc39, rp39, rf39 = telefoon(True)
         zoekopzet(rp39, {"musician_id": "m1", "soort": "bands", "volgorde": "distance", "instruments": ["Drums"],
                          "genres": ["Jazz"], "age_min": None, "age_max": None, "niveau_min": 2, "niveau_max": 4,
-                         "radius_km": 25, "plaats": "Delft", "plaats_tekst": "Delft", "origin_lat": 52.0, "origin_lng": 4.36, "mail": True})
+                         "radius_km": 25, "plaats": "Delft", "plaats_tekst": "Delft", "origin_lat": 52.0, "origin_lng": 4.36})
         rf39.clear()
         mid = rp39.evaluate("getMyMusicianId()")
         rp39.evaluate("""(mid) => { window.TT_STUB.data.musician_saved_search[0].musician_id = mid; runSearch(); }""", mid)
@@ -8629,7 +8622,7 @@ window.TT_STUB.fnAntwoord = {};
               d82["weggehaald"] == 2 and d82["zonder_toestemming_niets"] == 0 and d82["zichtbaar_weggehaald"] == 2, j82)
         check("TT-452: Instellingen heeft het blok \"Seintje op dit toestel\", met de schakelaar Uit · Aan en een uitleg; geblokkeerd zegt waar je het aanzet",
               d82["inst_uit"]["zichtbaar"] and d82["inst_uit"]["knop"] == "Uit" and d82["inst_aan"]["knop"] == "Aan"
-              and d82["inst_aan"]["tekst"] == "Een stil seintje met een stip op het icoon, bij nieuwe matches."
+              and d82["inst_aan"]["tekst"] == "Een stil seintje met een stip op het icoon, bij nieuwe matches. Daarvoor moeten meldingen ook in je browser aanstaan."
               and d82["inst_geblokkeerd"]["knop"] == "Uit"
               and d82["inst_geblokkeerd"]["tekst"] == "Meldingen staan uit in je browser. Zet ze aan in de instellingen van je browser, bij Meldingen.", j82)
         check("TT-452: kan de browser geen seintjes, dan staat het blok er niet",
@@ -10101,6 +10094,47 @@ window.TT_STUB.fnAntwoord = {};
               bool(d97["gif"]["profiel"]) and "GIF" not in d97["gif"]["profiel"] and d97["gif"]["media"] is None and not d97["gif"]["venster"], j97("gif"))
         check("blok 97: geen paginafouten", not f97, "; ".join(f97)[:300])
         c97.close()
+
+        # ─────────────────────────────────────────────────────────────
+        # Blok 98 — TT-526 (27-10-2026, melding Ronald): "Den Haag" weghalen
+        # en 2522 typen gaf na Enter een lijst plaatsnamen (Aalsmeer…). Een
+        # wachtende vraag voor een oudere tekst mag niet meer tekenen, en Enter
+        # kiest nooit uit een dichte lijst.
+        # ─────────────────────────────────────────────────────────────
+        print("\nBlok 98 — geen oude plaatssuggesties na een postcode (TT-526)")
+        c98 = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+        p98 = c98.new_page(); f98 = []; p98.on("pageerror", lambda e: f98.append(str(e)))
+        p98.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+            p98.route(pat, lambda r: r.abort())
+        p98.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load"); p98.wait_for_timeout(400)
+        d98 = p98.evaluate(r"""async () => {
+          const w = (n = 200) => new Promise(r => setTimeout(r, n)), $ = id => document.getElementById(id), u = {};
+          // De stub negeert de zoekterm: elke naamvraag geeft deze plaatsen.
+          window.TT_STUB.data.postcode_cache = [{ postcode: '1431', city: 'Aalsmeerderbrug', alternatieve_schrijfwijzen: '' },
+                                                { postcode: '2522', city: 'Den Haag', alternatieve_schrijfwijzen: '' }];
+          openZoekScherm('muzikanten', { geenZoek: true }); showView('search', 'pop'); await w();
+          const ac = $('acFilterCityList'), veld = $('filterCity');
+          // Weghalen tot "De", dan snel 2522 en Enter, zoals op een telefoon.
+          for (const v of ['Den Haa', 'De', '2', '25', '252', '2522']) { veld.value = v; veld.dispatchEvent(new Event('input')); await w(40); }
+          veld.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          await w(800);
+          u.na = { waarde: veld.value, open: ac.classList.contains('open'), items: ac.querySelectorAll('.ac-item').length };
+          // Een gewone naam geeft nog steeds suggesties.
+          veld.value = 'Aals'; veld.dispatchEvent(new Event('input')); await w(600);
+          u.naam = { open: ac.classList.contains('open'), items: ac.querySelectorAll('.ac-item').length };
+          // Een dichte lijst met oude suggesties: Enter kiest niets.
+          ac.classList.remove('open'); veld.value = '2522';
+          selectFirstAC('acFilterCityList'); u.dicht = veld.value;
+          return u;
+        }""")
+        j98 = lambda k: json.dumps(d98.get(k), ensure_ascii=False)
+        check("na weghalen en 2522 + Enter: geen lijst met plaatsnamen, het veld houdt 2522",
+              d98["na"] == {"waarde": "2522", "open": False, "items": 0}, j98("na"))
+        check("een plaatsnaam typen geeft nog wel suggesties", d98["naam"]["open"] and d98["naam"]["items"] > 0, j98("naam"))
+        check("Enter kiest nooit uit een dichte lijst", d98["dicht"] == "2522", j98("dicht"))
+        check("blok 98: geen paginafouten", not f98, "; ".join(f98)[:300])
+        c98.close()
 
         print("\nBlok 8 — elke view opent zonder fout")
         for v in VIEWS:

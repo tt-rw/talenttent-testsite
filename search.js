@@ -1471,6 +1471,7 @@ function removeSetlistSong(i) {
 // Stap A: artiest zoeken (zelfde iTunes-aanpak als profiel-repertoire, TT-139).
 async function onSetlistArtistSearch(q) {
   const ac = document.getElementById('acSetlistArtistList');
+  clearTimeout(setlistItunesSearchTimeout); // TT-526: een oudere vraag tekent niet meer na
   if (q.length < 2) { ac.classList.remove('open'); return; }
 
   ac.innerHTML = '<div class="ac-item"><span style="color:var(--muted)">Zoeken...</span></div>';
@@ -1482,7 +1483,6 @@ async function onSetlistArtistSearch(q) {
     return;
   }
 
-  clearTimeout(setlistItunesSearchTimeout);
   setlistItunesSearchTimeout = setTimeout(async () => {
     try {
       const res = await fetch(
@@ -2293,8 +2293,11 @@ function toggleGedeeldRij(sleutel) {
    database (sessie 17, punt 6); één rij per muzikant (TT-295); de naam niet
    (TT-295); wel soort, plaats, straal, instrument, genre, leeftijd, niveau en
    volgorde. Weergave is een keuze van het toestel en blijft in localStorage.
-   De mail bij nieuwe resultaten is een aparte schakelaar in Instellingen →
-   E-mailvoorkeuren ("twee aparte dingen"); een nieuwe rij begint zonder mail.
+   De mail: staat de vink aan, dan komen nieuwe muzikanten bij deze
+   zoekopdracht in de mail van Instellingen → E-mailvoorkeuren (hoe vaak:
+   geen, dagelijks of wekelijks). Geen aparte schakelaar (besluit Ronald
+   27-10-2026, optie b: "dat maakt het eenvoudiger"; vervangt "twee aparte
+   dingen" van 25-10-2026).
    Zonder account of zonder profiel staat de vink er wel; een tik geeft
    "Maak een gratis profiel aan, dan onthouden we je zoekopdracht." (sessie 18).
 
@@ -2434,13 +2437,11 @@ async function onthoudKlik(vink) {
       const rij = Object.assign({ musician_id: mid }, huidigeZoek());
       const { error } = await db.from('musician_saved_search').upsert(rij, { onConflict: 'musician_id' });
       if (error) throw error;
-      bewaardeZoek = Object.assign({ mail: false }, bewaardeZoek || {}, rij);
+      bewaardeZoek = Object.assign({}, bewaardeZoek || {}, rij);
     } else {
-      const hadMail = !!(bewaardeZoek && bewaardeZoek.mail);
       const { error } = await db.from('musician_saved_search').delete().eq('musician_id', mid);
       if (error) throw error;
       bewaardeZoek = null;
-      if (hadMail) showToast('Je krijgt ook geen mail meer over nieuwe resultaten.');
     }
   } catch (e) {
     logCaught('onthoudKlik', e);
@@ -2471,8 +2472,9 @@ function onthoudBijwerken() {
   }, 800);
 }
 
-// Instellingen → E-mailvoorkeuren: de bewaarde zoekopdracht en de schakelaar
-// voor de mail bij nieuwe treffers. Werkt meteen, los van Opslaan.
+// Instellingen → E-mailvoorkeuren: de bewaarde zoekopdracht in woorden. De
+// nieuwe muzikanten daarbij komen in de mail erboven (geen eigen schakelaar,
+// besluit Ronald 27-10-2026).
 async function vulBewaardeZoekInInstellingen() {
   const plek = document.getElementById('bewaardeZoekInstellingen');
   if (!plek) return;
@@ -2483,44 +2485,7 @@ async function vulBewaardeZoekInInstellingen() {
     plek.innerHTML = '';
     return;
   }
-  const z = bewaardeZoek;
-  plek.innerHTML = z
-    ? `<p class="voorkeur-uitleg bewaard-zoek-tekst">${escHtml(zoekTekst(z))}</p>
-       <div class="voorkeur-label">Mail bij nieuwe resultaten</div>
-       <div class="segmented-control voorkeur-knoppen" id="zoekMailControl">
-         <div class="segmented-btn${z.mail ? '' : ' selected'}" data-mode="uit" onclick="zetZoekMail(false)">Uit</div>
-         <div class="segmented-btn${z.mail ? ' selected' : ''}" data-mode="aan" onclick="zetZoekMail(true)">Aan</div>
-       </div>`
+  plek.innerHTML = bewaardeZoek
+    ? `<p class="voorkeur-uitleg bewaard-zoek-tekst">${escHtml(zoekTekst(bewaardeZoek))}</p>`
     : `<p class="voorkeur-uitleg">Nog geen. Zet in Zoeken het vinkje Onthoud mijn zoekopdracht aan.</p>`;
-}
-
-let zoekMailBezig = false;
-async function zetZoekMail(aan) {
-  if (zoekMailBezig || !bewaardeZoek || !!bewaardeZoek.mail === aan) return;
-  zoekMailBezig = true;
-  try {
-    const mid = bewaardeZoek.musician_id;
-    const { error } = await db.from('musician_saved_search').update({ mail: aan }).eq('musician_id', mid);
-    if (error) throw error;
-    bewaardeZoek.mail = aan;
-    if (aan) {
-      // Wie de mail helemaal had uitgezet, zet hem met deze tik weer aan (TT-295).
-      const { data: m, error: mErr } = await db.from('musicians')
-        .select('email_digest_frequency').eq('id', mid).single();
-      if (mErr) throw mErr;
-      if (m && m.email_digest_frequency === 'off') {
-        const { error: uErr } = await db.from('musicians')
-          .update({ email_digest_frequency: 'daily' }).eq('id', mid);
-        if (uErr) throw uErr;
-        selectDigestFrequency('daily');
-        showToast('Je mail stond uit en staat nu op dagelijks.');
-      }
-    }
-  } catch (e) {
-    logCaught('zetZoekMail', e);
-    showToast(friendlyErrorMessage(e, 'de mail aan- of uitzetten'));
-  } finally {
-    zoekMailBezig = false;
-    vulBewaardeZoekInInstellingen();
-  }
 }

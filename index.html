@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261027b">
+<link rel="stylesheet" href="styles.css?v=20261027c">
 </head>
 <body>
 
@@ -2423,13 +2423,17 @@
          teksten"): elk blok begint met een vette kop; alles staat op één
          linkerlijn; elke keuze werkt meteen (geen Opslaan meer); elke
          keuzeknop in dit venster is even breed (een derde van de breedte). -->
+    <!-- Eén mail met alles wat nieuw is (besluit Ronald 27-10-2026, optie b):
+         ook de nieuwe muzikanten bij de bewaarde zoekopdracht; geen aparte
+         schakelaar meer. Kop kort en krachtig. -->
     <div class="modal-blok">
-      <div class="voorkeur-kop">Nieuwe-matches e-mail</div>
+      <div class="voorkeur-kop">Mail bij nieuwe matches</div>
       <div class="segmented-control voorkeur-knoppen" id="digestFrequencyControl">
         <div class="segmented-btn" data-mode="off" onclick="setDigestFrequency(this,'off')">Geen</div>
         <div class="segmented-btn" data-mode="daily" onclick="setDigestFrequency(this,'daily')">Dagelijks</div>
         <div class="segmented-btn" data-mode="weekly" onclick="setDigestFrequency(this,'weekly')">Wekelijks</div>
       </div>
+      <p class="voorkeur-uitleg">Berichten, bands die jou zoeken en muzikanten bij je bewaarde zoekopdracht.</p>
     </div>
 
     <!-- TT-452 (09-10-2026): het seintje op dit toestel; geldt alleen voor dit
@@ -2444,9 +2448,8 @@
       <p class="voorkeur-uitleg" id="pushTekst"></p>
     </div>
 
-    <!-- TT-295 (26-09-2026): de bewaarde zoekopdracht, met de schakelaar voor
-         de mail (TT-520, 27-10-2026: de vink in Zoeken bewaart, de mail is een
-         aparte keuze). -->
+    <!-- TT-295 (26-09-2026): de bewaarde zoekopdracht, in woorden. De vink in
+         Zoeken bewaart hem; de nieuwe muzikanten komen in de mail hierboven. -->
     <div class="modal-blok">
       <div class="voorkeur-kop">Bewaarde zoekopdracht</div>
       <div id="bewaardeZoekInstellingen"></div>
@@ -2621,17 +2624,17 @@
 </div><!-- /#appRoot -->
 
 <script src="core.js?v=20261027a"></script>
-<script src="utils.js?v=20261027a"></script>
+<script src="utils.js?v=20261027b"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261023b"></script>
-<script src="postcode.js?v=20261027a"></script>
+<script src="postcode.js?v=20261027b"></script>
 <script src="wizard.js?v=20261027a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261027b"></script>
-<script src="musicians.js?v=20261027a"></script>
+<script src="search.js?v=20261027d"></script>
+<script src="musicians.js?v=20261027b"></script>
 <script src="bands.js?v=20261027a"></script>
 <script src="messages.js?v=20261026b"></script>
-<script src="push.js?v=20261027a"></script>
+<script src="push.js?v=20261027b"></script>
 <script src="modals-shared.js?v=20261026c"></script>
 <script>
 // ─── Start ───────────────────────────────────────────────────────────────────

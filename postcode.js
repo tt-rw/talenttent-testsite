@@ -353,15 +353,24 @@ async function resolveCityDisplayName(raw) {
 let citySearchTimeout = null;
 const citySuggestCache = new Map(); // query (lowercase) -> canonical city names[]
 
+// TT-526 (27-10-2026, melding Ronald): wie "Den Haag" weghaalt en 2522 typt,
+// kreeg na Enter een lijst met plaatsnamen (Aalsmeerderbrug, …) te zien. De
+// vraag voor "De" stond nog te wachten en tekende zijn antwoord ná de
+// postcode. Nu: elke toets annuleert de wachtende vraag, en een antwoord dat
+// niet meer bij het veld hoort (citySearchSeq), wordt niet getekend.
+let citySearchSeq = 0;
 function onCitySearchInput(value, listId) {
   const ac = document.getElementById(listId);
   const q = (value || '').trim();
+  clearTimeout(citySearchTimeout);
+  const seq = ++citySearchSeq;
+  const leeg = () => { ac.classList.remove('open'); ac.innerHTML = ''; };
 
   // Een postcode heeft hier geen plaatsnaam-suggesties nodig
-  if (/^\d{4}$/.test(q) || q.length < 2) { ac.classList.remove('open'); return; }
+  if (/^\d{4}$/.test(q) || q.length < 2) { leeg(); return; }
   // TT-26: als er na het weghalen van jokertekens niets bruikbaars overblijft
   // (bijv. iemand typt alleen "%%"), niets zoeken i.p.v. alles matchen.
-  if (likeSafe(q).length < 2) { ac.classList.remove('open'); return; }
+  if (likeSafe(q).length < 2) { leeg(); return; }
 
   const cacheKey = q.toLowerCase();
   if (citySuggestCache.has(cacheKey)) {
@@ -369,7 +378,6 @@ function onCitySearchInput(value, listId) {
     return;
   }
 
-  clearTimeout(citySearchTimeout);
   citySearchTimeout = setTimeout(async () => {
     try {
       // TT-26: jokertekens eruit + waarde tussen quotes, zodat een komma of %
@@ -391,10 +399,11 @@ function onCitySearchInput(value, listId) {
       names.sort((a, b) => a.localeCompare(b, 'nl'));
       const top = names.slice(0, 8);
       citySuggestCache.set(cacheKey, top);
+      if (seq !== citySearchSeq) return; // intussen verder getypt (TT-526)
       renderCitySuggestions(ac, top, listId);
     } catch (e) {
       logCaught('onCitySearchInput', e);
-      ac.classList.remove('open');
+      if (seq === citySearchSeq) ac.classList.remove('open');
     }
   }, 300);
 }

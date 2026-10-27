@@ -507,9 +507,12 @@ function closeAC(id) {
 }
 
 // Stap A: Artiest zoeken
+// TT-526: alleen uit een lijst die openstaat. Een dichte lijst kan nog oude
+// suggesties bevatten; Enter mag die nooit kiezen.
 function selectFirstAC(listId) {
   const list = document.getElementById(listId);
-  const first = list && list.querySelector('.ac-item[onmousedown]');
+  if (!list || !list.classList.contains('open')) return;
+  const first = list.querySelector('.ac-item[onmousedown]');
   if (first && first.onmousedown) first.onmousedown();
 }
 
@@ -518,6 +521,7 @@ const itunesTrackCache = new Map();  // artistId -> songs[] (of een lopende Prom
 
 async function onArtistSearch(q) {
   const ac = document.getElementById('acArtistList');
+  clearTimeout(itunesSearchTimeout); // TT-526: een oudere vraag tekent niet meer na
   if (q.length < 2) { ac.classList.remove('open'); return; }
 
   // Direct visuele feedback tonen (i.p.v. pas na de 400ms-vertraging).
@@ -530,7 +534,6 @@ async function onArtistSearch(q) {
     return;
   }
 
-  clearTimeout(itunesSearchTimeout);
   itunesSearchTimeout = setTimeout(async () => {
     try {
       const res = await fetch(
