@@ -3518,10 +3518,26 @@
     cursor: pointer;
   }
   .gedeeld-rij.open .gedeeld-rij-kop { border-bottom: 1px solid var(--border); }
+  /* Opengeklapt komt de rij los van de pagina (besluit Ronald 27-10-2026,
+     sessie 21: "het spannende moment … het mag wat meer van het scherm
+     komen"): rand in de signaalkleur, een schaduw, 2px omhoog. Geen
+     animatie van de namen (Ronald: "dat wordt na 1 x vervelend"). */
+  .gedeeld-rij.open {
+    position: relative;
+    z-index: 1;
+    border-color: var(--accent);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+    transform: translateY(-2px);
+  }
+  :root[data-theme="licht"] .gedeeld-rij.open { box-shadow: 0 10px 28px rgba(30, 30, 30, 0.16); }
   .gedeeld-paneel {
-    padding: 4px 12px 8px;
+    padding: 8px 12px 12px;
     background: var(--surface2);
   }
+  /* Per gekozen muzikant: foto, naam, rechts het niveau of "Speelt dit niet".
+     Wie het speelt: naam vet. Wie het niet speelt: naam gewoon, in de
+     tekstkleur, foto in kleur (Ronald: "hoeft niet zo somber … het is net of
+     ze af zijn"). Volgorde: gedeeldSpelersVolgorde() in search.js. */
   .gedeeld-speler {
     display: flex;
     align-items: center;
@@ -3529,6 +3545,19 @@
     gap: 12px;
     min-height: 44px;
   }
+  .gedeeld-speler-foto {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--merk);
+    font-size: 16px;
+  }
+  .gedeeld-speler-foto img { width: 100%; height: 100%; object-fit: cover; }
   .gedeeld-speler-naam {
     flex: 1;
     min-width: 0;
@@ -3538,14 +3567,15 @@
     border: none;
     color: var(--text);
     font: inherit;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 700;
     text-align: left;
     cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .gedeeld-speler.niet .gedeeld-speler-naam { color: var(--muted); }
+  .gedeeld-speler.niet .gedeeld-speler-naam { font-weight: 400; }
   .gedeeld-speler-niet {
     flex-shrink: 0;
     width: 100px;

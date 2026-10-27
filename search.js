@@ -2097,14 +2097,33 @@ function renderGedeeldResults() {
     </div>`;
 }
 
+// Volgorde in het paneel (besluit Ronald 27-10-2026, sessie 21): eerst wie het
+// speelt met een beheersing, Podium, Bijna, Basis; dan wie het speelt zonder
+// beheersing; dan wie het niet speelt. Binnen een groep de volgorde van kiezen.
+const NIVEAU_RANG = { podium: 0, bijna: 1, basis: 2 };
+function gedeeldSpelersVolgorde(n) {
+  const rang = g => {
+    if (!Object.prototype.hasOwnProperty.call(n.spelers, g.id)) return 9;
+    const lvl = n.spelers[g.id];
+    return NIVEAU_RANG[lvl] != null ? NIVEAU_RANG[lvl] : 5;
+  };
+  return gedeeldGekozen.map((g, k) => ({ g, k, r: rang(g) }))
+    .sort((a, b) => (a.r - b.r) || (a.k - b.k)).map(x => x.g);
+}
+
+// Een rij per nummer; een tik klapt hem open met per gekozen muzikant foto,
+// naam en rechts het niveau, of "Speelt dit niet". Een tik op een naam opent
+// het profiel.
 function gedeeldRijHTML(n, i) {
   const open = gedeeldOpen.has(n.sleutel);
   const paneelId = `gedeeldPaneel${i}`;
-  const spelers = gedeeldGekozen.map(g => {
+  const spelers = gedeeldSpelersVolgorde(n).map(g => {
     const speelt = Object.prototype.hasOwnProperty.call(n.spelers, g.id);
     const lvl = speelt ? n.spelers[g.id] : '';
+    const foto = safeUrl(g.foto);
     return `
       <div class="gedeeld-speler${speelt ? '' : ' niet'}">
+        <span class="gedeeld-speler-foto">${foto ? `<img src="${foto}" alt="">` : AVATAR_T_FALLBACK}</span>
         <button type="button" class="gedeeld-speler-naam" onclick="openProfielScherm('${jsAttr(g.id)}')">${escHtml(g.naam)}</button>
         ${speelt
           ? (lvl ? `<span class="level-pill">${escHtml(LEVEL_LABELS[lvl])}</span>` : '')

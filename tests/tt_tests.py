@@ -2002,17 +2002,37 @@ def blok_browser():
                      tekst: x.querySelector('.gedeeld-speler-niet')?.textContent || '',
                      rechts: (() => { const p = x.querySelector('.level-pill, .gedeeld-speler-niet');
                                       return p ? Math.round(x.getBoundingClientRect().right - p.getBoundingClientRect().right) : null; })(),
-                     hoog: Math.round(x.querySelector('.gedeeld-speler-naam').getBoundingClientRect().height) })) };
+                     foto: !!x.querySelector('.gedeeld-speler-foto'),
+                     vet: getComputedStyle(x.querySelector('.gedeeld-speler-naam')).fontWeight,
+                     kleur: getComputedStyle(x.querySelector('.gedeeld-speler-naam')).color,
+                     zicht: getComputedStyle(x).opacity, anim: getComputedStyle(x).animationName,
+                     hoog: Math.round(x.querySelector('.gedeeld-speler-naam').getBoundingClientRect().height) })),
+                   tekstKleur: getComputedStyle(document.querySelector('#gedeeldResults .song-artiest')).color,
+                   rand: getComputedStyle(r).borderTopColor, schaduw: getComputedStyle(r).boxShadow,
+                   accent: getComputedStyle(document.querySelector('#setlistDeelNummers .zoek-wissen-knop')).color };
         }""")
         check("een tik klapt de regel open", pan and pan["uitgeklapt"] == "true", json.dumps(pan))
-        check("paneel toont alle gekozen muzikanten in volgorde van kiezen",
-              pan and [x["naam"] for x in pan["spelers"]] == ["dylan", "sanne", "ronnie"], json.dumps(pan))
+        check("paneel: eerst wie het speelt, beste niveau eerst, dan wie het niet speelt (besluit 27-10-2026)",
+              pan and [x["naam"] for x in pan["spelers"]] == ["ronnie", "dylan", "sanne"], json.dumps(pan))
         check("niveau staat rechts naast de naam",
-              pan and pan["spelers"][0]["niveau"] == "Basis" and pan["spelers"][2]["niveau"] == "Podium"
+              pan and pan["spelers"][0]["niveau"] == "Podium" and pan["spelers"][1]["niveau"] == "Basis"
               and pan["spelers"][0]["rechts"] == 0, json.dumps(pan))
-        check("wie het niet speelt, staat grijs met 'Speelt dit niet'",
-              pan and pan["spelers"][1]["niet"] and pan["spelers"][1]["tekst"] == "Speelt dit niet"
-              and pan["spelers"][1]["niveau"] == "", json.dumps(pan))
+        check("wie het niet speelt: 'Speelt dit niet', naam gewoon, niet somber (geen grijze of doorzichtige rij)",
+              pan and pan["spelers"][2]["niet"] and pan["spelers"][2]["tekst"] == "Speelt dit niet"
+              and pan["spelers"][2]["niveau"] == "" and pan["spelers"][2]["vet"] == "400"
+              and pan["spelers"][2]["kleur"] == pan["tekstKleur"] and pan["spelers"][2]["zicht"] == "1", json.dumps(pan))
+        check("elke muzikant in het paneel heeft een foto; wie het speelt staat vet; geen animatie",
+              pan and all(x["foto"] and x["anim"] == "none" for x in pan["spelers"])
+              and pan["spelers"][0]["vet"] == "700" and pan["spelers"][1]["vet"] == "700", json.dumps(pan))
+        check("de open rij komt los: rand in de signaalkleur en een schaduw",
+              pan and pan["rand"] == pan["accent"] and pan["schaduw"] != "none", json.dumps(pan))
+        volg = page.evaluate("""() => {
+          const was = gedeeldGekozen;
+          gedeeldGekozen = ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, naam: id }));
+          const uit = gedeeldSpelersVolgorde({ spelers: { a: 'basis', b: '', c: 'podium', e: 'bijna' } }).map(g => g.id).join('');
+          gedeeldGekozen = was; return uit;
+        }""")
+        check("volgorde: Podium, Bijna, Basis, dan zonder niveau, dan wie het niet speelt", volg == "ceabd", volg)
         check("naam in het paneel is een tikdoel van 44px",
               pan and min(x["hoog"] for x in pan["spelers"]) >= 44, json.dumps(pan))
         page.evaluate("renderGedeeldResults()")
