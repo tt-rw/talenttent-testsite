@@ -2186,12 +2186,14 @@ function bmRenderFoto() {
   document.getElementById('bmFotoRemoveBtn').classList.toggle('visible', !!url);
 }
 
-function bmFotoKiezen(file) {
+async function bmFotoKiezen(file) {
   if (!file) return;
   const typeProblem = fileTypeProblem(file, AVATAR_MIME_TYPES, AVATAR_TYPE_LABEL);
   if (typeProblem) { showToast(typeProblem); return; }
   { const groot = bestandTeGrootMelding(file, 5 * 1024 * 1024); if (groot) { showToast(groot); return; } }
   const id = bewerkBandId;
+  file = await kiesUitsnede(file, 'vierkant'); // TT-520 deel 2: eerst de uitsnede
+  if (!file || id !== bewerkBandId) return;
   const vak = document.getElementById('bmFotoPreview');
   vak.style.position = 'relative';
   vak.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="bandfoto">

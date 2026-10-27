@@ -1931,11 +1931,28 @@
      tikvlak (44px) steekt erbuiten. Het vorige blok houdt zijn 20px eronder. */
   .zoek-wis-rij {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
+    gap: 16px;
     min-height: 18px;
     padding-right: var(--field-inset);
   }
+  /* Links de vink Onthoud mijn zoekopdracht (TT-520 deel 2, 27-10-2026). De
+     vink staat op de inspringing van de labels (--field-inset); tekst 14px
+     zoals een label. Tikvlak 44px hoog via ::after; de regel zelf blijft 18px. */
+  .zoek-onthoud {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 18px;
+    min-width: 0;
+    cursor: pointer;
+  }
+  /* De vink (20px) steekt 1px boven en onder de regel van 18px uit, zodat de
+     regel even hoog blijft als een label en Wissen op 20px blijft (§3). */
+  .zoek-onthoud input { flex-shrink: 0; margin: -1px 0; }
+  .zoek-onthoud::after { content: ''; position: absolute; top: -13px; bottom: -13px; left: 0; right: -8px; }
 
   .media-pane { display: none; }
   .media-pane.active { display: block; }
@@ -3067,6 +3084,93 @@
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 14px;
   }
+
+  /* TT-520 deel 2 (akkoord Ronald 27-10-2026, Laag 3.3 en 3.4): de kaart in
+     Zoeken (Weergave Kaarten). Hetzelfde vlak als een rij (.result-row):
+     --surface, rand --border, hoek --radius-field. De foto is vierkant en vult
+     de kaart tot de rand; de gebruiker kiest de uitsnede zelf bij het
+     uploaden. Een oudere foto wordt in het midden uitgesneden, het bovenste
+     deel blijft staan (30%), waar meestal het hoofd zit. Rechtsonder op de
+     foto de berichtknop of "Zoekt <instrument>". De naam staat volledig
+     (§2.1: nooit afkappen); de twee regels eronder krijgen "…" als ze niet
+     passen. 12px tussen de kaarten (§3: veelvouden van 4; was 14). */
+  .zoek-kaarten {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .zoek-kaart {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-field);
+    cursor: pointer;
+    animation: slideIn 0.2s ease;
+  }
+  .zoek-kaart-foto {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    /* Zonder foto: de T op geel, zoals overal (TT-341). */
+    background: var(--merk);
+    color: var(--merk-tekst);
+    font-size: 48px;
+    font-weight: 700;
+  }
+  .zoek-kaart-foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
+  .zoek-kaart-hoek {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  /* Op een foto: een donker, half doorzichtig vlak met een wit icoon, in beide
+     thema's leesbaar op elke foto. */
+  .zoek-kaart-hoek .result-row-msg-btn {
+    background: rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .zoek-kaart-hoek .result-row-msg-icon { color: #fff; }
+  /* Geel is een vlak, nooit losse tekst op licht (huisstijl §1): een geel
+     label met de tekst in --merk-tekst. */
+  .zoek-kaart-zoekt {
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--merk);
+    color: var(--merk-tekst);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .zoek-kaart-tekst { padding: 12px; }
+  .zoek-kaart-naam {
+    font-family: 'Roboto', sans-serif;
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .zoek-kaart-regel {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .result-card {
     position: relative;
     background: var(--surface);
@@ -3118,10 +3222,9 @@
   }
   .result-card-name { font-family: 'Roboto', sans-serif; font-size: 16px; font-weight: 700; }
   .result-card-meta { font-size: 13px; color: var(--muted); margin: 2px 0 8px; }
-  /* TT-153: instrument- en genrebadges elk op een eigen, niet-wrappende
-     regel — overflow wordt afgekapt met een "+N"-badge (overflowBadgeHTML),
-     niet met CSS-afkapping zelf. nowrap is hier alleen een vangnet tegen een
-     toevallig te lange badgetekst. */
+  /* TT-153: een badge-regel op de kaart, niet-wrappend. Sinds TT-520 deel 2
+     alleen nog in de kaart van Mix & Match (de match); die kaart volgt in
+     bouwsessie b. */
   .result-card-badges-line {
     display: flex;
     flex-wrap: nowrap;
@@ -3191,15 +3294,28 @@
   /* TT-520: "Zoekt drums" rechts bij een band met een open rol, zodat je ziet
      waarom hij in het resultaat staat. Donker goud, licht zwart (--accent):
      geel is in licht nooit tekst (huisstijl §1). */
+  /* Twee regels onder elkaar, rechts uitgelijnd: "Zoekt" en het instrument
+     (besluit Ronald 27-10-2026), zodat de bandnaam meer ruimte houdt. */
   .result-row-zoekt {
     flex-shrink: 0;
     max-width: 40%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  /* "Zoekt" staat in het midden boven het instrument; is het instrument korter
+     dan "Zoekt", dan staan beide rechts (besluit Ronald 27-10-2026). */
+  .result-row-zoekt > span:first-child { align-self: center; }
+  .result-row-zoekt > span {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
   }
 
   .result-row-meta {
@@ -3226,13 +3342,6 @@
     padding-left: 60px; /* avatar (44px) + gap (16px), zelfde uitlijning als de naam */
   }
 
-  /* TT-153: "+N"-badge voor verborgen instrumenten/genres — zelfde vorm als
-     .tag-solid, maar neutrale kleur (geen instrument-/genrekleur toegekend
-     aan een getal). Gedeeld door rij- en kaartweergave. */
-  .tag-solid-muted {
-    color: var(--muted);
-  }
-
   /* TT-29: envelop-icoon op muzikant-rijen — geeft in één oogopslag aan dat
      contact/bericht sturen mogelijk is (zonder de rij zelf vol te zetten met
      een losse knop). Bewuste, beperkte uitzondering op de "geen iconen"-regel
@@ -3252,42 +3361,68 @@
     color: var(--muted);
   }
 
-  /* ── TT-295 (26-09-2026): de bewaarde zoekopdracht ──────────────────────
-     Onder het zoekresultaat op het tabblad Muzikant, en in Instellingen →
-     E-mailvoorkeuren. Een paneel zoals .search-filters: --surface, rand
-     --border, hoek --radius. Kop 16px vet (zoals de kop van een lege staat,
-     huisstijl §15), de zoekopdracht in woorden eronder. Eén knop, een
-     tweede knop (.btn-ghost): de zoekresultaten blijven de hoofdzaak. */
-  .seintje-blok {
-    margin-top: 20px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-  }
-  .seintje-kop {
-    margin: 0 0 8px;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .seintje-zoek {
-    margin: 0;
-    font-size: 13px;
-    line-height: 20px;
-    color: var(--text);
-  }
-  .seintje-klein {
-    margin: 8px 0 0;
-    font-size: var(--fs-sm);
-    line-height: 16px;
-    color: var(--muted);
-  }
-  .seintje-knop {
+  /* ── De uitsnede kiezen (TT-520 deel 2, 27-10-2026, Laag 3.4) ─────────────
+     Een vierkant vlak over de volle breedte van het venster. De foto vult
+     altijd het hele vierkant (geen lege rand); kiesUitsnede() zet maat en
+     plek. Bij een profielfoto dimt alles buiten de cirkel; bij een bandfoto
+     alleen een dunne lijn langs het vierkant. touch-action: none, zodat
+     schuiven en zoomen niet de pagina laten scrollen of zoomen. */
+  .uitsnede-vlak {
+    position: relative;
     width: 100%;
-    margin-top: 16px;
+    aspect-ratio: 1 / 1;
+    margin-top: 12px;
+    overflow: hidden;
+    border-radius: var(--radius-field);
+    background: #000;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  #bewaardeZoekInstellingen .seintje-zoek { padding-left: var(--field-inset); }
+  .uitsnede-vlak:active { cursor: grabbing; }
+  .uitsnede-vlak img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: none;
+    transform-origin: 0 0;
+    pointer-events: none;
+  }
+  .uitsnede-masker {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-field);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+    pointer-events: none;
+  }
+  .uitsnede-masker.rond {
+    border-radius: 50%;
+    box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+  }
+  /* Op de linkerlijn van het vlak en de knoppen (één linkerlijn, Ronald 27-10-2026). */
+  .uitsnede-hint { margin: 8px 0 20px; font-size: var(--fs-sm); line-height: 16px; color: var(--muted); }
+
+  /* ── E-mailvoorkeuren (TT-520 deel 2, opdracht Ronald 27-10-2026) ─────────
+     "Een brij van knoppen en teksten": (1) elk blok begint met een vette kop
+     (17px, zoals .tile-title); (2) alles staat op één linkerlijn, zonder de
+     inspringing van een veldlabel (hier staat geen invulveld); (3) elke
+     keuzeknop is even breed, een derde van de breedte, ook Uit · Aan. Elke
+     keuze werkt meteen. 8px van kop naar knoppen, 8px van knoppen naar uitleg
+     (§3). */
+  .voorkeur-intro { margin: 0 0 20px; font-size: 13px; line-height: 18px; color: var(--muted); }
+  .voorkeur-kop { margin: 0 0 8px; font-size: 17px; line-height: 22px; font-weight: 700; color: var(--text); }
+  .voorkeur-label { margin: 0 0 8px; font-size: 14px; line-height: 18px; color: var(--text); }
+  .voorkeur-uitleg { margin: 8px 0 0; font-size: 13px; line-height: 18px; color: var(--muted); }
+  .voorkeur-knoppen {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+  .voorkeur-knoppen .segmented-btn { width: 100%; }
+  /* De bewaarde zoekopdracht in woorden, direct onder de kop, in de tekstkleur. */
+  .voorkeur-uitleg.bewaard-zoek-tekst { margin: 0 0 20px; color: var(--text); }
 
   /* ── TT-289 (17-09-2026): Setlist-tabblad in twee standen ────────────────
      Twee losse knoppen met de vorm en kleuren van de hoofdtabbladen
@@ -4798,14 +4933,6 @@
   /* Plaats en Straal op één regel. Straal is zo breed als "500 km" nodig heeft
      en groeit niet mee; Plaats krijgt de rest, want plaatsnamen verschillen
      sterk in lengte. */
-  /* TT-236 (10-09-2026): de statusregel onder Plaats reserveerde altijd ruimte,
-     ook als hij leeg was. Het gat onder Plaats werd daardoor 46px, terwijl elk
-     ander blok in het filterpaneel 20px aanhoudt: 8px kolom-gap + 4px marge +
-     14px lege regel + 20px blokmarge. De regel neemt nu pas ruimte in zodra er
-     tekst in staat. updateSearchCityStatus() zet `textContent = ''`, dus het
-     element is dan werkelijk leeg en `:empty` grijpt. */
-  .city-status { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .city-status:empty { display: none; }
 
   .filter-row-city { display: flex; gap: 8px; align-items: flex-end; }
   /* Deze twee staan niet in een .field, dus de 8px tussen label en veld uit §3

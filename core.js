@@ -756,34 +756,28 @@ function closeSearchPrefsModal() {
 
 // selectDigestFrequency (zonder klik, bij het openen) vs. setDigestFrequency
 // (bij een klik) — zelfde onderscheid als elders tussen "stand tonen" en
-// "stand wijzigen".
+// "stand wijzigen". Sinds 27-10-2026 (TT-520 deel 2, opdracht Ronald) slaat
+// een klik meteen op, zoals elke andere keuze in dit venster; de knop
+// Opslaan is weg. Mislukt het, dan springt de keuze terug.
 function selectDigestFrequency(value) {
   digestFrequencyValue = value;
   document.querySelectorAll('#digestFrequencyControl .segmented-btn').forEach(btn => {
     btn.classList.toggle('selected', btn.dataset.mode === value);
   });
 }
-function setDigestFrequency(el, mode) {
-  digestFrequencyValue = mode;
-  document.querySelectorAll('#digestFrequencyControl .segmented-btn').forEach(btn => btn.classList.remove('selected'));
-  el.classList.add('selected');
-}
-
-// TT-232 (09-09-2026): schrijft alleen de e-mailvoorkeur. Sinds TT-327 is dat
-// nog één veld.
-async function saveSearchPrefs() {
-  const mid = await getMyMusicianId();
-  if (!mid) return;
+async function setDigestFrequency(el, mode) {
+  const oud = digestFrequencyValue;
+  if (mode === oud) return;
+  selectDigestFrequency(mode);
   try {
-    const { error } = await db.from('musicians').update({
-      email_digest_frequency: digestFrequencyValue
-    }).eq('id', mid);
+    const mid = await getMyMusicianId();
+    if (!mid) throw new Error('geen profiel');
+    const { error } = await db.from('musicians').update({ email_digest_frequency: mode }).eq('id', mid);
     if (error) throw error;
-    closeSearchPrefsModal();
-    showToast('E-mailvoorkeuren opgeslagen');
   } catch (e) {
-    logCaught('saveSearchPrefs', e);
-    showToast(friendlyErrorMessage(e, 'je zoekvoorkeuren opslaan'));
+    logCaught('setDigestFrequency', e);
+    selectDigestFrequency(oud);
+    showToast(friendlyErrorMessage(e, 'je e-mailvoorkeur opslaan'));
   }
 }
 

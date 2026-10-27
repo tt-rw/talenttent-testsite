@@ -280,9 +280,9 @@ async function resolveSearchOrigin(rawText) {
 // TT-160 (27-08-2026, Ronalds voorstel): het Plaats-veld op de drie
 // zoekpagina's (Muzikanten/Bands/Setlist) blijft precies zo werken als
 // eerst — postcode óf plaatsnaam typen mag allebei, zie onCitySearchInput()
-// hieronder. Nieuw is een permanente bevestigingsregel eronder ("Gevonden:
-// 'plaatsnaam'"), zodat altijd zichtbaar is welke plaats de zoekopdracht nu
-// echt gebruikt. Losstaand van de melding op het profiel-/bandformulier
+// hieronder. De gevonden plaats staat rechts op de labelregel (TT-520,
+// 27-10-2026), zodat zichtbaar is welke plaats de zoekopdracht echt gebruikt
+// als het veld een postcode toont. Losstaand van de melding op het profiel-/bandformulier
 // (postcodeStatus/bandPostcodeStatus, TT-150) — die verdwijnt bewust nog
 // steeds na 2 seconden tijdens het typen; dat gedrag is hier niet aangeraakt.
 // Hergebruikt dezelfde tabel (postcode_cache) als de plaatsnaam-suggesties
@@ -308,7 +308,13 @@ async function updateSearchCityStatus(inputId, statusId) {
   // niet, maar de zoekopdracht kan wel voorbij zijn gestreefd)? Dan is dit
   // antwoord verouderd — niet meer tonen.
   if (searchCityStatusSeq[statusId] !== seq) return;
-  statusEl.textContent = display ? `Gevonden: ${display}` : '';
+  // TT-520 (27-10-2026, huisstijl §3, TT-494): een korte uitslag staat rechts
+  // op de labelregel, en alleen als het veld de plaats nog niet toont (bij een
+  // postcode of een andere schrijfwijze). Was een eigen regel "Gevonden: …"
+  // onder het veld, die alles eronder omlaag duwde.
+  const zelfde = display && display.toLowerCase() === raw.toLowerCase();
+  statusEl.textContent = display && !zelfde ? display : '';
+  statusEl.classList.toggle('uitslag-goed', !!statusEl.textContent);
 }
 
 // Zoekt de kanonieke plaatsnaam op bij een getypte postcode (exacte 4

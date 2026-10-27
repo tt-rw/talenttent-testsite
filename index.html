@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261026e">
+<link rel="stylesheet" href="styles.css?v=20261027b">
 </head>
 <body>
 
@@ -1374,7 +1374,7 @@
       <div class="field">
         <div class="label-rij zoek-label-rij">
           <label for="filterName">Naam</label>
-          <button type="button" class="zoek-filters-knop" id="zoekFiltersKnop" aria-expanded="false" aria-controls="zoekFilterVak" onclick="toggleZoekFilters()">Filters<svg class="zoek-filters-pijl" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+          <button type="button" class="zoek-filters-knop" id="zoekFiltersKnop" aria-expanded="false" aria-controls="zoekFilterVak" onclick="toggleZoekFilters()"><span id="zoekFiltersTekst">Filters</span><svg class="zoek-filters-pijl" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
         </div>
         <input type="text" id="filterName" placeholder="Bijv. Sanne of The Rusty Strings" oninput="scheduleMusicianAutoSearch()" onkeydown="submitOnEnter(event, runSearch)">
       </div>
@@ -1384,7 +1384,7 @@
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <label for="filterCity">Plaats</label>
+            <div class="label-rij"><label for="filterCity">Plaats</label><span id="filterCityStatus" class="field-uitslag" aria-live="polite"></span></div>
             <input type="text" id="filterCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterCityList'); scheduleMusicianAutoSearch(); scheduleSearchCityStatus('filterCity','filterCityStatus');"
               onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterCityList'); runSearch(); })"
@@ -1399,7 +1399,6 @@
             <input type="hidden" id="filterRadius" value="10">
           </div>
         </div>
-        <div id="filterCityStatus" class="city-status"></div>
       </div>
 
       <!-- Filters, in twee kolommen: Instrument, Niveau, Leeftijd, Genre,
@@ -1476,9 +1475,10 @@
 
       <!-- Wissen staat altijd, rechts, direct onder het laatste zichtbare veld;
            het wist alles behalve Plaats en Straal (besluiten Ronald 26-10-2026,
-           sessie 18, punten 3 en 6). De vink Onthoud mijn zoekopdracht komt
-           links op deze regel (bouwsessie a, deel 2: met de database). -->
+           sessie 18, punten 3 en 6). Links de vink Onthoud mijn zoekopdracht
+           (bouwsessie a, deel 2, 27-10-2026; onthoudKlik() in search.js). -->
       <div class="zoek-wis-rij">
+        <label class="zoek-onthoud"><input type="checkbox" id="zoekOnthoud" onchange="onthoudKlik(this)"><span>Onthoud mijn zoekopdracht</span></label>
         <button type="button" class="zoek-wissen-knop" id="zoekWissenKnop" onclick="resetMusicianSearch()">Wissen</button>
       </div>
     </div>
@@ -1519,7 +1519,7 @@
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <label>Plaats</label>
+            <div class="label-rij"><label for="filterSetlistCity">Plaats</label><span id="filterSetlistCityStatus" class="field-uitslag" aria-live="polite"></span></div>
             <input type="text" id="filterSetlistCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterSetlistCityList'); scheduleSetlistAutoSearch(); scheduleSearchCityStatus('filterSetlistCity','filterSetlistCityStatus');"
               onkeydown="submitOnEnter(event, () => { selectFirstAC('acFilterSetlistCityList'); if(setlistWantedSongs.length) runSetlistSearch(); })"
@@ -1534,7 +1534,6 @@
             <input type="hidden" id="filterSetlistRadius" value="10">
           </div>
         </div>
-        <div id="filterSetlistCityStatus" class="city-status"></div>
         <!-- TT-239: de regel "Vul in om afstand te tonen/sorteren vanaf deze
              plaats" is hier weg, op verzoek van Ronald. Muzikant en Band
              hebben die regel ook niet. -->
@@ -1654,7 +1653,7 @@
       <div class="field">
         <div class="filter-row-city">
           <div class="city-search-wrap frc-plaats">
-            <label>Plaats</label>
+            <div class="label-rij"><label for="filterGedeeldCity">Plaats</label><span id="filterGedeeldCityStatus" class="field-uitslag" aria-live="polite"></span></div>
             <input type="text" id="filterGedeeldCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
               oninput="onCitySearchInput(this.value,'acFilterGedeeldCityList'); gedeeldKandidatenVergeten(); scheduleSearchCityStatus('filterGedeeldCity','filterGedeeldCityStatus');"
               onkeydown="submitOnEnter(event, () => selectFirstAC('acFilterGedeeldCityList'))"
@@ -1669,7 +1668,6 @@
             <input type="hidden" id="filterGedeeldRadius" value="10">
           </div>
         </div>
-        <div id="filterGedeeldCityStatus" class="city-status"></div>
       </div>
 
       <div class="filter-row single">
@@ -2217,6 +2215,27 @@
   </div>
 </div>
 
+<!-- TT-520 deel 2 (27-10-2026, Laag 3.4): de uitsnede kiezen na het kiezen van
+     een profielfoto of bandfoto (kiesUitsnede() in utils.js). Geen kruisje
+     (TT-409: een kruisje alleen waar het niet anders kan): Annuleren, Escape
+     en de terugknop van het toestel breken af. Tweede knop links, hoofdknop
+     rechts (TT-228), zoals de controlevraag. -->
+<div class="modal-overlay" id="uitsnedeModal" data-close="sluitUitsnede">
+  <div class="modal-box modal-box-md uitsnede-box">
+    <div class="filter-title" id="uitsnedeTitel">Profielfoto</div>
+    <div class="uitsnede-vlak" id="uitsnedeVlak" onpointerdown="uitsnedeWijzerNeer(event)" onpointermove="uitsnedeWijzerBeweeg(event)"
+         onpointerup="uitsnedeWijzerOp(event)" onpointercancel="uitsnedeWijzerOp(event)" onwheel="uitsnedeWiel(event)">
+      <img id="uitsnedeImg" alt="Je foto" draggable="false">
+      <div class="uitsnede-masker" id="uitsnedeMasker"></div>
+    </div>
+    <p class="uitsnede-hint">Schuif en zoom tot de foto goed staat.</p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-ghost" id="uitsnedeAnnuleren" onclick="sluitUitsnede()">Annuleren</button>
+      <button type="button" class="btn btn-primary" id="uitsnedeKnop" onclick="uitsnedeGebruiken()">Gebruik deze foto</button>
+    </div>
+  </div>
+</div>
+
 <!-- V-08 (13-08-2026): foto in een eigen weergave i.p.v. een nieuw tabblad,
      dat in een app-schil de gebruiker uit de app zou sturen. -->
 <div class="modal-overlay" id="mediaLightbox" data-close="closeMediaLightbox" onclick="if(event.target===this)closeMediaLightbox()">
@@ -2398,40 +2417,39 @@
   <div class="modal-box modal-box-md">
     <button class="modal-close" onclick="closeSearchPrefsModal()" aria-label="Sluiten"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></button>
     <div class="filter-title" style="margin-bottom:4px;">E-mailvoorkeuren</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Deze keuze bepaalt ook of je een bericht van Talent Tent krijgt in je berichten, en een seintje op je toestel. Je zoekresultaten veranderen hier niet door.</p>
+    <p class="voorkeur-intro">Deze keuze bepaalt ook of je een bericht van Talent Tent krijgt in je berichten, en een seintje op je toestel. Je zoekresultaten veranderen hier niet door.</p>
 
+    <!-- TT-520 deel 2 (opdracht Ronald 27-10-2026: "een brij van knoppen en
+         teksten"): elk blok begint met een vette kop; alles staat op één
+         linkerlijn; elke keuze werkt meteen (geen Opslaan meer); elke
+         keuzeknop in dit venster is even breed (een derde van de breedte). -->
     <div class="modal-blok">
-    <div class="field" style="margin-bottom:20px;">
-      <label>Nieuwe-matches e-mail</label>
-      <div class="segmented-control" id="digestFrequencyControl">
+      <div class="voorkeur-kop">Nieuwe-matches e-mail</div>
+      <div class="segmented-control voorkeur-knoppen" id="digestFrequencyControl">
         <div class="segmented-btn" data-mode="off" onclick="setDigestFrequency(this,'off')">Geen</div>
         <div class="segmented-btn" data-mode="daily" onclick="setDigestFrequency(this,'daily')">Dagelijks</div>
         <div class="segmented-btn" data-mode="weekly" onclick="setDigestFrequency(this,'weekly')">Wekelijks</div>
       </div>
     </div>
 
-    <button class="btn btn-primary" style="width:100%;" onclick="saveSearchPrefs()">Opslaan</button>
-    </div>
-
-    <!-- TT-452 (09-10-2026): het seintje op dit toestel. Eigen blok met eigen
-         knop, zoals de bewaarde zoekopdracht: aan of uit werkt meteen en geldt
-         alleen voor dit toestel. Verborgen als de browser het niet kan. -->
+    <!-- TT-452 (09-10-2026): het seintje op dit toestel; geldt alleen voor dit
+         toestel. Verborgen als de browser het niet kan. Uit · Aan als
+         schakelaar (27-10-2026), met een korte uitleg eronder. -->
     <div class="modal-blok" id="pushBlok" style="display:none;">
-      <div class="field">
-        <label>Seintje op dit toestel</label>
-        <p id="pushTekst" style="font-size:13px;color:var(--muted);margin-bottom:12px;"></p>
-        <button type="button" class="btn btn-ghost" id="pushKnop" style="width:100%;"></button>
+      <div class="voorkeur-kop">Seintje op dit toestel</div>
+      <div class="segmented-control voorkeur-knoppen" id="pushControl">
+        <div class="segmented-btn" data-mode="uit" onclick="pushSchakelen(false)">Uit</div>
+        <div class="segmented-btn" data-mode="aan" onclick="pushSchakelen(true)">Aan</div>
       </div>
+      <p class="voorkeur-uitleg" id="pushTekst"></p>
     </div>
 
-    <!-- TT-295 (26-09-2026): de bewaarde zoekopdracht. Eigen blok met eigen
-         knop (huisstijl §5, tweede uitzondering): stoppen werkt meteen, los
-         van Opslaan hierboven. -->
+    <!-- TT-295 (26-09-2026): de bewaarde zoekopdracht, met de schakelaar voor
+         de mail (TT-520, 27-10-2026: de vink in Zoeken bewaart, de mail is een
+         aparte keuze). -->
     <div class="modal-blok">
-      <div class="field">
-        <label>Bewaarde zoekopdracht</label>
-        <div id="bewaardeZoekInstellingen"></div>
-      </div>
+      <div class="voorkeur-kop">Bewaarde zoekopdracht</div>
+      <div id="bewaardeZoekInstellingen"></div>
     </div>
   </div>
 </div>
@@ -2459,7 +2477,7 @@
     <div class="field">
       <div class="filter-row-city">
         <div class="city-search-wrap frc-plaats">
-          <label>Plaats</label>
+          <div class="label-rij"><label for="memberSearchCity">Plaats</label><span id="memberSearchCityStatus" class="field-uitslag" aria-live="polite"></span></div>
           <input type="text" id="memberSearchCity" placeholder="Bijv. Den Haag of 2511" autocomplete="off"
             oninput="onCitySearchInput(this.value,'acMemberSearchCityList'); searchMembersToAdd(document.getElementById('memberSearchInput').value); scheduleSearchCityStatus('memberSearchCity','memberSearchCityStatus');"
             onblur="setTimeout(()=>closeAC('acMemberSearchCityList'),200)">
@@ -2473,7 +2491,6 @@
           <input type="hidden" id="memberSearchRadius" value="">
         </div>
       </div>
-      <div id="memberSearchCityStatus" class="city-status"></div>
     </div>
     <div class="field">
       <label>Instrument</label>
@@ -2603,18 +2620,18 @@
 
 </div><!-- /#appRoot -->
 
-<script src="core.js?v=20261026b"></script>
-<script src="utils.js?v=20261026c"></script>
+<script src="core.js?v=20261027a"></script>
+<script src="utils.js?v=20261027a"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261023b"></script>
-<script src="postcode.js?v=20261021e"></script>
-<script src="wizard.js?v=20261025a"></script>
+<script src="postcode.js?v=20261027a"></script>
+<script src="wizard.js?v=20261027a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261026c"></script>
-<script src="musicians.js?v=20261026a"></script>
-<script src="bands.js?v=20261026c"></script>
+<script src="search.js?v=20261027a"></script>
+<script src="musicians.js?v=20261027a"></script>
+<script src="bands.js?v=20261027a"></script>
 <script src="messages.js?v=20261026b"></script>
-<script src="push.js?v=20261019a"></script>
+<script src="push.js?v=20261027a"></script>
 <script src="modals-shared.js?v=20261026c"></script>
 <script>
 // ─── Start ───────────────────────────────────────────────────────────────────

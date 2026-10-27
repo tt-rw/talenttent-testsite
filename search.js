@@ -217,8 +217,25 @@ function setZoekSoort(soort) {
 }
 
 // Filters klapt open onder Plaats en Straal; het pijltje draait om (TT-520,
-// sessie 18, punt 1). Geen getal achter het woord (besluit Ronald: "weglaten").
+// sessie 18, punt 1). Achter het woord tussen haakjes hoeveel filters aan
+// staan (besluit Ronald 27-10-2026, vervangt "geen getal" van 26-10-2026).
+// Elk ingesteld filter telt één keer: Instrument met twee instrumenten is 1.
+// Telt mee: Instrument, Niveau, Leeftijd, Genre. Volgorde en Weergave zijn
+// geen filters. Bij nul alleen "Filters".
 let zoekFiltersOpen = false;
+function aantalZoekFilters() {
+  const waarde = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  return [filterInstruments.length > 0,
+          !!(waarde('filterNiveauMin') || waarde('filterNiveauMax')),
+          !!(waarde('filterAgeMin') || waarde('filterAgeMax')),
+          filterGenres.length > 0].filter(Boolean).length;
+}
+function zetFiltersTeller() {
+  const el = document.getElementById('zoekFiltersTekst');
+  if (!el) return;
+  const n = aantalZoekFilters();
+  el.textContent = n ? `Filters (${n})` : 'Filters';
+}
 function zetZoekFilters(open) {
   zoekFiltersOpen = !!open;
   const vak = document.getElementById('zoekFilterVak');
@@ -663,6 +680,12 @@ function zoekMuzikantVoorRol(instrument, plaats, bandNaam, datum, bandId) {
   renderPickerBadges(PICKERS.filterInstruments);
   renderPickerBadges(PICKERS.filterGenres);
   if (plaats) scheduleSearchCityStatus('filterCity', 'filterCityStatus');
+  // De open rol zet zelf de filters; de bewaarde filters gaan er niet overheen.
+  // De vink toont wel of er een bewaarde zoekopdracht is.
+  if (!onthoudToegepast && hasOwnProfile) {
+    onthoudToegepast = true;
+    laadBewaardeZoek().then(z => zetOnthoudVink(!!z)).catch(e => logCaught('zoekMuzikantVoorRol', e));
+  }
   zetZoekSoortKnoppen('muzikanten');
   zetZoekFilters(true);
   // configureSearchAccess() (vanuit showView) zoekt meteen (TT-10).
@@ -801,6 +824,10 @@ async function zoekBandsOphalen(radius, origin) {
 async function runSearch(straalOverride) {
   const seq = ++musicianSearchSeq; // TT-84: zie toelichting bij musicianSearchSeq
   const resultsEl = document.getElementById('searchResults');
+  // De eerste zoekopdracht met een profiel zet de bewaarde filters terug.
+  if (!onthoudToegepast && hasOwnProfile) await onthoudHerstellen();
+  if (seq !== musicianSearchSeq) return; // intussen een nieuwere zoekopdracht
+  zetFiltersTeller();
   if (straalOverride === undefined) zoekVerruimd = null; // nieuwe zoekopdracht
   // TT-10: bij automatisch verversen blijft het bestaande resultaat staan tot
   // het nieuwe binnen is — geen laadanimatie die het scherm laat "knipperen".
@@ -1009,9 +1036,6 @@ function renderZoekResultaten(lijst, opts) {
   opts = opts || {};
   const el = document.getElementById('searchResults');
   const total = opts.total != null ? opts.total : lijst.length;
-  // Het blok "Bewaar deze zoekopdracht" (TT-295) gaat over muzikanten; onder
-  // Bands staat het niet. Het wordt in bouwsessie a, deel 2 de vink Onthoud.
-  const seintje = zoekSoort !== 'bands';
 
   if (!total) {
     // TT-62: is er al automatisch tot heel Nederland verruimd, dan is de
@@ -1040,17 +1064,12 @@ function renderZoekResultaten(lijst, opts) {
       <div class="no-results">
         <p style="font-size:16px;font-weight:600;margin-bottom:8px;">${kop}</p>
         <p style="font-size:13px;">${uitleg}</p>
-      </div>
-      ${seintje ? '<div id="seintjePlek"></div>' : ''}`;
-    if (seintje) vulSeintjeBlok();
+      </div>`;
+    onthoudBijwerken();
     return;
   }
 
   const verruimd = verruimdNotice(opts.verruimd, zoekMeervoud());
-  // TT-295: is de straal verruimd (TT-62), dan zit de juiste er dichtbij nog
-  // niet bij. Precies dan hoort het blok bovenaan, direct onder die regel.
-  // Anders staat het onder de lijst.
-  const seintjePlek = seintje ? '<div id="seintjePlek"></div>' : '';
   const locationHint = opts.showLocationHint
     ? `<p style="font-size:12px;color:var(--muted);margin:0 0 12px;">Dit zijn ${lijst.length} willekeurige ${zoekMeervoud()} uit heel Nederland — vul een plaats in voor resultaten bij jou in de buurt.</p>`
     : '';
@@ -1062,14 +1081,13 @@ function renderZoekResultaten(lijst, opts) {
     <div class="results-header">
       <span class="results-count">${zoekTelling(lijst, total)}</span>
     </div>
-    ${verruimd}${verruimd ? seintjePlek : ''}${locationHint}${cappedNotice}
-    <div class="${kaarten ? 'results-grid-view' : 'results-list'}">
+    ${verruimd}${locationHint}${cappedNotice}
+    <div class="${kaarten ? 'zoek-kaarten' : 'results-list'}">
       ${lijst.map(x => x.soort === 'band'
         ? (kaarten ? bandCardHTML(x) : bandRowHTML(x))
         : (kaarten ? musicianCardHTML(x) : musicianRowHTML(x))).join('')}
-    </div>
-    ${verruimd ? '' : seintjePlek}`;
-  if (seintje) vulSeintjeBlok();
+    </div>`;
+  onthoudBijwerken();
 }
 
 // Gedeeld door runSearch() en de volgorde- en weergavekeuze — zorgt dat
@@ -1168,30 +1186,40 @@ function musicianRowHTML(m) {
   });
 }
 
-// TT-30 (07-08-2026): kaartweergave als alternatief voor de rij hierboven —
-// zelfde gegevens en dezelfde klik, alleen fotogericht. Kiesbaar via Weergave
-// (Ronald: "bij veel profielfoto's is een kaart ook tof"). TT-520: de kaarten
-// houden in deze bouwsessie hun huidige uiterlijk (akkoord Ronald, sessie 18).
-function musicianCardHTML(m) {
-  const instruments = m.musician_instruments.map(x => x.instrument);
-  const genres = m.musician_genres.map(x => x.genre);
+/* TT-30 (07-08-2026): kaartweergave als alternatief voor de rij hierboven —
+   zelfde gegevens en dezelfde klik, alleen fotogericht. Kiesbaar via Weergave.
+   TT-520 deel 2 (akkoord Ronald 27-10-2026, Laag 3.3): de kaart heeft de inhoud
+   van de rij. Een vierkante foto tot de rand van de kaart (de uitsnede die de
+   gebruiker zelf koos, Laag 3.4); rechtsonder op de foto de berichtknop bij een
+   muzikant, of "Zoekt <instrument>" bij een band met een open rol. Daaronder de
+   naam (volledig, nooit afgekapt), één regel instrument of BAND · genre, en één
+   regel plaats · afstand. Geen tags meer. */
+function zoekKaartHTML(o) {
+  const plaats = [o.plaats, o.afstand].filter(Boolean).map(escHtml).join(' · ');
+  const eerste = (o.band ? '<span class="result-row-soort">BAND</span>' + (o.eerste ? ' · ' : '') : '') + escHtml(o.eerste || '');
+  return `
+    <div class="zoek-kaart" onclick="${o.klik}">
+      <div class="zoek-kaart-foto${o.foto ? '' : ' zonder-foto'}">${o.foto || AVATAR_T_FALLBACK}${o.hoek ? `<div class="zoek-kaart-hoek">${o.hoek}</div>` : ''}</div>
+      <div class="zoek-kaart-tekst">
+        <div class="zoek-kaart-naam">${escHtml(o.naam)}</div>
+        <div class="zoek-kaart-regel">${eerste}</div>
+        <div class="zoek-kaart-regel">${plaats}</div>
+      </div>
+    </div>`;
+}
 
+function musicianCardHTML(m) {
   const avatarSrc = safeUrl(m.avatar_url);
   const displayName = displayNameOf(m);
-  const photoHTML = avatarSrc ? `<img src="${avatarSrc}" alt="${escHtml(displayName)}">` : AVATAR_T_FALLBACK;
-  const nameHTML = escHtml(displayName);
-
-  return `
-    <div class="result-card" onclick="openProfielScherm('${jsAttr(m.id)}')">
-      <div class="result-card-photo">${photoHTML}</div>
-      <div class="result-card-top-row">
-        <div class="result-card-name">${nameHTML}</div>
-        <div class="result-row-msg-btn" data-bericht-id="${escHtml(m.id)}" onclick="openRowMessageIcon(event,'${jsAttr(m.id)}','${jsAttr(displayName)}')">${MESSAGE_ICON_SVG}</div>
-      </div>
-      <div class="result-card-meta">${escHtml(m.city || '')}${m.distance_km != null ? ` · ${m.distance_km.toFixed(1)} km` : ''}</div>
-      <div class="result-card-badges-line">${overflowBadgeHTML(instruments, 2)}</div>
-      <div class="result-card-badges-line">${overflowBadgeHTML(genres, 2)}</div>
-    </div>`;
+  return zoekKaartHTML({
+    klik: `openProfielScherm('${jsAttr(m.id)}')`,
+    foto: avatarSrc ? `<img src="${avatarSrc}" alt="${escHtml(displayName)}">` : '',
+    naam: displayName,
+    eerste: eersteGekozen((m.musician_instruments || []).map(x => x.instrument)),
+    plaats: m.city || '',
+    afstand: afstandTekst(m.distance_km),
+    hoek: `<div class="result-row-msg-btn" data-bericht-id="${escHtml(m.id)}" onclick="openRowMessageIcon(event,'${jsAttr(m.id)}','${jsAttr(displayName)}')">${MESSAGE_ICON_SVG}</div>`
+  });
 }
 
 // ─── Bands in het resultaat ──────────────────────────────────────────────────
@@ -1201,25 +1229,6 @@ function musicianCardHTML(m) {
 // (net als myMusicianId) zodat de tegel in Instellingen zijn stand kan tonen
 // zonder steeds opnieuw te hoeven laden.
 let myBeschikbaar = true;
-
-// TT-385 fase 5 (besluit Ronald bij punt 11): de bandkaart in Zoeken. De
-// vierkante bandfoto tegenover de ronde foto van een muzikant, geen foto's van
-// de leden ("dat zie je als je het profiel opent"), de open rol als tag. Een
-// invaller voor één optreden staat er ook als tag (punt 16). De statustag
-// komt uit dezelfde functie als op de bandpagina en in Mijn Bands
-// (bandStatusLabel()).
-function bandKaartGegevens(b) {
-  const open = (b.band_wanted || []).map(w => w.instrument);
-  const vandaag = vandaagISO();
-  const invallers = (b.band_invallers || []).filter(v => String(v.datum) >= vandaag).map(v => v.instrument);
-  const leden = (b.band_members || []).filter(m => m.status === 'bevestigd').length;
-  return {
-    foto: safeUrl(b.avatar_url),
-    status: bandStatusLabel(leden, open.length),
-    rollen: open.map(i => '+ ' + i).concat(invallers.map(i => 'Invaller ' + instrumentInZin(i))),
-    plaats: `${escHtml(b.city || '')}${b.distance_km != null ? ` · ${b.distance_km.toFixed(1)} km` : ''}`
-  };
-}
 
 // "Drums" midden in een zin wordt "drums"; een afkorting als "DJ" blijft staan.
 function instrumentInZin(naam) {
@@ -1244,25 +1253,27 @@ function bandRowHTML(b) {
     eerste: eersteGekozen(b.genres || []),
     plaats: b.city || '',
     afstand: afstandTekst(b.distance_km),
-    rechts: zoekt ? `<span class="result-row-zoekt">Zoekt ${escHtml(instrumentInZin(zoekt))}</span>` : ''
+    rechts: zoekt ? `<span class="result-row-zoekt"><span>Zoekt</span><span>${escHtml(instrumentInZin(zoekt))}</span></span>` : ''
   });
 }
 
-// TT-30 (07-08-2026): kaartweergave, kiesbaar via Weergave. Geen berichtknop:
-// een bericht aan een band gaat via de bandpagina naar de contactpersoon.
-// Eén regel tags: de eerste open rol of invaller met "+N" voor de rest, of
-// anders de status. Twee rollen passen niet op een kaart van 390px breed; de
-// tweede werd afgesneden.
+// TT-30: kaartweergave, kiesbaar via Weergave. Geen berichtknop: een bericht
+// aan een band gaat via de bandpagina naar de contactpersoon. Rechtsonder op de
+// foto "Zoekt <instrument>", hetzelfde instrument als in de rij (TT-520).
 function bandCardHTML(b) {
-  const k = bandKaartGegevens(b);
-  const tags = k.rollen.length ? overflowBadgeHTML(k.rollen, 1) : (k.status ? tagSolid(k.status) : '');
-  return `
-    <div class="result-card" onclick="openBandScherm('${jsAttr(b.id)}')">
-      <div class="result-card-photo result-vierkant">${k.foto ? `<img src="${k.foto}" alt="${escHtml(b.name)}">` : AVATAR_T_FALLBACK}</div>
-      <div class="result-card-name">${escHtml(b.name)}</div>
-      <div class="result-card-meta">${k.plaats}</div>
-      ${tags ? `<div class="result-card-badges-line">${tags}</div>` : ''}
-    </div>`;
+  const foto = safeUrl(b.avatar_url);
+  const gezocht = (b.band_wanted || []).map(w => w.instrument);
+  const zoekt = gezocht.length ? eersteGekozen(gezocht) : '';
+  return zoekKaartHTML({
+    klik: `openBandScherm('${jsAttr(b.id)}')`,
+    foto: foto ? `<img src="${foto}" alt="${escHtml(b.name)}">` : '',
+    band: true,
+    naam: b.name || '',
+    eerste: eersteGekozen(b.genres || []),
+    plaats: b.city || '',
+    afstand: afstandTekst(b.distance_km),
+    hoek: zoekt ? `<span class="zoek-kaart-zoekt">Zoekt ${escHtml(instrumentInZin(zoekt))}</span>` : ''
+  });
 }
 
 // ─── Setlist-zoekfunctie ─────────────────────────────────────────────────────
@@ -2274,20 +2285,27 @@ function toggleGedeeldRij(sleutel) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   TT-295 (26-09-2026) — de bewaarde zoekopdracht.
+   De bewaarde zoekopdracht: de vink "Onthoud mijn zoekopdracht" (TT-520,
+   bouwsessie a deel 2, 27-10-2026). Vervangt het blok "Bewaar deze
+   zoekopdracht" onder het resultaat (TT-295).
 
-   Besluiten Ronald, 26-09-2026: één bewaarde zoekopdracht per muzikant; hij
-   bewaart alle filters behalve de naam; alleen het tabblad Muzikant. De
-   nachtelijke digest (Edge Function send-digest) leest hem via
-   tt_digest_new_musicians en mailt wie er sindsdien bij kwam. Dit vervangt
-   musician_wanted, dat sinds TT-232 niemand meer kon vullen.
+   Besluiten Ronald: de vink onthoudt de filters op elk toestel, dus in de
+   database (sessie 17, punt 6); één rij per muzikant (TT-295); de naam niet
+   (TT-295); wel soort, plaats, straal, instrument, genre, leeftijd, niveau en
+   volgorde. Weergave is een keuze van het toestel en blijft in localStorage.
+   De mail bij nieuwe treffers is een aparte schakelaar in Instellingen →
+   E-mailvoorkeuren ("twee aparte dingen"); een nieuwe rij begint zonder mail.
+   Zonder account of zonder profiel staat de vink er wel; een tik geeft
+   "Maak een gratis profiel aan, dan onthouden we je zoekopdracht." (sessie 18).
 
-   Het blok staat onder het zoekresultaat, ook onder een leeg resultaat: daar
-   zie je dat de juiste er nog niet bij zit (TT-62 deel 2). Alleen met een
-   eigen profiel (anders is er niemand om te mailen) en niet als er een naam
-   in het zoekveld staat (je zoekt dan één persoon, TT-257).
+   Gedrag: staat de vink aan, dan volgt de bewaarde zoekopdracht wat er op het
+   scherm staat (bijgewerkt na elke zoekopdracht). Vink uit: de rij gaat weg,
+   en daarmee ook de mail. Bij de eerste zoekopdracht na het openen van de app
+   zet de app de bewaarde filters terug.
    ───────────────────────────────────────────────────────────────────────── */
 let bewaardeZoek = undefined; // undefined = nog niet geladen, null = geen
+let onthoudToegepast = false;  // de bewaarde filters zijn deze sessie al teruggezet
+let onthoudBijwerkTimer = null;
 
 async function laadBewaardeZoek() {
   const mid = await getMyMusicianId();
@@ -2299,13 +2317,24 @@ async function laadBewaardeZoek() {
   return bewaardeZoek;
 }
 // Bij uitloggen: niets van de vorige gebruiker laten staan.
-function wisBewaardeZoek() { bewaardeZoek = undefined; laatsteZoekVertrek = null; }
+function wisBewaardeZoek() {
+  bewaardeZoek = undefined; laatsteZoekVertrek = null; onthoudToegepast = false;
+  clearTimeout(onthoudBijwerkTimer);
+  zetOnthoudVink(false);
+}
+
+function zetOnthoudVink(aan) {
+  const vink = document.getElementById('zoekOnthoud');
+  if (vink) vink.checked = !!aan;
+}
 
 // De zoekopdracht zoals hij nu op het scherm staat, in de vorm van de tabel.
 function huidigeZoek() {
   const v = laatsteZoekVertrek;
   const getal = (id) => { const x = document.getElementById(id).value; return x ? parseInt(x) : null; };
   return {
+    soort: zoekSoort,
+    volgorde: searchSortMode,
     instruments: filterInstruments.slice(),
     genres: filterGenres.slice(),
     age_min: getal('filterAgeMin'), age_max: getal('filterAgeMax'),
@@ -2316,9 +2345,10 @@ function huidigeZoek() {
   };
 }
 
-// "Drums, Bas · Rock · 18 t/m 30 jaar · niveau 2 t/m 4 · binnen 10 km van Delft"
+// "Muzikanten · Drums · Rock · 18 t/m 30 jaar · niveau 2 t/m 4 · binnen 10 km van Delft"
 function zoekTekst(z) {
-  const delen = [z.instruments && z.instruments.length ? z.instruments.join(', ') : 'Alle instrumenten'];
+  const soort = { alles: 'Muzikanten en bands', muzikanten: 'Muzikanten', bands: 'Bands' }[z.soort || 'alles'];
+  const delen = [soort, z.instruments && z.instruments.length ? z.instruments.join(', ') : 'Alle instrumenten'];
   if (z.genres && z.genres.length) delen.push(z.genres.join(', '));
   if (z.age_min != null || z.age_max != null) {
     delen.push(z.age_max == null ? `vanaf ${z.age_min} jaar`
@@ -2337,103 +2367,112 @@ function zoekTekst(z) {
 
 function zelfdeZoek(a, b) {
   const lijst = (x) => (x || []).slice().sort().join('|');
-  return lijst(a.instruments) === lijst(b.instruments) && lijst(a.genres) === lijst(b.genres)
+  return (a.soort || 'alles') === (b.soort || 'alles') && (a.volgorde || 'score') === (b.volgorde || 'score')
+    && lijst(a.instruments) === lijst(b.instruments) && lijst(a.genres) === lijst(b.genres)
     && a.age_min == b.age_min && a.age_max == b.age_max
     && a.niveau_min == b.niveau_min && a.niveau_max == b.niveau_max
     && Number(a.radius_km) === Number(b.radius_km)
     && (a.plaats || '').toLowerCase() === (b.plaats || '').toLowerCase();
 }
 
-async function vulSeintjeBlok() {
-  const plek = document.getElementById('seintjePlek');
-  if (!plek) return;
-  plek.innerHTML = '';
-  if (!hasOwnProfile || !laatsteZoekVertrek) return;
-  if (naamZoekTerm(document.getElementById('filterName').value)) return;
+// Eerste zoekopdracht na het openen: vink zetten en de bewaarde filters
+// terugzetten. Een zoekopdracht via een open rol zet zelf de filters
+// (zoekMuzikantVoorRol), die zet onthoudToegepast vooraf.
+async function onthoudHerstellen() {
+  onthoudToegepast = true;
+  if (!hasOwnProfile) { zetOnthoudVink(false); return; }
   try {
     if (bewaardeZoek === undefined) await laadBewaardeZoek();
   } catch (e) {
-    logCaught('vulSeintjeBlok', e);
-    return; // geen blok is beter dan een kapot blok
+    logCaught('onthoudHerstellen', e);
+    return; // zonder bewaarde filters zoekt de app gewoon verder
   }
-  if (!plek.isConnected) return; // intussen opnieuw getekend
-  const nu = huidigeZoek();
-  const bewaard = bewaardeZoek;
-  const dezelfde = !!bewaard && zelfdeZoek(bewaard, nu);
-  plek.innerHTML = `
-    <div class="seintje-blok">
-      <p class="seintje-kop">${dezelfde ? 'Je krijgt een mail als er iemand bijkomt' : 'Mail me als er iemand bijkomt'}</p>
-      <p class="seintje-zoek">${escHtml(zoekTekst(nu))}</p>
-      ${bewaard && !dezelfde
-        ? `<p class="seintje-klein">Je bewaarde zoekopdracht is nu: ${escHtml(zoekTekst(bewaard))}. Je kunt er één bewaren.</p>` : ''}
-      ${dezelfde
-        ? `<p class="seintje-klein">Je hoeft niet zelf terug te komen kijken. Stoppen kan hier of in Instellingen.</p>
-           <button type="button" class="btn btn-ghost seintje-knop" onclick="stopBewaardeZoek()">Stoppen</button>`
-        : `<button type="button" class="btn btn-ghost seintje-knop" onclick="bewaarZoek()">${bewaard ? 'Vervangen door deze' : 'Bewaar deze zoekopdracht'}</button>`}
-    </div>`;
+  const z = bewaardeZoek;
+  zetOnthoudVink(!!z);
+  if (!z) return;
+  const tekst = x => (x == null ? '' : String(x));
+  filterInstruments.length = 0; (z.instruments || []).forEach(x => filterInstruments.push(x));
+  filterGenres.length = 0; (z.genres || []).forEach(x => filterGenres.push(x));
+  renderPickerBadges(PICKERS.filterInstruments);
+  renderPickerBadges(PICKERS.filterGenres);
+  setWheelFieldValues('leeftijd', [tekst(z.age_min), tekst(z.age_max)], false);
+  setWheelFieldValues('niveau', [tekst(z.niveau_min), tekst(z.niveau_max)], false);
+  setWheelFieldValues('radius', [tekst(Number(z.radius_km))], false);
+  if (z.plaats) {
+    document.getElementById('filterCity').value = z.plaats;
+    updateSearchCityStatus('filterCity', 'filterCityStatus');
+  }
+  if (ZOEK_SOORTEN.includes(z.soort)) { zetZoekSoortKnoppen(z.soort); bewaarZoekStand(); }
+  selectSortModeByValue('filterSortMode', z.volgorde || 'score');
+  refreshChoiceField('sorteren');
 }
 
-let bewaarBezig = false;
-function bewaarZoek() {
-  if (bewaarBezig || !laatsteZoekVertrek) return;
-  const nu = huidigeZoek();
-  if (bewaardeZoek) {
-    // Controlevraag (huisstijl §19): noem wat er verdwijnt en wat ervoor terugkomt.
-    showConfirm(`Je krijgt dan geen mail meer over ${zoekTekst(bewaardeZoek)}, maar over ${zoekTekst(nu)}. Is dat wat je wilt?`,
-      () => bewaarZoekUitvoeren(nu), 'Ja, vervangen');
+// Tik op de vink.
+let onthoudBezig = false;
+let onthoudDoel = false; // de stand die nu wordt geschreven
+async function onthoudKlik(vink) {
+  if (!hasOwnProfile) {
+    vink.checked = false;
+    showToast('Maak een gratis profiel aan, dan onthouden we je zoekopdracht.');
     return;
   }
-  bewaarZoekUitvoeren(nu);
-}
-
-async function bewaarZoekUitvoeren(nu) {
-  if (bewaarBezig) return;
-  bewaarBezig = true; // TT-252: een dubbele tik schrijft niet twee keer
+  // TT-252: een tweede tik tijdens het schrijven doet niets; de vink blijft
+  // staan op wat er wordt geschreven.
+  if (onthoudBezig) { vink.checked = onthoudDoel; return; }
+  const aan = vink.checked;
+  onthoudBezig = true;
+  onthoudDoel = aan;
   try {
     const mid = await getMyMusicianId();
-    if (!mid) return;
-    const rij = Object.assign({ musician_id: mid }, nu);
-    const { error } = await db.from('musician_saved_search').upsert(rij, { onConflict: 'musician_id' });
-    if (error) throw error;
-    bewaardeZoek = rij;
-    // Wie de mail had uitgezet, zet hem met deze tik weer aan.
-    const { data: m, error: mErr } = await db.from('musicians')
-      .select('email_digest_frequency').eq('id', mid).single();
-    if (mErr) throw mErr;
-    if (m && m.email_digest_frequency === 'off') {
-      const { error: uErr } = await db.from('musicians')
-        .update({ email_digest_frequency: 'daily' }).eq('id', mid);
-      if (uErr) throw uErr;
-      showToast('Bewaard. Je mail stond uit en staat nu op dagelijks.');
+    if (!mid) { vink.checked = false; return; }
+    if (aan) {
+      if (!laatsteZoekVertrek) {
+        vink.checked = false;
+        showToast('Vul een plaats in, dan onthouden we je zoekopdracht.');
+        return;
+      }
+      const rij = Object.assign({ musician_id: mid }, huidigeZoek());
+      const { error } = await db.from('musician_saved_search').upsert(rij, { onConflict: 'musician_id' });
+      if (error) throw error;
+      bewaardeZoek = Object.assign({ mail: false }, bewaardeZoek || {}, rij);
     } else {
-      showToast('Bewaard. Je krijgt een mail als er iemand bijkomt.');
+      const hadMail = !!(bewaardeZoek && bewaardeZoek.mail);
+      const { error } = await db.from('musician_saved_search').delete().eq('musician_id', mid);
+      if (error) throw error;
+      bewaardeZoek = null;
+      if (hadMail) showToast('Je krijgt ook geen mail meer over nieuwe treffers.');
     }
-    vulSeintjeBlok();
   } catch (e) {
-    logCaught('bewaarZoek', e);
-    showToast(friendlyErrorMessage(e, 'de zoekopdracht bewaren'));
+    logCaught('onthoudKlik', e);
+    vink.checked = !aan;
+    showToast(friendlyErrorMessage(e, aan ? 'je zoekopdracht onthouden' : 'je zoekopdracht vergeten'));
   } finally {
-    bewaarBezig = false;
+    onthoudBezig = false;
   }
 }
 
-async function stopBewaardeZoek(vanuitInstellingen) {
-  try {
-    const mid = await getMyMusicianId();
-    if (!mid) return;
-    const { error } = await db.from('musician_saved_search').delete().eq('musician_id', mid);
-    if (error) throw error;
-    bewaardeZoek = null;
-    showToast('Gestopt. Je krijgt hier geen mail meer over.');
-    vulSeintjeBlok();
-    if (vanuitInstellingen) vulBewaardeZoekInInstellingen();
-  } catch (e) {
-    logCaught('stopBewaardeZoek', e);
-    showToast(friendlyErrorMessage(e, 'de bewaarde zoekopdracht stoppen'));
-  }
+// Na elke zoekopdracht: staat de vink aan, dan volgt de bewaarde rij wat er
+// op het scherm staat. Even wachten, zodat typen niet elke letter schrijft.
+function onthoudBijwerken() {
+  clearTimeout(onthoudBijwerkTimer);
+  const vink = document.getElementById('zoekOnthoud');
+  if (!vink || !vink.checked || !hasOwnProfile || !bewaardeZoek || !laatsteZoekVertrek) return;
+  onthoudBijwerkTimer = setTimeout(async () => {
+    if (!bewaardeZoek || !laatsteZoekVertrek || onthoudBezig) return;
+    const nu = huidigeZoek();
+    if (zelfdeZoek(bewaardeZoek, nu)) return;
+    try {
+      const { error } = await db.from('musician_saved_search').update(nu).eq('musician_id', bewaardeZoek.musician_id);
+      if (error) throw error;
+      bewaardeZoek = Object.assign({}, bewaardeZoek, nu);
+    } catch (e) {
+      logCaught('onthoudBijwerken', e); // stil: de vink blijft aan, de volgende zoekopdracht probeert het opnieuw
+    }
+  }, 800);
 }
 
-// Instellingen → E-mailvoorkeuren: de enige andere plek waar je hem ziet.
+// Instellingen → E-mailvoorkeuren: de bewaarde zoekopdracht en de schakelaar
+// voor de mail bij nieuwe treffers. Werkt meteen, los van Opslaan.
 async function vulBewaardeZoekInInstellingen() {
   const plek = document.getElementById('bewaardeZoekInstellingen');
   if (!plek) return;
@@ -2444,8 +2483,44 @@ async function vulBewaardeZoekInInstellingen() {
     plek.innerHTML = '';
     return;
   }
-  plek.innerHTML = bewaardeZoek
-    ? `<p class="seintje-zoek">${escHtml(zoekTekst(bewaardeZoek))}</p>
-       <button type="button" class="btn btn-ghost seintje-knop" onclick="stopBewaardeZoek(true)">Stoppen</button>`
-    : `<p class="field-hint">Nog geen. Zoek een muzikant en tik onder de resultaten op "Bewaar deze zoekopdracht".</p>`;
+  const z = bewaardeZoek;
+  plek.innerHTML = z
+    ? `<p class="voorkeur-uitleg bewaard-zoek-tekst">${escHtml(zoekTekst(z))}</p>
+       <div class="voorkeur-label">Mail bij nieuwe resultaten</div>
+       <div class="segmented-control voorkeur-knoppen" id="zoekMailControl">
+         <div class="segmented-btn${z.mail ? '' : ' selected'}" data-mode="uit" onclick="zetZoekMail(false)">Uit</div>
+         <div class="segmented-btn${z.mail ? ' selected' : ''}" data-mode="aan" onclick="zetZoekMail(true)">Aan</div>
+       </div>`
+    : `<p class="voorkeur-uitleg">Nog geen. Zet in Zoeken het vinkje Onthoud mijn zoekopdracht aan.</p>`;
+}
+
+let zoekMailBezig = false;
+async function zetZoekMail(aan) {
+  if (zoekMailBezig || !bewaardeZoek || !!bewaardeZoek.mail === aan) return;
+  zoekMailBezig = true;
+  try {
+    const mid = bewaardeZoek.musician_id;
+    const { error } = await db.from('musician_saved_search').update({ mail: aan }).eq('musician_id', mid);
+    if (error) throw error;
+    bewaardeZoek.mail = aan;
+    if (aan) {
+      // Wie de mail helemaal had uitgezet, zet hem met deze tik weer aan (TT-295).
+      const { data: m, error: mErr } = await db.from('musicians')
+        .select('email_digest_frequency').eq('id', mid).single();
+      if (mErr) throw mErr;
+      if (m && m.email_digest_frequency === 'off') {
+        const { error: uErr } = await db.from('musicians')
+          .update({ email_digest_frequency: 'daily' }).eq('id', mid);
+        if (uErr) throw uErr;
+        selectDigestFrequency('daily');
+        showToast('Je mail stond uit en staat nu op dagelijks.');
+      }
+    }
+  } catch (e) {
+    logCaught('zetZoekMail', e);
+    showToast(friendlyErrorMessage(e, 'de mail aan- of uitzetten'));
+  } finally {
+    zoekMailBezig = false;
+    vulBewaardeZoekInInstellingen();
+  }
 }
