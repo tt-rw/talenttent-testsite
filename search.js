@@ -2293,7 +2293,7 @@ function toggleGedeeldRij(sleutel) {
    database (sessie 17, punt 6); één rij per muzikant (TT-295); de naam niet
    (TT-295); wel soort, plaats, straal, instrument, genre, leeftijd, niveau en
    volgorde. Weergave is een keuze van het toestel en blijft in localStorage.
-   De mail bij nieuwe treffers is een aparte schakelaar in Instellingen →
+   De mail bij nieuwe resultaten is een aparte schakelaar in Instellingen →
    E-mailvoorkeuren ("twee aparte dingen"); een nieuwe rij begint zonder mail.
    Zonder account of zonder profiel staat de vink er wel; een tik geeft
    "Maak een gratis profiel aan, dan onthouden we je zoekopdracht." (sessie 18).
@@ -2440,7 +2440,7 @@ async function onthoudKlik(vink) {
       const { error } = await db.from('musician_saved_search').delete().eq('musician_id', mid);
       if (error) throw error;
       bewaardeZoek = null;
-      if (hadMail) showToast('Je krijgt ook geen mail meer over nieuwe treffers.');
+      if (hadMail) showToast('Je krijgt ook geen mail meer over nieuwe resultaten.');
     }
   } catch (e) {
     logCaught('onthoudKlik', e);

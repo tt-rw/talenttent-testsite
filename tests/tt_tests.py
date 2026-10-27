@@ -4308,7 +4308,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         ip39.wait_for_timeout(400)
         check("de vink uit haalt de rij weg en zegt dat er ook geen mail meer komt",
               ip39.evaluate("window.TT_STUB.data.musician_saved_search.length") == 0
-              and toast(ip39) == "Je krijgt ook geen mail meer over nieuwe treffers.", toast(ip39))
+              and toast(ip39) == "Je krijgt ook geen mail meer over nieuwe resultaten.", toast(ip39))
         ip39.evaluate("openSearchPrefsModal()")
         ip39.wait_for_timeout(400)
         check("daarna staat er in Instellingen 'Nog geen', met waar je hem aanzet",
