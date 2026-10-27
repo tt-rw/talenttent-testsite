@@ -2003,6 +2003,7 @@ def blok_browser():
                      rechts: (() => { const p = x.querySelector('.level-pill, .gedeeld-speler-niet');
                                       return p ? Math.round(x.getBoundingClientRect().right - p.getBoundingClientRect().right) : null; })(),
                      foto: !!x.querySelector('.gedeeld-speler-foto'),
+                     schuin: x.querySelector('.level-pill') ? getComputedStyle(x.querySelector('.level-pill')).fontStyle : '',
                      vet: getComputedStyle(x.querySelector('.gedeeld-speler-naam')).fontWeight,
                      kleur: getComputedStyle(x.querySelector('.gedeeld-speler-naam')).color,
                      zicht: getComputedStyle(x).opacity, anim: getComputedStyle(x).animationName,
@@ -2014,9 +2015,9 @@ def blok_browser():
         check("een tik klapt de regel open", pan and pan["uitgeklapt"] == "true", json.dumps(pan))
         check("paneel: eerst wie het speelt, beste niveau eerst, dan wie het niet speelt (besluit 27-10-2026)",
               pan and [x["naam"] for x in pan["spelers"]] == ["ronnie", "dylan", "sanne"], json.dumps(pan))
-        check("niveau staat rechts naast de naam",
+        check("niveau staat rechts naast de naam, niet cursief (besluit 27-10-2026)",
               pan and pan["spelers"][0]["niveau"] == "Podium" and pan["spelers"][1]["niveau"] == "Basis"
-              and pan["spelers"][0]["rechts"] == 0, json.dumps(pan))
+              and pan["spelers"][0]["rechts"] == 0 and pan["spelers"][0]["schuin"] == "normal", json.dumps(pan))
         check("wie het niet speelt: 'Speelt dit niet', naam gewoon, niet somber (geen grijze of doorzichtige rij)",
               pan and pan["spelers"][2]["niet"] and pan["spelers"][2]["tekst"] == "Speelt dit niet"
               and pan["spelers"][2]["niveau"] == "" and pan["spelers"][2]["vet"] == "400"
@@ -3659,8 +3660,10 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             document.getElementById('appRoot').appendChild(s); const cs = getComputedStyle(s);
             const u = [cs.backgroundColor, cs.fontSize, cs.borderTopLeftRadius, cs.textTransform, cs.fontWeight, cs.fontStyle, cs.color, cs.width];
             s.remove(); return u; }""")
-        check("K9: niveaulabel in de tagvorm, wit, vet, cursief, vaste breedte",
-              pil == ["rgba(0, 0, 0, 0)", "11px", "6px", "none", "700", "italic", "rgb(240, 240, 240)", "100px"], json.dumps(pil))
+        # Niet cursief sinds 27-10-2026 (besluit Ronald: "het beheersingsniveau moet
+        # niet cursief. overal in de app."); vervangt "wit, vet, cursief" van K9.
+        check("K9: niveaulabel in de tagvorm, wit, vet, niet cursief, vaste breedte",
+              pil == ["rgba(0, 0, 0, 0)", "11px", "6px", "none", "700", "normal", "rgb(240, 240, 240)", "100px"], json.dumps(pil))
 
         # K10 — kruisjes.
         kruis = page.evaluate("""() => {
