@@ -1500,20 +1500,20 @@
   .nummer-overneem[aria-expanded="true"] { z-index: 242; border-color: var(--accent); color: var(--accent); background: var(--bg); }
   /* De beheersing kiezen met labels in de vorm van het niveaulabel (TT-531,
      besluit Ronald 29-10-2026, optie 1 op beeld): een wit vlak (licht), drie
-     labels van 72px, lichtere laag, geen lijnen en geen vinkje. 32px hoog met
-     12px ertussen: elk label heeft 44px tikvlak (huisstijl §6). */
+     labels van 72px, lichtere laag, geen lijnen en geen vinkje. 36px hoog met
+     8px ertussen (besluit Ronald, optie b): elk label heeft 44px tikvlak (huisstijl §6). */
   .choice-menu.beheersing-menu {
     width: auto; padding: 8px; border-radius: 12px;
     background: var(--surface3); box-shadow: var(--schaduw-beheersing);
   }
   .menu-laag:has(+ .beheersing-menu) { background: var(--laag-beheersing); }
   .beheersing-menu .choice-option {
-    position: relative; justify-content: center; width: 72px; min-height: 32px; height: 32px; padding: 0;
+    position: relative; justify-content: center; width: 72px; min-height: 36px; height: 36px; padding: 0;
     background: var(--surface); border: 1px solid var(--rand-neutraal); border-radius: 8px;
     font-size: 12px; font-weight: 700;
   }
-  .beheersing-menu .choice-option + .choice-option { border-top: 1px solid var(--rand-neutraal); margin-top: 12px; }
-  .beheersing-menu .choice-option::after { content: ''; position: absolute; inset: -6px -8px; }
+  .beheersing-menu .choice-option + .choice-option { border-top: 1px solid var(--rand-neutraal); margin-top: 8px; }
+  .beheersing-menu .choice-option::after { content: ''; position: absolute; inset: -4px -8px; }
   /* Geen vinkje en geen gekozen stand in het menu: de keuze staat al in de rij
      (Ronald: "de tussenstap met een vinkje kan eruit ... kiezen is direct weergeven"). */
   .beheersing-menu .choice-option.selected { color: var(--text); }

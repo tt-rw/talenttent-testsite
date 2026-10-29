@@ -8312,8 +8312,8 @@ window.TT_STUB.fnAntwoord = {};
         check("tik op het plusteken: keuzemenu Basis, Bijna, Podium, zonder vinkje, nog niets opgeslagen",
               mn.get("opties") == ["Basis", "Bijna", "Podium"] and mn.get("vinkjes") == 0 and mn.get("opslaan") == 0
               and mn.get("toast") == "" and mn.get("laag") == 1 and mn.get("aria") == "true", j102)
-        check("optie 1: drie labels van 72x32, 12px ertussen, tikvlak 44px, vlak 90px breed op de rechterlijn, 6px eronder",
-              mn.get("labels") == [[72, 32]] * 3 and mn.get("tussen") == 12 and mn.get("tik") == ["-6px", "-8px"]
+        check("optie 1b: drie labels van 72x36, 8px ertussen, tikvlak 44px, vlak 90px breed op de rechterlijn, 6px eronder",
+              mn.get("labels") == [[72, 36]] * 3 and mn.get("tussen") == 8 and mn.get("tik") == ["-4px", "-8px"]
               and mn.get("breed") == 90 and mn.get("rechts") == 0 and mn.get("onder") == 6, j102)
         check("optie 1: lichtere laag (35% in donker), plusteken licht op boven de laag",
               mn.get("laagKleur") == "rgba(0, 0, 0, 0.35)" and mn.get("plusRand") == mn.get("accent") and mn.get("plusZ") == "242", j102)
@@ -10151,8 +10151,8 @@ window.TT_STUB.fnAntwoord = {};
         o93 = d93["opmaak"]
         check("voorproef: 12px, gedempt, het aantal vet in tekstkleur, het icoon in --steun",
               o93["maat"] == "12px" and o93["tekst"] == o93["muted"] and o93["vet"] == o93["text"] and o93["icoon"] == o93["steun"], json.dumps(d93))
-        check("beheersing: Basis, Bijna, Podium als labels van 72x32, rechts op de rechterlijn van de keuze, geen vinkje (TT-531)",
-              d93["menuOpen"] and d93["opties"] == ["Basis", "Bijna", "Podium"] and d93["labels"] == [[72, 32]] * 3 and d93["rechts"] == 0 and d93["vinkjes"] == 0, json.dumps(d93))
+        check("beheersing: Basis, Bijna, Podium als labels van 72x36, rechts op de rechterlijn van de keuze, geen vinkje (TT-531)",
+              d93["menuOpen"] and d93["opties"] == ["Basis", "Bijna", "Podium"] and d93["labels"] == [[72, 36]] * 3 and d93["rechts"] == 0 and d93["vinkjes"] == 0, json.dumps(d93))
         check("kiezen zet de beheersing; de keuze wordt vet, een niet-gekozen blijft gedempt",
               d93["gekozen"]["level"] == "podium" and d93["gekozen"]["keuze"] == "Podium" and d93["gekozen"]["vet"] and not d93["gekozen"]["leeg"], json.dumps(d93))
         check("de i bij Beheersing opent de uitleg (Basis, Bijna, Podium, mag ook later)",
