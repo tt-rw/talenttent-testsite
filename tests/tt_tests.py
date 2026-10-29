@@ -10066,8 +10066,10 @@ window.TT_STUB.fnAntwoord = {};
           u.menuOpen = $('behMenu' + i1).classList.contains('open');
           const opt = [...$('behMenu' + i1).querySelectorAll('.choice-option')];
           u.opties = opt.map(o => o.textContent.trim());
-          u.menuTekstX = Math.round(opt[0].getBoundingClientRect().left + parseFloat(getComputedStyle(opt[0]).paddingLeft));
-          u.keuzeTekstX = Math.round($('behVeld' + i1).getBoundingClientRect().left);
+          // TT-531 (besluit Ronald, 29-10-2026): dezelfde labels als bij het plusteken, rechts op de rechterlijn van de keuze.
+          u.labels = opt.map(o => [Math.round(o.getBoundingClientRect().width), Math.round(o.getBoundingClientRect().height)]);
+          u.rechts = Math.round($('behVeld' + i1).getBoundingClientRect().right - $('behMenu' + i1).getBoundingClientRect().right);
+          u.vinkjes = [...$('behMenu' + i1).querySelectorAll('.choice-option-check')].filter(c => getComputedStyle(c).display !== 'none' && c.textContent.trim()).length;
           opt.find(o => o.textContent.trim() === 'Podium').click(); await w(250);
           u.gekozen = { level: state.songs.find(s => s.title === 'Jump').level, keuze: rijVan('Jump').keuze, vet: rijVan('Jump').gekozen, leeg: rijVan('One').gekozen };
           // Uitleg achter de i
@@ -10149,8 +10151,8 @@ window.TT_STUB.fnAntwoord = {};
         o93 = d93["opmaak"]
         check("voorproef: 12px, gedempt, het aantal vet in tekstkleur, het icoon in --steun",
               o93["maat"] == "12px" and o93["tekst"] == o93["muted"] and o93["vet"] == o93["text"] and o93["icoon"] == o93["steun"], json.dumps(d93))
-        check("beheersing: keuzemenu met Basis, Bijna, Podium; tekst van de opties op dezelfde x als de keuze",
-              d93["menuOpen"] and d93["opties"] == ["Basis", "Bijna", "Podium"] and d93["menuTekstX"] == d93["keuzeTekstX"], json.dumps(d93))
+        check("beheersing: Basis, Bijna, Podium als labels van 72x32, rechts op de rechterlijn van de keuze, geen vinkje (TT-531)",
+              d93["menuOpen"] and d93["opties"] == ["Basis", "Bijna", "Podium"] and d93["labels"] == [[72, 32]] * 3 and d93["rechts"] == 0 and d93["vinkjes"] == 0, json.dumps(d93))
         check("kiezen zet de beheersing; de keuze wordt vet, een niet-gekozen blijft gedempt",
               d93["gekozen"]["level"] == "podium" and d93["gekozen"]["keuze"] == "Podium" and d93["gekozen"]["vet"] and not d93["gekozen"]["leeg"], json.dumps(d93))
         check("de i bij Beheersing opent de uitleg (Basis, Bijna, Podium, mag ook later)",

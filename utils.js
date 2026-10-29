@@ -1091,7 +1091,7 @@ function setlistLijstHTML(lijst, p, weg) {
       <div class="menu-anchor setlist-keuze-plek">
         <button type="button" class="setlist-keuze${naam ? ' gekozen' : ''}" id="${p}behVeld${i}" aria-label="Beheersing van ${escHtml(s.title)}"><span class="wheel-field-label">${naam || 'Beheersing'}</span>${PIJL_OMLAAG}</button>
         <select id="${p}behSel${i}" hidden><option value=""${naam ? '' : ' selected'} style="display:none">Beheersing</option>${opties}</select>
-        <div class="choice-menu setlist-keuze-menu" id="${p}behMenu${i}" role="listbox"></div>
+        <div class="choice-menu setlist-keuze-menu beheersing-menu" id="${p}behMenu${i}" role="listbox"></div>
       </div>
       ${s._confirmDelete
         ? `<button type="button" class="song-remove setlist-zeker" onclick="${weg}(${i})" title="Bevestig verwijderen">Zeker?</button>`

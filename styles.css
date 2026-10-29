@@ -1145,8 +1145,12 @@
   .setlist-keuze::after { content: ''; position: absolute; inset: 0 -4px -12px -8px; }
   .setlist-keuze.gekozen { color: var(--text); font-weight: 700; }
   .setlist-keuze svg { width: 12px; height: 12px; flex: none; }
-  /* -1px: de rand van het menu, zodat de optietekst precies op de x van de keuze staat. */
-  .choice-menu.setlist-keuze-menu { left: calc(-1 * var(--field-inset) - 1px); right: auto; width: 132px; }
+  /* De beheersing kiezen met dezelfde labels als bij het plusteken (TT-531,
+     besluit Ronald 29-10-2026: "in Je setlist hetzelfde doorvoeren"): het menu
+     rechts op de rechterlijn van de keuze. */
+  .choice-menu.setlist-keuze-menu { left: auto; right: 0; }
+  /* Zolang het menu openstaat, ligt de keuze boven de laag, zoals het plusteken. */
+  .setlist-keuze[aria-expanded="true"] { z-index: 242; }
   /* Het kruisje: tikvlak 44px met het teken van 14px in het midden (15px
      rondom). -3px = 12px opvulling - 15px: de inkt begint precies 12px onder
      de bovenrand en eindigt 12px voor de zijrand. */
@@ -1510,7 +1514,9 @@
   }
   .beheersing-menu .choice-option + .choice-option { border-top: 1px solid var(--rand-neutraal); margin-top: 12px; }
   .beheersing-menu .choice-option::after { content: ''; position: absolute; inset: -6px -8px; }
-  .beheersing-menu .choice-option.selected { color: var(--text); border-color: var(--accent); }
+  /* Geen vinkje en geen gekozen stand in het menu: de keuze staat al in de rij
+     (Ronald: "de tussenstap met een vinkje kan eruit ... kiezen is direct weergeven"). */
+  .beheersing-menu .choice-option.selected { color: var(--text); }
   .beheersing-menu .choice-option-check { display: none; }
   .nummers-inklap:not(.open) .nummers-inklap-rijen:has(.choice-menu.open) { -webkit-mask-image: none; mask-image: none; }
 
