@@ -99,6 +99,8 @@
     --laag-venster: rgba(0,0,0,0.8);
     --laag-opslaan: rgba(0,0,0,0.7);
     --laag-menu: rgba(0,0,0,0.6);
+    --laag-beheersing: rgba(0,0,0,0.35);    /* lichter, achter de beheersingskeuze (TT-531) */
+    --schaduw-beheersing: 0 8px 24px rgba(0,0,0,0.45);
     --laag-wiel: rgba(0,0,0,0.55);
     --laag-fout: rgba(13,13,13,0.96);
     --schaduw-menu: 0 12px 32px rgba(0,0,0,0.7);
@@ -170,6 +172,8 @@
     --laag-venster: rgba(30,30,30,0.45);
     --laag-opslaan: rgba(30,30,30,0.45);
     --laag-menu: rgba(30,30,30,0.45);
+    --laag-beheersing: rgba(30,30,30,0.15);
+    --schaduw-beheersing: 0 8px 24px rgba(30,30,30,0.14);
     --laag-wiel: rgba(30,30,30,0.45);
     --laag-fout: rgba(246,243,236,0.96);
     --schaduw-menu: 0 4px 20px rgba(30,30,30,0.06);
@@ -1482,6 +1486,33 @@
   .nummer-overneem::after { content: ''; position: absolute; inset: -10px; }
   .nummer-overneem svg { width: 10px; height: 10px; }
   .nummer-overneem.aan { color: var(--steun); }
+  /* TT-531: het keuzemenu onder het plusteken. Even breed als in Je setlist
+     (besluit Ronald, 29-10-2026: "zo laten"), de rechterkant op de
+     rechterlijn van de knop. In een ingeklapte lijst valt de vervaging weg
+     zolang het menu openstaat, anders vervaagt het menu mee. */
+  .nummer-overneem-plek { display: flex; }
+  .choice-menu.overneem-menu { left: auto; right: 0; }
+  /* Zolang het menu openstaat, ligt het plusteken licht op boven de laag. */
+  .nummer-overneem[aria-expanded="true"] { z-index: 242; border-color: var(--accent); color: var(--accent); background: var(--bg); }
+  /* De beheersing kiezen met labels in de vorm van het niveaulabel (TT-531,
+     besluit Ronald 29-10-2026, optie 1 op beeld): een wit vlak (licht), drie
+     labels van 72px, lichtere laag, geen lijnen en geen vinkje. 32px hoog met
+     12px ertussen: elk label heeft 44px tikvlak (huisstijl §6). */
+  .choice-menu.beheersing-menu {
+    width: auto; padding: 8px; border-radius: 12px;
+    background: var(--surface3); box-shadow: var(--schaduw-beheersing);
+  }
+  .menu-laag:has(+ .beheersing-menu) { background: var(--laag-beheersing); }
+  .beheersing-menu .choice-option {
+    position: relative; justify-content: center; width: 72px; min-height: 32px; height: 32px; padding: 0;
+    background: var(--surface); border: 1px solid var(--rand-neutraal); border-radius: 8px;
+    font-size: 12px; font-weight: 700;
+  }
+  .beheersing-menu .choice-option + .choice-option { border-top: 1px solid var(--rand-neutraal); margin-top: 12px; }
+  .beheersing-menu .choice-option::after { content: ''; position: absolute; inset: -6px -8px; }
+  .beheersing-menu .choice-option.selected { color: var(--text); border-color: var(--accent); }
+  .beheersing-menu .choice-option-check { display: none; }
+  .nummers-inklap:not(.open) .nummers-inklap-rijen:has(.choice-menu.open) { -webkit-mask-image: none; mask-image: none; }
 
 
   /* Divider */
