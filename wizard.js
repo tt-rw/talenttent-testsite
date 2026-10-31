@@ -965,7 +965,7 @@ async function submitProfile() {
 // in de wizard, wat de indruk wekte dat de gebruiker er iets over te zeggen had.
 // Bestaande profielen met een afwijkende kleur in de database blijven ongemoeid:
 // bij het bewerken van een profiel wordt profile_color niet meer overschreven.
-const DEFAULT_PROFILE_COLOR = '#f5c518';
+const DEFAULT_PROFILE_COLOR = '#FFB81C';
 
 // TT-352 (27-09-2026): één bron voor een lege wizard, bij het laden én bij
 // uitloggen. Tot die dag stond een tweede kopie van dit object in

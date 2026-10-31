@@ -488,7 +488,7 @@ async function openDeleteAccountModal() {
   if (!mid) { showToast('Je hebt geen profiel om te verwijderen.'); return; }
 
   const area = document.getElementById('deleteAccountBandsArea');
-  area.innerHTML = '<div style="color:var(--muted);font-size:13px;">Bezig met controleren...</div>';
+  area.innerHTML = '<div style="color:var(--muted);font-size:12px;">Bezig met controleren...</div>';
   document.getElementById('deleteAccountConfirmBtn').disabled = false;
   document.getElementById('deleteAccountConfirmBtn').textContent = 'Account verwijderen';
   document.getElementById('deleteAccountModal').classList.add('visible');
@@ -513,7 +513,7 @@ async function openDeleteAccountModal() {
     pendingSoloBandIds = soloBandIds;
 
     area.innerHTML = !decisions.length ? '' : `
-      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Je bent beheerder van ${decisions.length === 1 ? 'een band' : `${decisions.length} bands`} met andere leden. Kies per band wat er gebeurt:</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Je bent beheerder van ${decisions.length === 1 ? 'een band' : `${decisions.length} bands`} met andere leden. Kies per band wat er gebeurt:</div>
       ${decisions.map(b => `
         <div class="delete-account-band-row" data-band-id="${jsAttr(b.id)}" style="margin:8px 0;padding:12px;border:1px solid var(--border);border-radius:8px;">
           <div style="font-weight:700;margin-bottom:8px;">${escHtml(b.name)}</div>
@@ -524,7 +524,7 @@ async function openDeleteAccountModal() {
         </div>`).join('')}`;
   } catch (e) {
     logCaught('openDeleteAccountModal', e);
-    area.innerHTML = `<div style="color:var(--danger);font-size:13px;">${escHtml(friendlyErrorMessage(e, 'je bands laden'))}</div>`;
+    area.innerHTML = `<div style="color:var(--danger);font-size:12px;">${escHtml(friendlyErrorMessage(e, 'je bands laden'))}</div>`;
   }
 }
 
@@ -1694,7 +1694,7 @@ function openMusicianNiveauInfoModal() {
   const rowsHTML = NIVEAU_INFO_MUSICIAN_ROWS.map(r => `<tr>${r.map((c, i) => `<td>${escHtml(i === 0 ? stripParenthetical(c) : c)}</td>`).join('')}</tr>`).join('');
   document.getElementById('niveauInfoModalContent').innerHTML = `
     <div class="filter-title" style="margin-bottom:4px;">Niveau-indeling per instrument</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Kies per instrument het niveau waar je het dichtst bij in de buurt zit. Zie het als een richtlijn, geen examen.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Kies per instrument het niveau waar je het dichtst bij in de buurt zit. Zie het als een richtlijn, geen examen.</p>
     <div class="niveau-info-wrap">
       <table class="niveau-info-table">
         <thead><tr>${NIVEAU_INFO_MUSICIAN_HEADERS.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead>
@@ -1702,10 +1702,10 @@ function openMusicianNiveauInfoModal() {
       </table>
     </div>
     <div class="filter-title" style="font-size:15px;margin-bottom:8px;">Belangrijk: gebruik dit systeem als jouw kompas</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Geen enkele muzikant past perfect in één enkel hokje, en dat is volstrekt normaal. Je kunt bijvoorbeeld technisch heel ver zijn (Niveau 4), maar nog nooit op een podium hebben gestaan (Niveau 1).</p>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Zie deze niveaubeschrijvingen dan ook puur als een praktische richtlijn, niet als een set onwrikbare wetten.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Geen enkele muzikant past perfect in één enkel hokje, en dat is volstrekt normaal. Je kunt bijvoorbeeld technisch heel ver zijn (Niveau 4), maar nog nooit op een podium hebben gestaan (Niveau 1).</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Zie deze niveaubeschrijvingen dan ook puur als een praktische richtlijn, niet als een set onwrikbare wetten.</p>
     <div class="filter-title" style="font-size:15px;margin-bottom:8px;">Hoe kies je jouw niveau?</div>
-    <p style="font-size:13px;color:var(--muted);">Loop de criteria per niveau rustig langs. Kijk niet naar waar je één losse vaardigheid hebt zitten, maar kijk naar het grotere plaatje. Kies simpelweg het niveau waar jij het dichtst bij in de buurt zit en waar je jezelf het meest in herkent. Het is geen examen, maar een hulpmiddel om te ontdekken waar je nu staat en waar je naartoe kunt groeien!</p>
+    <p style="font-size:12px;color:var(--muted);">Loop de criteria per niveau rustig langs. Kijk niet naar waar je één losse vaardigheid hebt zitten, maar kijk naar het grotere plaatje. Kies simpelweg het niveau waar jij het dichtst bij in de buurt zit en waar je jezelf het meest in herkent. Het is geen examen, maar een hulpmiddel om te ontdekken waar je nu staat en waar je naartoe kunt groeien!</p>
   `;
   document.getElementById('niveauInfoModal').classList.add('visible');
 }

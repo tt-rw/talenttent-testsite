@@ -18,7 +18,7 @@
 <meta property="og:url" content="https://talenttent.org/">
 <meta property="og:title" content="The Talent Tent — Talent zoekt talent">
 <meta property="og:description" content="Vind muzikanten en bands bij jou in de buurt voor jams, repetities en optredens.">
-<meta property="og:image" content="https://talenttent.org/icon-512.png?v=20260928a">
+<meta property="og:image" content="https://talenttent.org/icon-512.png?v=20261031a">
 <meta property="og:image:width" content="512">
 <meta property="og:image:height" content="512">
 <meta property="og:locale" content="nl_NL">
@@ -26,9 +26,9 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="The Talent Tent — Talent zoekt talent">
 <meta name="twitter:description" content="Vind muzikanten en bands bij jou in de buurt voor jams, repetities en optredens.">
-<meta name="twitter:image" content="https://talenttent.org/icon-512.png?v=20260928a">
+<meta name="twitter:image" content="https://talenttent.org/icon-512.png?v=20261031a">
 
-<link rel="manifest" href="manifest.json?v=20260928a">
+<link rel="manifest" href="manifest.json?v=20261031a">
 <meta name="theme-color" content="#0d0d0d">
 <!-- TT-341 stap 3 (26-09-2026, besluit Ronald: "a"): licht of donker.
      Standaard volgt de app het toestel. Een eigen keuze uit Instellingen
@@ -55,15 +55,15 @@
   }
   pasLichtDonkerToe();
 </script>
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260928a">
-<link rel="apple-touch-icon" href="icon-192.png?v=20260928a">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20261031a">
+<link rel="apple-touch-icon" href="icon-192.png?v=20261031a">
 <!-- TT-318 (24-09-2026): Alfa Slab One is weg uit deze regel; het woordmerk
      heeft een eigen lettertype in de repo (styles.css, @font-face). Vooraf
      laden, zodat het er is voordat de kop getekend wordt. crossorigin is
      verplicht bij een lettertype, ook op het eigen domein. -->
 <link rel="preload" href="tt-woordmerk.woff2" as="font" type="font/woff2" crossorigin>
-<!-- TT-492 (20-10-2026): Roboto staat nu in de repo (styles.css, @font-face), niet meer bij Google Fonts: geen extern verzoek, het adres van de bezoeker gaat niet naar Google. -->
-<link rel="preload" href="roboto-400.woff2" as="font" type="font/woff2" crossorigin>
+<!-- TT-492 (20-10-2026): het lettertype staat in de repo (styles.css, @font-face), niet bij Google Fonts: geen extern verzoek, het adres van de bezoeker gaat niet naar Google. TT-517 fase 1: Inter in plaats van Roboto. -->
+<link rel="preload" href="inter-400.woff2" as="font" type="font/woff2" crossorigin>
 <!-- TT-483 (21-10-2026): supabase-js staat nu in de repo, vaste versie 2.118.0, niet meer bij een CDN (@2 liep mee met elke nieuwe release en had geen integriteitscontrole). Geen extern verzoek meer voor deze bibliotheek. Nieuwe versie nemen = bestand vervangen en ?v= ophogen. -->
 <script src="supabase.js?v=2.118.0"></script>
 <script>
@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261029d">
+<link rel="stylesheet" href="styles.css?v=20261031a">
 </head>
 <body>
 
@@ -212,7 +212,7 @@
   </button>
 </nav>
 
-<div id="editModeBanner" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:8px 24px;background:var(--tint);border-top:1px solid var(--border);font-size:13px;">
+<div id="editModeBanner" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:8px 24px;background:var(--tint);border-top:1px solid var(--border);font-size:12px;">
   <span>Je bent nog bezig met je profiel bewerken.</span>
   <button class="btn btn-primary" onclick="requireLogin('register')">Verder bewerken →</button>
 </div>
@@ -250,8 +250,8 @@
   <div class="auth-wrap">
     <div class="auth-panel">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="font-family:'Roboto',sans-serif;font-size:28px;color:var(--accent);letter-spacing:1px;">Inloggen</div>
-        <p style="font-size:13px;color:var(--muted);margin-top:4px;">Welkom terug bij The Talent Tent</p>
+        <div style="font-family:'Inter',sans-serif;font-size:22px;color:var(--accent);letter-spacing:1px;">Inloggen</div>
+        <p style="font-size:12px;color:var(--muted);margin-top:4px;">Welkom terug bij The Talent Tent</p>
       </div>
 
       <div id="authSuccess" class="auth-success"></div>
@@ -277,11 +277,11 @@
       </div>
       </form>
       <div style="text-align:right;margin-bottom:20px;">
-        <button id="forgotPasswordBtn" onclick="forgotPassword()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Roboto',sans-serif;text-decoration:underline;">Wachtwoord vergeten?</button>
+        <button id="forgotPasswordBtn" onclick="forgotPassword()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:underline;">Wachtwoord vergeten?</button>
       </div>
       <button class="btn btn-primary" style="width:100%;margin-bottom:16px;" onclick="signIn()">Inloggen →</button>
       <div style="text-align:center;padding-top:16px;border-top:1px solid var(--border);">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Nog geen profiel?</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Nog geen profiel?</p>
         <button class="btn btn-ghost" style="width:100%;" onclick="showView('register')">Profiel aanmaken →</button>
       </div>
     </div>
@@ -1739,7 +1739,7 @@
         <div id="messagesReplyCounter" style="text-align:right;font-size:12px;color:var(--muted);margin-top:4px;">0/2000</div>
         <!-- V-04 (13-08-2026): i.p.v. een actief invoerveld naar een niet meer
              bestaand account. -->
-        <div id="messagesDeletedNotice" style="display:none;text-align:center;font-size:13px;color:var(--muted);padding:12px;background:var(--surface2);border-radius:8px;">Dit account bestaat niet meer. Je kunt dit gesprek niet voortzetten.</div>
+        <div id="messagesDeletedNotice" style="display:none;text-align:center;font-size:12px;color:var(--muted);padding:12px;background:var(--surface2);border-radius:8px;">Dit account bestaat niet meer. Je kunt dit gesprek niet voortzetten.</div>
       </div>
     </div>
   </div>
@@ -2058,8 +2058,8 @@
   <div class="auth-wrap">
     <div class="auth-panel">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="font-family:'Roboto',sans-serif;font-size:28px;color:var(--accent);letter-spacing:1px;">Nieuw wachtwoord</div>
-        <p style="font-size:13px;color:var(--muted);margin-top:6px;">Kies een nieuw wachtwoord voor je account.</p>
+        <div style="font-family:'Inter',sans-serif;font-size:22px;color:var(--accent);letter-spacing:1px;">Nieuw wachtwoord</div>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px;">Kies een nieuw wachtwoord voor je account.</p>
       </div>
       <div id="resetSuccess" class="auth-success"></div>
       <div class="field" style="margin-bottom:20px;">
@@ -2147,7 +2147,7 @@
 <!-- Generieke bevestigingsmodal (bijv. profiel verwijderen) -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal-box modal-box-sm">
-    <p id="confirmMessage" style="margin-bottom:24px;font-size:14px;"></p>
+    <p id="confirmMessage" style="margin-bottom:24px;font-size:12px;"></p>
     <!-- TT-228 (09-09-2026): secundaire knop links, primaire rechts. -->
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="document.getElementById('confirmModal').classList.remove('visible')">Annuleren</button>
@@ -2163,7 +2163,7 @@
 <div class="modal-overlay" id="deleteAccountModal" onclick="if(event.target===this)closeDeleteAccountModal()">
   <div class="modal-box modal-box-lg">
     <h3 style="margin-bottom:12px;">Account verwijderen</h3>
-    <p style="margin-bottom:16px;font-size:14px;">Dit account inclusief alle gegevens wordt permanent verwijderd.</p>
+    <p style="margin-bottom:16px;font-size:12px;">Dit account inclusief alle gegevens wordt permanent verwijderd.</p>
     <div id="deleteAccountBandsArea"></div>
     <!-- TT-228 (09-09-2026): secundaire knop links, primaire rechts. -->
     <div class="btn-row" style="margin-top:20px;">
@@ -2201,7 +2201,7 @@
 <div class="modal-overlay" id="meldModal" data-close="closeMeldModal" onclick="if(event.target===this)closeMeldModal()">
   <div class="modal-box modal-box-md">
     <div class="filter-title" id="meldTitel" style="margin-bottom:4px;">Melden</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Over <strong id="meldDoelNaam" style="color:var(--text);"></strong>. Je melding komt bij ons binnen; de ander krijgt hier geen bericht van.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:20px;">Over <strong id="meldDoelNaam" style="color:var(--text);"></strong>. Je melding komt bij ons binnen; de ander krijgt hier geen bericht van.</p>
 
     <div class="field" style="margin-bottom:20px;">
       <label>Waar gaat het over?</label>
@@ -2226,7 +2226,7 @@
   <div class="modal-box modal-box-md">
     <button class="modal-close" onclick="closeGeblokkeerdModal()" aria-label="Sluiten"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></button>
     <div class="filter-title" style="margin-bottom:4px;">Geblokkeerde muzikanten</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Je ziet ze niet in de zoekresultaten, en hun berichten komen niet bij je aan.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:20px;">Je ziet ze niet in de zoekresultaten, en hun berichten komen niet bij je aan.</p>
     <div id="geblokkeerdLijst"></div>
   </div>
 </div>
@@ -2240,7 +2240,7 @@
   <div class="modal-box modal-box-md">
     <button class="modal-close" onclick="closeInloggegevens()" aria-label="Sluiten"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg></button>
     <div class="filter-title" style="margin-bottom:4px;">E-mailadres en wachtwoord</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Hiermee log je in.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:20px;">Hiermee log je in.</p>
 
     <div id="igMelding" class="auth-success"></div>
 
@@ -2348,7 +2348,7 @@
          uit de band halen en beheer overdragen staan in de tegel Onze
          bezetting en het blok Bandbeheer. -->
     <div class="filter-title" style="margin-bottom:8px;padding-right:52px;">Lid uitnodigen</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">De muzikant staat pas als lid op het bandprofiel zodra hij of zij de uitnodiging zelf bevestigt.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">De muzikant staat pas als lid op het bandprofiel zodra hij of zij de uitnodiging zelf bevestigt.</p>
     <!-- TT-253 (02-10-2026, Ronald: "deze pagina in de bandomgeving is niet
          aangepast"): dezelfde opbouw als Vind een muzikant (huisstijl §7):
          Naam, dan Plaats en Straal op één regel (.filter-row-city, straal als
@@ -2508,15 +2508,15 @@
 </div><!-- /#appRoot -->
 
 <script src="core.js?v=20261027b"></script>
-<script src="utils.js?v=20261030a"></script>
+<script src="utils.js?v=20261031a"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261030a"></script>
 <script src="postcode.js?v=20261027e"></script>
-<script src="wizard.js?v=20261028b"></script>
+<script src="wizard.js?v=20261031a"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261028b"></script>
-<script src="musicians.js?v=20261030a"></script>
-<script src="bands.js?v=20261028b"></script>
+<script src="search.js?v=20261031a"></script>
+<script src="musicians.js?v=20261031a"></script>
+<script src="bands.js?v=20261031a"></script>
 <script src="messages.js?v=20261028a"></script>
 <script src="push.js?v=20261027b"></script>
 <script src="modals-shared.js?v=20261026c"></script>

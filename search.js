@@ -1058,8 +1058,8 @@ function renderZoekResultaten(lijst, opts) {
     }
     el.innerHTML = `
       <div class="no-results">
-        <p style="font-size:16px;font-weight:600;margin-bottom:8px;">${kop}</p>
-        <p style="font-size:13px;">${uitleg}</p>
+        <p style="font-size:15px;font-weight:600;margin-bottom:8px;">${kop}</p>
+        <p style="font-size:12px;">${uitleg}</p>
       </div>`;
     onthoudBijwerken();
     return;
@@ -1695,8 +1695,8 @@ function renderSetlistResults(musicians, opts) {
       : 'Niemand in de Tent (binnen je zoekgebied) heeft (nog) een match met deze setlist.';
     el.innerHTML = `
       <div class="no-results">
-        <p style="font-size:16px;font-weight:600;margin-bottom:8px;">Geen muzikanten gevonden</p>
-        <p style="font-size:13px;">${uitleg}</p>
+        <p style="font-size:15px;font-weight:600;margin-bottom:8px;">Geen muzikanten gevonden</p>
+        <p style="font-size:12px;">${uitleg}</p>
       </div>`;
     return;
   }
@@ -2094,8 +2094,8 @@ function renderGedeeldResults() {
   if (!totaal) {
     el.innerHTML = `
       <div class="no-results">
-        <p style="font-size:16px;font-weight:600;margin-bottom:8px;">Geen gedeelde nummers</p>
-        <p style="font-size:13px;">Geen van deze nummers staat bij minstens 2 van deze muzikanten in het repertoire.</p>
+        <p style="font-size:15px;font-weight:600;margin-bottom:8px;">Geen gedeelde nummers</p>
+        <p style="font-size:12px;">Geen van deze nummers staat bij minstens 2 van deze muzikanten in het repertoire.</p>
       </div>`;
     return;
   }

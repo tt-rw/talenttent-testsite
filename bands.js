@@ -415,7 +415,7 @@ function openAddMemberModal(bandId, bandName) {
   if (cityEl) cityEl.value = '';
   const cityStatusEl = document.getElementById('memberSearchCityStatus');
   if (cityStatusEl) cityStatusEl.textContent = '';
-  document.getElementById('memberSearchResults').innerHTML = '<p style="color:var(--muted);font-size:13px;">Typ minimaal 2 tekens, kies een instrument, of vul een plaats in, om te zoeken.</p>';
+  document.getElementById('memberSearchResults').innerHTML = '<p style="color:var(--muted);font-size:12px;">Typ minimaal 2 tekens, kies een instrument, of vul een plaats in, om te zoeken.</p>';
   document.getElementById('addMemberModal').classList.add('visible');
   setTimeout(() => document.getElementById('memberSearchInput')?.focus(), 50);
 }
@@ -438,10 +438,10 @@ function searchMembersToAdd(query) {
   // instrument gekozen is — dat was precies de klacht ("je moet al weten
   // wie je zoekt"). TT-163: of zolang er een plaats getypt is.
   if (!instrument && !cityTyped && (q.length < 2 || qSafe.length < 2)) {
-    resEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Typ minimaal 2 tekens, kies een instrument, of vul een plaats in, om te zoeken.</p>';
+    resEl.innerHTML = '<p style="color:var(--muted);font-size:12px;">Typ minimaal 2 tekens, kies een instrument, of vul een plaats in, om te zoeken.</p>';
     return;
   }
-  resEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Zoeken...</p>';
+  resEl.innerHTML = '<p style="color:var(--muted);font-size:12px;">Zoeken...</p>';
   memberSearchTimer = setTimeout(async () => {
     try {
       const { data: existing } = await db.from('band_members').select('musician_id').eq('band_id', addMemberBandId);
@@ -478,7 +478,7 @@ function searchMembersToAdd(query) {
 
       let filtered = (musicians||[]).filter(m => !existingIds.includes(m.id));
       if (!filtered.length) {
-        resEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Geen (nieuwe) muzikanten gevonden.</p>';
+        resEl.innerHTML = '<p style="color:var(--muted);font-size:12px;">Geen (nieuwe) muzikanten gevonden.</p>';
         return;
       }
 
@@ -525,7 +525,7 @@ function searchMembersToAdd(query) {
       }
 
       if (!filtered.length) {
-        resEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Geen (nieuwe) muzikanten binnen deze straal gevonden.</p>';
+        resEl.innerHTML = '<p style="color:var(--muted);font-size:12px;">Geen (nieuwe) muzikanten binnen deze straal gevonden.</p>';
         return;
       }
       resEl.innerHTML = filtered.map(m => {
@@ -542,16 +542,16 @@ function searchMembersToAdd(query) {
           : `<button class="btn btn-ghost" onclick="openInviteNote(this, '${jsAttr(m.id)}', '${jsAttr(memberName)}')">Uitnodigen</button>`;
         return `
         <div class="member-search-row lijst-rij" style="display:flex;align-items:center;gap:12px;padding:8px 0;">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--merk);color:var(--merk-tekst);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${escHtml(memberName[0].toUpperCase())}</div>
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--merk);color:var(--merk-tekst);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">${escHtml(memberName[0].toUpperCase())}</div>
           <div style="flex:1;">
-            <div style="font-weight:600;font-size:14px;">${escHtml(memberName)}</div>
+            <div style="font-weight:600;font-size:12px;">${escHtml(memberName)}</div>
             <div style="font-size:12px;color:var(--muted);">${escHtml(m.city||'')}${m.distance_km != null ? ` · ${m.distance_km.toFixed(1)} km` : ''}${(m.musician_instruments||[]).length ? ' · ' + escHtml(m.musician_instruments.map(x=>x.instrument).slice(0,2).join(', ')) : ''}</div>
           </div>
           <span class="member-invite-action">${inviteAction}</span>
         </div>`; }).join('');
     } catch (e) {
       logCaught('searchMembersToAdd', e);
-      resEl.innerHTML = `<p style="color:var(--danger);font-size:13px;">${friendlyErrorMessage(e, 'leden zoeken')}</p>`;
+      resEl.innerHTML = `<p style="color:var(--danger);font-size:12px;">${friendlyErrorMessage(e, 'leden zoeken')}</p>`;
     }
   }, 300);
 }
@@ -567,8 +567,8 @@ function openInviteNote(btnEl, musicianId, memberName) {
   if (!row) return;
   row.innerHTML = `
     <div style="width:100%;">
-      <div style="font-size:13px;margin-bottom:8px;">Uitnodiging aan <strong>${escHtml(memberName)}</strong> — voeg eventueel een korte boodschap toe:</div>
-      <textarea class="invite-note-input" maxlength="300" placeholder="Bijv. we zoeken een bassist voor onze covers, jouw profiel past goed bij ons!" style="width:100%;min-height:60px;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Roboto',sans-serif;font-size:14px;"></textarea>
+      <div style="font-size:12px;margin-bottom:8px;">Uitnodiging aan <strong>${escHtml(memberName)}</strong> — voeg eventueel een korte boodschap toe:</div>
+      <textarea class="invite-note-input" maxlength="300" placeholder="Bijv. we zoeken een bassist voor onze covers, jouw profiel past goed bij ons!" style="width:100%;min-height:60px;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:16px;"></textarea>
       <div class="btn-row" style="margin-top:8px;">
         <button class="btn btn-ghost" onclick="searchMembersToAdd(document.getElementById('memberSearchInput').value)">Annuleren</button>
         <button class="btn btn-primary" onclick="sendInviteWithNote(this, '${jsAttr(musicianId)}')">Uitnodiging versturen</button>
@@ -687,7 +687,7 @@ function openBandNiveauInfoModal() {
   const rowsHTML = NIVEAU_INFO_BAND_ROWS.map(r => `<tr>${r.map((c, i) => `<td>${escHtml(i === 0 ? stripParenthetical(c) : c)}</td>`).join('')}</tr>`).join('');
   document.getElementById('niveauInfoModalContent').innerHTML = `
     <div class="filter-title" style="margin-bottom:4px;">Ervaringsindeling voor bands</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Kies de ervaring waar je het dichtst bij in de buurt zit. Zie het als een richtlijn, geen examen.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Kies de ervaring waar je het dichtst bij in de buurt zit. Zie het als een richtlijn, geen examen.</p>
     <div class="niveau-info-wrap">
       <table class="niveau-info-table">
         <thead><tr>${NIVEAU_INFO_BAND_HEADERS.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead>
@@ -695,10 +695,10 @@ function openBandNiveauInfoModal() {
       </table>
     </div>
     <div class="filter-title" style="font-size:15px;margin-bottom:8px;">Belangrijk: gebruik dit systeem als jouw kompas</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Geen enkele muzikant of band past perfect in één enkel hokje, en dat is volstrekt normaal. Je kunt bijvoorbeeld technisch heel ver zijn (Ervaring 4), maar nog nooit op een podium hebben gestaan (Ervaring 1). Of je band speelt superstrak samen (Ervaring 3), maar jullie hebben je zakelijke randzaken nog niet op orde (Ervaring 2).</p>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Zie deze ervaringsbeschrijvingen dan ook puur als een praktische richtlijn, niet als een set onwrikbare wetten.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Geen enkele muzikant of band past perfect in één enkel hokje, en dat is volstrekt normaal. Je kunt bijvoorbeeld technisch heel ver zijn (Ervaring 4), maar nog nooit op een podium hebben gestaan (Ervaring 1). Of je band speelt superstrak samen (Ervaring 3), maar jullie hebben je zakelijke randzaken nog niet op orde (Ervaring 2).</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Zie deze ervaringsbeschrijvingen dan ook puur als een praktische richtlijn, niet als een set onwrikbare wetten.</p>
     <div class="filter-title" style="font-size:15px;margin-bottom:8px;">Hoe kies je jullie ervaring?</div>
-    <p style="font-size:13px;color:var(--muted);">Loop de criteria per ervaringsniveau rustig langs. Kijk niet naar waar je één losse vaardigheid hebt zitten, maar kijk naar het grotere plaatje. Kies simpelweg de ervaring waar jij of je band het dichtst bij in de buurt zit en waar je jezelf het meest in herkent. Het is geen examen, maar een hulpmiddel om te ontdekken waar je nu staat en waar je naartoe kunt groeien!</p>
+    <p style="font-size:12px;color:var(--muted);">Loop de criteria per ervaringsniveau rustig langs. Kijk niet naar waar je één losse vaardigheid hebt zitten, maar kijk naar het grotere plaatje. Kies simpelweg de ervaring waar jij of je band het dichtst bij in de buurt zit en waar je jezelf het meest in herkent. Het is geen examen, maar een hulpmiddel om te ontdekken waar je nu staat en waar je naartoe kunt groeien!</p>
   `;
   document.getElementById('niveauInfoModal').classList.add('visible');
 }

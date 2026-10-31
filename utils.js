@@ -451,7 +451,7 @@ function showSaveError(msg, actie) {
   }
 
   document.getElementById('saveMsg').innerHTML =
-    `<span style="color:var(--accent);font-size:13px;">${escHtml(friendlyErrorMessage(msg, actie))}</span><br><br>
+    `<span style="color:var(--accent);font-size:12px;">${escHtml(friendlyErrorMessage(msg, actie))}</span><br><br>
      <button class="btn btn-ghost" style="margin-top:8px;" onclick="document.getElementById('saveOverlay').classList.remove('visible')">Sluiten</button>`;
 }
 
@@ -664,7 +664,7 @@ function renderTrackResults(ac, songs, q, artist, addFnName, existingList) {
 
   ac.innerHTML = results.map(r =>
     `<div class="ac-item" onmousedown="${addFnName}('${jsAttr(r.trackName)}','${jsAttr(artist.name)}')">
-      <strong style="font-size:14px;">${highlight(r.trackName, q)}</strong>
+      <strong style="font-size:12px;">${highlight(r.trackName, q)}</strong>
       <span style="font-size:12px;color:var(--muted);">${escHtml(artist.name)}</span>
     </div>`
   ).join('');
@@ -1844,7 +1844,9 @@ function emptyStateHTML(kop, uitleg, knopLabel, knopActie) {
 //
 // Waarom meten en niet tekens tellen: "MMMMMMMMMM" is ruim twee keer zo breed
 // als "iiiiiiiiii". Tellen weet dat niet, meten wel.
-const PROFIELNAAM_LADDER = [36, 32, 28, 24, 20, 18, 16];
+// TT-517 fase 1 (besluit Ronald 30-10-2026): de bovenste trede is de maat
+// Groot, 32px (was 36px met Roboto). De lagere treden krimpen tot de naam past.
+const PROFIELNAAM_LADDER = [32, 28, 24, 20, 18, 16];
 
 // Noodtreden onder de ondergrens. Alleen voor namen die al in de database
 // staan van vóór de invulcontrole, en voor het smalle bureaubladvenster
