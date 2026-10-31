@@ -2905,7 +2905,8 @@
     padding: 6px 10px;
     border-radius: 16px;
     margin-bottom: 4px;
-    font-size: 12px;
+    /* TT-517 fase 1 (besluit Ronald 31-10-2026): een bericht is lopende tekst, 15px. */
+    font-size: 15px;
     line-height: 20px;
     word-break: break-word;
   }

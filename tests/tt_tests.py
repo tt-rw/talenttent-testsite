@@ -11206,6 +11206,8 @@ def blok_tt517_fase1():
               if re.search(r'(^|[^\w-])(input|textarea|select)\b|picker-field\b|wheel-field\b', sel) and px != 16]
     check("styles.css: elk veld (invoer, keuze, wiel) is 16px", not velden, "; ".join(velden)[:300])
     check("--fs-sm is 12px, de rol Hulptekst", re.search(r'--fs-sm:\s*12px;', css) is not None, "")
+    bericht = [px for sel, px in _tt517_css_maten(css) if sel == ".message-bubble"]
+    check("een bericht in een gesprek is lopende tekst, 15px (besluit Ronald 31-10-2026)", bericht == [15], json.dumps(bericht))
 
     # 2. Lettermaten in index.html en de JavaScript
     los = []
@@ -11310,6 +11312,22 @@ def blok_tt517_fase1():
               }
               return [...uit]; }""", VIEWS)
             check(f"{thema}: elke tekst op de {len(VIEWS)} schermen staat op één van de zes maten", not buiten, "; ".join(buiten)[:500])
+            if thema == "dark":
+                # Een veld van 16px moet zijn voorbeeldtekst helemaal tonen: de boodschap bij
+                # een uitnodiging was 60px hoog en sneed de tekst af op 360px (TT-517 fase 1).
+                pas = []
+                for w in (320, 360, 390):
+                    page.set_viewport_size({"width": w, "height": 800})
+                    pas.append(page.evaluate("""() => { openAddMemberModal('b1', 'Testband');
+                      const res = document.getElementById('memberSearchResults');
+                      res.innerHTML = '<div class="member-search-row"><button id="tt517x">Uitnodigen</button></div>';
+                      openInviteNote(document.getElementById('tt517x'), 'm9', 'Test');
+                      const t = res.querySelector('.invite-note-input'), c = t.cloneNode(); c.value = t.placeholder; t.parentNode.appendChild(c);
+                      const r = [innerWidth, t.clientHeight, c.scrollHeight]; c.remove();
+                      document.getElementById('addMemberModal').classList.remove('visible'); return r; }"""))
+                page.set_viewport_size({"width": 390, "height": 844})
+                check("de boodschap bij een uitnodiging (16px) toont de hele voorbeeldtekst op 320, 360 en 390px",
+                      all(h >= n for _, h, n in pas), json.dumps(pas))
             ctx.close()
         check("geen JS-fout in blok 106", not fouten, "; ".join(fouten)[:300])
         browser.close()
