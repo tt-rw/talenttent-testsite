@@ -364,9 +364,9 @@ function updateBeschikbaarToggleBtn() {
 async function zetBeschikbaarheid(beschikbaar) {
   if (!myMusicianId) return;
   try {
-    const { error } = await db.from('musicians')
+    const { error } = rijenGeraakt(await db.from('musicians')
       .update({ accepts_band_invites: beschikbaar })
-      .eq('id', myMusicianId);
+      .eq('id', myMusicianId).select('id'));
     if (error) throw error;
     myBeschikbaar = beschikbaar;
     updateBeschikbaarToggleBtn();
@@ -433,7 +433,7 @@ function updateSubmitProfileState() {
 async function persistEditedProfile() {
   const mid = editingMusicianId;
   if (!mid) return;
-  const { error: uErr } = await db.from('musicians').update({
+  const { error: uErr } = rijenGeraakt(await db.from('musicians').update({
     fname:            state.fname,
     lname:            state.lname || null,
     username:         state.username,
@@ -448,7 +448,7 @@ async function persistEditedProfile() {
     avatar_url:       state.avatarUrl || null,
     city_source:      state.citySource || 'pdok',
     profile_complete: true, // TT-09: dit is de definitieve klik op "Profiel aanmaken"/"Wijzigingen opslaan"/"Opslaan"
-  }).eq('id', mid);
+  }).eq('id', mid).select('id'));
   if (uErr) throw new Error(uErr.message);
   opslagOpruimen('avatars', currentUser && currentUser.id, [state.avatarUrl]);
 

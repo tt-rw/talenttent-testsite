@@ -41,9 +41,9 @@ async function respondToBandInvite(bandId, accept) {
   const mid = await getMyMusicianId();
   if (!mid) return;
   try {
-    const { error } = await db.from('band_members')
+    const { error } = rijenGeraakt(await db.from('band_members')
       .update({ status: accept ? 'bevestigd' : 'geweigerd' })
-      .eq('band_id', bandId).eq('musician_id', mid);
+      .eq('band_id', bandId).eq('musician_id', mid).select('band_id'));
     if (error) throw error;
     showToast(accept ? 'Je staat nu als lid op het bandprofiel.' : 'Uitnodiging geweigerd.');
     loadBandInvites(mid);
@@ -100,7 +100,7 @@ async function respondToFounderOffer(bandId, accept) {
     } else {
       // TT-230: het resultaat werd hier niet gelezen. Mislukte de schrijfactie,
       // dan zag de gebruiker toch "Aanbod geweigerd" en bleef het aanbod staan.
-      const { error } = await db.from('band_members').update({ founder_offer: false, founder_offer_at: null }).eq('band_id', bandId).eq('musician_id', mid);
+      const { error } = rijenGeraakt(await db.from('band_members').update({ founder_offer: false, founder_offer_at: null }).eq('band_id', bandId).eq('musician_id', mid).select('band_id'));
       if (error) throw error;
       showToast('Aanbod geweigerd.');
     }
@@ -153,7 +153,7 @@ async function sendFounderOffer(bandId, memberId) {
   try {
     // 22-08-2026 (Ronald): een verzoek trekt zichzelf na 7 dagen in
     // — founder_offer_at is het moment waarop die klok gaat lopen.
-    const { error } = await db.from('band_members').update({ founder_offer: true, founder_offer_at: new Date().toISOString() }).eq('band_id', bandId).eq('musician_id', memberId);
+    const { error } = rijenGeraakt(await db.from('band_members').update({ founder_offer: true, founder_offer_at: new Date().toISOString() }).eq('band_id', bandId).eq('musician_id', memberId).select('band_id'));
     if (error) throw error;
     showToast('Gevraagd. Je ziet het hier zodra die reageert.');
     loadMyBands();
@@ -169,7 +169,7 @@ async function sendFounderOffer(bandId, memberId) {
 
 async function withdrawFounderOffer(bandId) {
   try {
-    const { error } = await db.from('band_members').update({ founder_offer: false, founder_offer_at: null }).eq('band_id', bandId);
+    const { error } = rijenGeraakt(await db.from('band_members').update({ founder_offer: false, founder_offer_at: null }).eq('band_id', bandId).select('band_id'));
     if (error) throw error;
     showToast('Aanbod ingetrokken.');
     loadMyBands();
@@ -258,7 +258,7 @@ function removeMember(bandId, musicianId, memberName, bandName) {
 
 async function executeRemoveMember(bandId, musicianId, memberName) {
   try {
-    const { error } = await db.from('band_members').delete().eq('band_id', bandId).eq('musician_id', musicianId);
+    const { error } = rijenGeraakt(await db.from('band_members').delete().eq('band_id', bandId).eq('musician_id', musicianId).select('band_id'));
     if (error) throw error;
     showToast(`${memberName} is uit de band.`);
     loadMyBands();
@@ -1331,11 +1331,9 @@ async function bandDeelStand(id) {
 
 async function zetBandDelen(bandId, aan) {
   try {
-    // .select(): zonder dat meldt de database ook succes als de regels de
-    // wijziging weigeren (0 rijen geraakt, geen fout; zie TT-230).
-    const { data, error } = await db.from('bands').update({ delen_aan: aan }).eq('id', bandId).select('id');
+    // .select() en rijenGeraakt(): 0 rijen is een geweigerde wijziging (TT-230).
+    const { error } = rijenGeraakt(await db.from('bands').update({ delen_aan: aan }).eq('id', bandId).select('id'));
     if (error) throw error;
-    if (!data || !data.length) throw eigenFout('De wijziging is niet doorgevoerd: je mag deze band niet aanpassen, of je bent uitgelogd. Log opnieuw in en probeer het nog eens.');
     if (bandDeelGegevens && bandDeelGegevens.id === bandId) bandDeelGegevens.delen_aan = aan;
     showToast(aan ? 'Delen staat aan. De link van de band werkt.' : 'Delen staat uit. De link van de band werkt niet meer.');
     return true;
@@ -1550,8 +1548,8 @@ async function zetBandBeschikbaar(beschikbaar) {
   const id = bewerkBandId;
   if (!id) return;
   try {
-    const { error } = await db.from('bands')
-      .update({ pauze: !beschikbaar }).eq('id', id);
+    const { error } = rijenGeraakt(await db.from('bands')
+      .update({ pauze: !beschikbaar }).eq('id', id).select('id'));
     if (error) throw error;
     showToast('Wijzigingen opgeslagen.');
     renderBandBeheer();
@@ -1640,11 +1638,11 @@ async function saveBandWie() {
   if (showFieldErrors(fouten)) return;
   if (bwFieldSnapshot() === bwSnapshot) return;
 
-  const { error } = await db.from('bands').update({
+  const { error } = rijenGeraakt(await db.from('bands').update({
     name: naam, zip, city: normalizeCityName(city), city_source: bandCitySource,
     description: waardeVan('bwBio') || null,
     niveau: bwNiveau || null
-  }).eq('id', bewerkBandId);
+  }).eq('id', bewerkBandId).select('id'));
   if (error) {
     logCaught('saveBandWie', error);
     showToast(friendlyErrorMessage(error, 'de bandgegevens opslaan'));
@@ -1876,8 +1874,8 @@ async function bbIntrekken(musicianId, naam) {
   const id = bewerkBandId;
   if (!id) return;
   try {
-    const { error } = await db.from('band_members').delete()
-      .eq('band_id', id).eq('musician_id', musicianId).eq('status', 'aangevraagd');
+    const { error } = rijenGeraakt(await db.from('band_members').delete()
+      .eq('band_id', id).eq('musician_id', musicianId).eq('status', 'aangevraagd').select('band_id'));
     if (error) throw error;
     showToast(`Uitnodiging aan ${naam} ingetrokken.`);
     bbLaadLeden();
@@ -1913,10 +1911,10 @@ async function saveBandBezetting() {
     }
     // Leeg is de beheerder (projectinstructies §10): zo volgt de
     // contactpersoon vanzelf als het beheer wordt overgedragen.
-    const { error: bErr } = await db.from('bands').update({
+    const { error: bErr } = rijenGeraakt(await db.from('bands').update({
       contact_id: bbContact && bbContact !== bbBeheerderId ? bbContact : null,
       status: bandStatusAfgeleid(bbWanted.length)
-    }).eq('id', id);
+    }).eq('id', id).select('id'));
     if (bErr) throw bErr;
     // De nieuwe invallers hebben nu een id.
     const { data: rijen, error: rErr } = await db.from('band_invallers').select('id, instrument, datum').eq('band_id', id);
@@ -2085,7 +2083,7 @@ async function saveBandMuziek() {
   const id = bewerkBandId;
   if (!id) return;
   try {
-    const { error: bErr } = await db.from('bands').update({ soort: bmzSoort, genres: bmzGenres.slice() }).eq('id', id);
+    const { error: bErr } = rijenGeraakt(await db.from('bands').update({ soort: bmzSoort, genres: bmzGenres.slice() }).eq('id', id).select('id'));
     if (bErr) throw bErr;
 
     // Eigen nummers en covers: alleen wat wegging weghalen, wat wijzigde
@@ -2362,12 +2360,12 @@ async function saveBandMedia() {
   const id = bewerkBandId;
   if (!id) return;
   try {
-    const { error: sErr } = await db.from('bands').update({
+    const { error: sErr } = rijenGeraakt(await db.from('bands').update({
       instagram: waardeVan('bmInstagram') || null,
       tiktok: waardeVan('bmTiktok') || null,
       youtube: waardeVan('bmYoutube') || null,
       avatar_url: bmFotoUrl || null
-    }).eq('id', id);
+    }).eq('id', id).select('id'));
     if (sErr) throw sErr;
     opslagOpruimen('avatars', 'bands/' + id, [bmFotoUrl]);
 

@@ -772,7 +772,7 @@ async function setDigestFrequency(el, mode) {
   try {
     const mid = await getMyMusicianId();
     if (!mid) throw new Error('geen profiel');
-    const { error } = await db.from('musicians').update({ email_digest_frequency: mode }).eq('id', mid);
+    const { error } = rijenGeraakt(await db.from('musicians').update({ email_digest_frequency: mode }).eq('id', mid).select('id'));
     if (error) throw error;
   } catch (e) {
     logCaught('setDigestFrequency', e);

@@ -447,9 +447,9 @@ function updateDelenToggleBtn() {
 async function zetProfielDelen(aan) {
   if (!myMusicianId) return false;
   try {
-    const { error } = await db.from('musicians')
+    const { error } = rijenGeraakt(await db.from('musicians')
       .update({ delen_aan: aan })
-      .eq('id', myMusicianId);
+      .eq('id', myMusicianId).select('id'));
     if (error) throw error;
     myDeelAan = aan;
     updateDelenToggleBtn();
@@ -1009,7 +1009,7 @@ async function saveWieBenJe() {
     bio: document.getElementById('wbjBio').value.trim() || null,
     naam_tonen: wbjNaamTonen,
   };
-  const { error } = await db.from('musicians').update(payload).eq('id', myMusicianId);
+  const { error } = rijenGeraakt(await db.from('musicians').update(payload).eq('id', myMusicianId).select('id'));
   if (error) {
     showToast(friendlyErrorMessage(error, 'je gegevens opslaan'));
     return;
@@ -1086,8 +1086,8 @@ async function saveWatSpeelJe() {
 
   if (wspFieldSnapshot() === wspSnapshot) return;
 
-  const { error: uErr } = await db.from('musicians')
-    .update({ repertoire_type: wspRepertoireType || null }).eq('id', myMusicianId);
+  const { error: uErr } = rijenGeraakt(await db.from('musicians')
+    .update({ repertoire_type: wspRepertoireType || null }).eq('id', myMusicianId).select('id'));
   if (uErr) { showToast(friendlyErrorMessage(uErr, 'je gegevens opslaan')); return; }
 
   // TT-281: wissen en opnieuw vullen in één transactie — zie persistEditedProfile().
@@ -1167,11 +1167,11 @@ function wzjSelectMusicalAmbition(el, val) {
 async function saveWatZoekJe() {
   if (wzjFieldSnapshot() === wzjSnapshot) return;
 
-  const { error } = await db.from('musicians').update({
+  const { error } = rijenGeraakt(await db.from('musicians').update({
     goal: wzjGoal || null,
     rehearsal_frequency: wzjRehearsalFrequency || null,
     musical_ambition: wzjMusicalAmbition || null,
-  }).eq('id', myMusicianId);
+  }).eq('id', myMusicianId).select('id'));
   if (error) { showToast(friendlyErrorMessage(error, 'je gegevens opslaan')); return; }
 
   wzjSnapshot = wzjFieldSnapshot();
@@ -1630,8 +1630,8 @@ function mhRemoveLink(i) {
 async function saveJeMediahoek() {
   if (mhFieldSnapshot() === mhSnapshot) return;
 
-  const { error: uErr } = await db.from('musicians')
-    .update({ avatar_url: mhAvatarUrl || null }).eq('id', myMusicianId);
+  const { error: uErr } = rijenGeraakt(await db.from('musicians')
+    .update({ avatar_url: mhAvatarUrl || null }).eq('id', myMusicianId).select('id'));
   if (uErr) { showToast(friendlyErrorMessage(uErr, 'je gegevens opslaan')); return; }
   opslagOpruimen('avatars', currentUser && currentUser.id, [mhAvatarUrl]);
 

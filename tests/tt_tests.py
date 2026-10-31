@@ -335,6 +335,35 @@ def blok1_statisch():
     check("core.js zet maar op twee plekken een stap: het vangnet bij het laden en de herstelstap in popstate (TT-431; telt de definitie mee)",
           stappen == 4, f"{stappen} (safeHistoryPush: definitie en gebruik in popstate; vangnet: pushState)")
 
+    # TT-517, 8D (31-10-2026): een wijziging die de database per rij weigert, geeft
+    # geen fout maar 0 rijen (TT-230). Elke update, delete of upsert vraagt de
+    # geraakte rijen terug (.select()) en gaat door rijenGeraakt(), behalve waar 0
+    # rijen normaal is of niemand een melding krijgt (lijst hieronder, met reden).
+    stil = {
+        ("bands.js", "saveBandBezetting", "band_invallers"): "vervangt de lijst; 0 rijen is normaal",
+        ("bands.js", "saveBandMuziek", "band_nummers"): "vervangt of ordent de lijst; de band zelf is al gecontroleerd",
+        ("bands.js", "saveBandMuziek", "band_covers"): "vervangt de lijst; 0 rijen is normaal",
+        ("bands.js", "saveBandMedia", "band_media"): "vervangt of ordent de lijst; de band zelf is al gecontroleerd",
+        ("messages.js", "openConversation", "messages"): "gelezen markeren, zonder melding",
+        ("messages.js", "openTalentTentGesprek", "talent_tent_berichten"): "gelezen markeren, zonder melding",
+        ("search.js", "onthoudKlik", "musician_saved_search"): "uitzetten zonder bewaarde zoekopdracht is 0 rijen; een upsert geeft zelf een fout",
+        ("search.js", "onthoudBijwerken", "musician_saved_search"): "op de achtergrond, zonder melding",
+        ("veiligheid.js", "deblokkeerMuzikant", "musician_blocks"): "0 rijen: was al niet geblokkeerd, de melding klopt",
+    }
+    zonder = []
+    for f in JS_FILES:
+        s = open(os.path.join(ROOT, f), encoding="utf-8").read()
+        for m in re.finditer(r"db\s*\.from\('(\w+)'\)\s*\.(update|delete|upsert)\(", s):
+            stmt = s[m.start():s.find(";", m.end())]
+            fn = re.findall(r"function\s+(\w+)", s[:m.start()])[-1]
+            if (f, fn, m.group(1)) in stil:
+                continue
+            voor = s[max(0, m.start() - 40):m.start()]
+            if ".select(" not in stmt or not ("rijenGeraakt(" in voor or "!data.length" in s[m.end():m.end() + 400]):
+                zonder.append(f"{f}:{fn} {m.group(1)}.{m.group(2)}")
+    check("elke opslag controleert of de database echt iets wijzigde (geen 'opgeslagen' bij 0 rijen, TT-230)",
+          not zonder, "; ".join(zonder)[:400])
+
 
 # --------------------------------------------------------------------------
 # Blok 2 t/m 5 — in de browser, tegen de stub
@@ -11334,10 +11363,55 @@ def blok_tt517_fase1():
     httpd.shutdown()
 
 
+# --------------------------------------------------------------------------
+# Blok 107 — 0 rijen is geen opslag (TT-517, 8D, 31-10-2026; TT-230)
+# --------------------------------------------------------------------------
+
+def blok_0_rijen():
+    print("\nBlok 107 — 0 rijen is geen opslag (TT-230)")
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        fouten = []
+        page.on("pageerror", lambda e: fouten.append(str(e)))
+        page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+        page.wait_for_timeout(300)
+        uit = page.evaluate("""async () => {
+          const toasts = []; const o = window.showToast; window.showToast = function (t) { toasts.push(String(t)); return o.apply(this, arguments); };
+          window.getMyMusicianId = async () => 'mX';
+          const r = {};
+          // De database weigert: de rij is niet te zien, dus 0 rijen geraakt.
+          TT_STUB.data.musicians = [];
+          await setDigestFrequency(null, 'dagelijks');
+          r.geweigerd = { toasts: toasts.splice(0), stand: digestFrequencyValue };
+          // De database neemt de wijziging aan: 1 rij.
+          TT_STUB.data.musicians = [{ id: 'mX', email_digest_frequency: 'wekelijks' }];
+          await setDigestFrequency(null, 'dagelijks');
+          r.gelukt = { toasts: toasts.splice(0), stand: digestFrequencyValue, db: TT_STUB.data.musicians[0].email_digest_frequency };
+          r.helper = typeof rijenGeraakt !== 'function' ? 'rijenGeraakt ontbreekt'
+            : [rijenGeraakt({ data: [], error: null }).error && rijenGeraakt({ data: [], error: null }).error.code,
+               rijenGeraakt({ data: [{ id: 1 }], error: null }).error];
+          window.showToast = o; return r; }""")
+        check("0 rijen geraakt: een fout met de tekst van een geweigerde wijziging, en de keuze springt terug",
+              any("Dit mag niet met dit account" in t for t in uit["geweigerd"]["toasts"]) and uit["geweigerd"]["stand"] != "dagelijks",
+              json.dumps(uit["geweigerd"]))
+        check("1 rij geraakt: geen fout, de keuze blijft staan en staat in de database",
+              not uit["gelukt"]["toasts"] and uit["gelukt"]["stand"] == "dagelijks" and uit["gelukt"]["db"] == "dagelijks",
+              json.dumps(uit["gelukt"]))
+        check("rijenGeraakt(): 0 rijen wordt fout 42501, 1 rij geen fout", uit["helper"] == ["42501", None], json.dumps(uit["helper"]))
+        check("geen JS-fout in blok 107", not fouten, "; ".join(fouten)[:300])
+        browser.close()
+    httpd.shutdown()
+
+
 def main():
     print("The Talent Tent — vaste testset, laag 1 (TT-231)")
     blok1_statisch()
     blok_tt517_fase1()
+    blok_0_rijen()
     blok_browser()
     blok_xss()
     gezakt = [n for n, ok, _ in results if not ok]

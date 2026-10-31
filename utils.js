@@ -74,6 +74,17 @@ function eigenFout(tekst) {
   return e;
 }
 
+// TT-517, 8D (31-10-2026): een wijziging die de database met zijn regels per
+// rij weigert, geeft geen fout maar 0 rijen (TT-230). Wie dan "opgeslagen"
+// meldt, meldt iets wat niet gebeurde. Elke opslag die de gebruiker doet,
+// vraagt de geraakte rijen terug (.select()) en gaat door deze functie: 0 rijen
+// wordt dezelfde fout als een geweigerde wijziging, met dezelfde tekst
+// (friendlyErrorMessage, "row-level security").
+function rijenGeraakt(res) {
+  if (res.error || (res.data && res.data.length)) return res;
+  return { data: res.data, error: { code: '42501', message: 'row-level security: 0 rijen geraakt' } };
+}
+
 // Tweede parameter `actie`: wat de gebruiker probeerde, als werkwoordsgroep
 // ("je profiel opslaan"). Zonder bekende oorzaak noemt de melding die actie, zodat
 // de gebruiker weet wat niet gelukt is. Met een bekende oorzaak staat de
