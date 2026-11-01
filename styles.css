@@ -89,12 +89,14 @@
     --gekozen-tekst: #FFB81C;
     --gekozen-bijschrift: var(--muted);     /* toelichting op een gekozen doelkaart */
     --keuze-vlak: var(--surface2);          /* een keuzeknop die niet gekozen is */
-    --keuze-rand: var(--border);            /* rand van een keuzeknop; een paneel mag hem overschrijven (TT-461) */
+    --keuze-rand: var(--border);            /* rand van een keuzeknop */
     /* Een zweem over de ondergrond: aanwijzen, ongelezen, uitgelicht. */
     --tint: rgba(255,255,255,0.05);
     --tint-hover: rgba(255,255,255,0.08);   /* aanwijzen op een ronde knop */
     --tint-grip: rgba(255,255,255,0.20);    /* greep van het wielvenster */
     --surface3: #222;                       /* lijst met suggesties */
+    --vlak: #222;                           /* TT-517 fase 2 (huisstijl §24, optie B): een rij, kaart of tegel; donker een stap lichter dan de pagina */
+    --schaduw-vlak: none;                   /* donker: een schaduw valt weg op zwart */
     --rand-hover: #555;
     --rand-menu: #444;                      /* uitklapmenu, bandkaart bij aanwijzen */
     --leeg: #555;                           /* lege ster, niet-actieve stip */
@@ -169,6 +171,8 @@
     --tint-hover: rgba(30,30,30,0.06);
     --tint-grip: #B8B4AA;
     --surface3: #FFFEFA;
+    --vlak: var(--surface);
+    --schaduw-vlak: 0 1px 2px rgba(30,30,30,0.06), 0 4px 14px rgba(30,30,30,0.07);
     --rand-hover: #B8B4AA;
     --rand-menu: #DED9CF;
     --leeg: #CFCAC0;
@@ -194,11 +198,12 @@
   }
   /* Voorbeeldtekst in een veld: de standaard van de browser is op crème te
      donker en lijkt dan ingevuld. Donker houdt de standaard van de browser. */
-  /* TT-520 (besluit Ronald 26-10-2026, sessie 19): in Zoeken staan de velden
-     direct op de crème pagina. Daar hebben ze een eigen vlak nodig, zoals in
-     donker het grijs: wit (--surface). Op een wit paneel (de tegelschermen)
-     blijven ze crème (TT-461). */
-  :root[data-theme="licht"] #view-search { --field-bg: var(--surface); }
+  /* TT-520 en TT-517 fase 2 (huisstijl §7.4, §24; besluit Ronald 31-10-2026):
+     het paneel om een scherm is overal weg, de velden staan direct op de crème
+     pagina. Daar hebben ze een eigen vlak nodig, zoals in donker het grijs: wit
+     (--surface). Geldt voor elke pagina (.app-view); een venster houdt zijn
+     eigen vlak (§24, "wat blijft"). */
+  :root[data-theme="licht"] .app-view { --field-bg: var(--surface); }
   :root[data-theme="licht"] input::placeholder,
   :root[data-theme="licht"] textarea::placeholder { color: #6E6A63; opacity: 1; }
 
@@ -481,8 +486,6 @@
 
   /* TT-42: het blok dat het kind aan zijn ouder kan laten zien. */
   .ouder-kaart {
-    background: var(--surface2);
-    border: var(--line) solid var(--border);
     border-radius: var(--radius);
     padding: 16px;
     margin-bottom: 24px;
@@ -1113,7 +1116,6 @@
        de rand, net als links, boven en rechts (TT-517 fase 1: met Inter op
        12px was dat 12,7px bij 4px + 32px). */
     padding: 12px 12px 3px 12px;
-    border: 1px solid var(--border);
     border-radius: 10px;
   }
   .setlist-tekst { grid-column: 1 / 3; min-width: 0; }
@@ -1255,7 +1257,9 @@
     justify-content: center;
     min-height: 44px;
     padding: 13px 28px;
-    border-radius: 8px;
+    /* TT-517 fase 2 (huisstijl §4, §5; besluit Ronald 31-10-2026, optie A):
+       elke knop is een pil. Keuzeknoppen en de gestippelde knop blijven 8px. */
+    border-radius: 999px;
     font-family: 'Inter', sans-serif;
     /* TT-341 stap 2 (besluit Ronald, 26-09-2026: "1 B, maar maak de tekst
        groter zodat het meer vullend wordt"): gewone letters, 16px, in beide
@@ -1624,8 +1628,6 @@
   .completeness-wrap {
     margin-top: 24px;
     padding: 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
     border-radius: 10px;
   }
 
@@ -1846,7 +1848,7 @@
     position: relative;
     display: block;
     aspect-ratio: 1;
-    border-radius: 8px;
+    border-radius: 12px;  /* TT-517 fase 2 (huisstijl §21): tegels onder Foto's en video's en Links 12px, was 8px */
     overflow: hidden;
     border: 1px solid var(--border);
     padding: 0;
@@ -1950,17 +1952,10 @@
   .zoek-titel { margin: 0 0 20px; }
 
   /* TT-520 (besluit Ronald 26-10-2026, sessie 19, optie A: "het is
-     rustiger"): één ondergrond. In Zoeken staan de velden direct op de
-     pagina, zonder het kader van .search-filters; alleen de treffers zijn
-     een vlak. Geldt voor Muzikanten en Mix & Match. Elders (Berichten, Over
-     ons, de tegelschermen) blijft het paneel; die beoordeelt Ronald later. */
-  #view-search .search-filters {
-    background: none;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    margin-bottom: 20px;
-  }
+     rustiger"): één ondergrond. Sinds TT-517 fase 2 heeft .search-filters
+     nergens meer een kader (zie daar); in Zoeken staat het eerste resultaat
+     20px onder het laatste veld. */
+  #view-search .search-filters { margin-bottom: 20px; }
 
   /* De tegels: het tegelpatroon van Instellingen (.tile), met een icoon links
      op een grijs vlak (--surface2; besluit Ronald 26-10-2026, sessie 18:
@@ -2120,8 +2115,6 @@
     position: relative;
     aspect-ratio: 1;
     border-radius: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
   }
 
   .media-thumb img {
@@ -2224,8 +2217,6 @@
     align-items: center;
     padding: 8px;
     margin-bottom: 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
     border-radius: 8px;
   }
 
@@ -2957,13 +2948,6 @@
     padding: 0 24px;
   }
 
-  .auth-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 36px;
-  }
-
   .auth-success {
     background: rgba(76,175,80,0.1);
     border: 1px solid rgba(76,175,80,0.3);
@@ -3023,20 +3007,14 @@
   .search-filters > .field-pair-row,
   #addMemberModal .modal-box > .field { margin-bottom: 20px; } /* TT-253: Lid uitnodigen volgt Vind een muzikant */
 
-  .search-filters {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 28px;
-  }
-
-  /* TT-461 (11-10-2026, besluit Ronald: "dit wil ik. contrast"): elk
-     tegelscherm (Wie ben je, Wat speel je, Wat zoek je, Je setlist, Je mediahoek en de vier bandtegels) is een paneel zoals .search-filters (Zoeken): --surface, rand,
-     24px opvulling. De velden staan daardoor als crème vlak op de kaart. De
-     niet-gekozen keuzeknop (Echte naam) heeft de kleur en rand van een veld:
-     wit op wit viel weg. Dat gaat via --keuze-vlak en --keuze-rand, niet via een
-     eigen regel voor een keuzesoort (monitorronde B7). Alle negen tegelschermen, de vijf wizardstappen en de drie ouder-schermen gelijk (consistentie; TT-463, besluit Ronald 23-10-2026). */
+  /* TT-517 fase 2 (huisstijl §7.4, §24; besluit Ronald 31-10-2026: "wat mij
+     opvalt is dat overal nog de extra laag te zien is. die wil ik er ook
+     tussenuit, net als bij de zoekvelden"): geen omlijnd paneel om een scherm,
+     nergens. Velden en knoppen staan op de pagina, zoals in Zoeken: Over ons,
+     de juridische pagina's, Instellingen, de negen tegelschermen, de vijf
+     wizardstappen en de drie ouder-schermen. Vervangt het paneel van TT-461.
+     Alleen de marge eronder blijft. */
+  .search-filters,
   #wieBenJeScreen,
   #watSpeelJeScreen,
   #watZoekJeScreen,
@@ -3048,13 +3026,7 @@
   #bandMediaScreen,
   #step0, #step1, #step2, #step3, #step4,
   #ouderStap, #ouderWacht, #ouderWachtwoord {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
     margin-bottom: 28px;
-    --keuze-vlak: var(--field-bg);
-    --keuze-rand: var(--field-border);
   }
 
   .filter-title {
@@ -3116,8 +3088,6 @@
     display: flex;
     flex-direction: column;
     padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: var(--radius-field);
     cursor: pointer;
     transition: background 0.15s;
@@ -3211,8 +3181,6 @@
   .zoek-kaart {
     min-width: 0;
     overflow: hidden;
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: var(--radius-field);
     cursor: pointer;
   }
@@ -3564,8 +3532,6 @@
     align-items: center;
     gap: 16px;
     padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: var(--radius-field);
   }
   /* "3 van 3", rechts in de rij, in beide vragen. */
@@ -3581,8 +3547,6 @@
   /* Resultaat van Wat spelen we?: één rij per nummer, de vorm van een
      resultaatrij; een tik klapt hem open (Ronald, 17-09-2026: optie A). */
   .gedeeld-rij {
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: var(--radius-field);
     overflow: hidden;
   }
@@ -3916,7 +3880,7 @@
   .band-nummer {
     display: flex; align-items: center; gap: 12px;
     width: 100%; min-height: 44px; padding: 8px; margin-bottom: 8px;
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    border-radius: 8px;
     color: var(--text); font: inherit; text-align: left; cursor: pointer;
   }
   div.band-nummer { cursor: default; }
@@ -4198,7 +4162,7 @@
 
   /* ── Band kaarten ────────────────────────── */
   /* TT-385 fase 4: de hele kaart opent de bandpagina, niet alleen de kop. */
-  .band-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;transition:border-color 0.2s;cursor:pointer; }
+  .band-card { border-radius:var(--radius);overflow:hidden;margin-bottom:16px;transition:border-color 0.2s;cursor:pointer; }
   .band-card:hover { border-color:var(--rand-menu); }
   .band-card-header { display:flex;align-items:center;gap:16px;padding:20px;flex-wrap:wrap; }
   .band-avatar { width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:24px;background:var(--merk);color:var(--merk-tekst);flex-shrink:0; }
@@ -4715,9 +4679,22 @@
   .tile {
     display: flex; align-items: center; gap: 12px;
     min-height: 44px; padding: 16px; margin-bottom: 16px;
-    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent);
     border-radius: var(--radius); cursor: pointer;
   }
+  /* TT-517 fase 2 (huisstijl §24, besluit Ronald 31-10-2026, optie B: "voor nu
+     optie B, met schaduw"): een rij, kaart of tegel heeft geen rand en geen
+     gele streep links. Licht: een wit vlak met een zachte schaduw; donker: een
+     stap lichter vlak (#222), zonder schaduw. Eén regel voor elk vlak, met de
+     rollen --vlak en --schaduw-vlak. De rand blijft 1px, maar doorzichtig: zo
+     verschuift de inhoud niet, en een open rij in Mix & Match (§7.6) kleurt
+     zijn eigen rand. Een eigen vlak of rand per soort is een fout. */
+  .result-row, .zoek-kaart, .mm-nummer-rij, .gedeeld-rij, .band-card, .tile,
+  .setlist-rij, .media-rij, .media-thumb, .band-nummer, .completeness-wrap, .ouder-kaart {
+    background: var(--vlak);
+    border: 1px solid transparent;
+    box-shadow: var(--schaduw-vlak);
+  }
+
   .tile:active { background: var(--surface2); }
   .tile-title { font-size: 17px; font-weight: 700; }
   .tile-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }

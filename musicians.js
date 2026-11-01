@@ -142,7 +142,6 @@ function profielMediaHTML(mediaLijst) {
             const inner = ytId
               ? `<img src="https://img.youtube.com/vi/${jsAttr(ytId)}/hqdefault.jpg" alt="${escHtml(label)}" style="width:100%;height:100%;object-fit:cover;display:block;">` + SPEELTEKEN_HTML
               : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface2);text-align:center;padding:4px;"><span style="font-size:12px;font-weight:700;color:var(--text);">${escHtml(label)}</span></div>`;
-            const tileStyle = 'position:relative;display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border);padding:0;background:none;';
             // TT-158 (27-08-2026) trok hier een grens bij "ingelogd": alleen
             // dan klikbaar. TT-218 (06-09-2026), op verzoek van Ronald: die
             // grens losgelaten — een link opent nu onder alle omstandigheden,
@@ -151,7 +150,7 @@ function profielMediaHTML(mediaLijst) {
             // browser en daarmee de app uit. Nu opent hij in het mediascherm;
             // kan een platform daar niet spelen, dan biedt dat scherm zelf de
             // knop naar het platform aan.
-            return `<button type="button" onclick="openMediaSpeler('${jsAttr(l.safeHref)}', 'link', null, '${jsAttr(label)}')" style="${tileStyle}cursor:pointer;">${inner}</button>`;
+            return `<button type="button" onclick="openMediaSpeler('${jsAttr(l.safeHref)}', 'link', null, '${jsAttr(label)}')" class="profile-media-tegel">${inner}</button>`;  /* TT-517 fase 2: dezelfde tegel als foto en video (was een gelijke inline stijl), dus ook 12px */
           }).join('')}
         </div>
       </div>` : ''}`;

@@ -4114,8 +4114,9 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         check("afgeschermd: de T is zwart op geel, zoals het profielvlak",
               af.get("kleur") == "rgb(0, 0, 0)", json.dumps(af))
         check("afgeschermd: profielfoto wordt de T", af["tAvatar"] == 1 and af["fotoAvatar"] == 0, json.dumps(af))
-        check("16+: foto, video en link blijven gewone knoppen",
-              op["gewoneTegels"] == 2 and op["tegels"] == 0 and op["fotoAvatar"] == 1, json.dumps(op))
+        # TT-517 fase 2: de link-tegel is dezelfde .profile-media-tegel als foto en video (was een gelijke inline stijl).
+        check("16+: foto, video en link blijven gewone knoppen (drie tegels)",
+              op["gewoneTegels"] == 3 and op["tegels"] == 0 and op["fotoAvatar"] == 1, json.dumps(op))
 
         html45 = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
         check("geen 'meldknop volgt nog' meer in de voorwaarden en de gedragscode",
@@ -9764,6 +9765,9 @@ window.TT_STUB.fnAntwoord = {};
           const rij = NUMMERS.map(n => ({ artist: n[0], title: n[1], level: n[2], spelers: n[3] }));
           rij[3]._confirmDelete = true;
           if (soort === 'wizard') { state.songs = rij; renderSongs(); } else { jstSongs = rij; jstRenderSongs(); }
+          // TT-517 fase 2: de wizardstap schuift bij het tonen in (slideIn, transform). Zolang dat loopt, hangt de vaste
+          // knoppenbalk aan de stap en niet aan het scherm; maak de beweging eerst af, zoals de gebruiker hem ziet.
+          document.getAnimations().forEach(a => { try { a.finish(); } catch (e) {} });
           const rijen = [...lijst.querySelectorAll('.setlist-rij')];
           const opruimen = () => { stijl.remove(); bewaard.forEach(([e, s, h]) => { if (s === null) e.removeAttribute('style'); else e.setAttribute('style', s); e.hidden = h; }); lijst.innerHTML = ''; kop.hidden = true; };
           if (rijen.length < 8) { opruimen(); return { rijen: rijen.length }; }
@@ -9778,7 +9782,8 @@ window.TT_STUB.fnAntwoord = {};
             tikdoel: 999, kruisHoog: 999, kruisBreed: 999, pagina: document.documentElement.scrollWidth > innerWidth };
           rijen.forEach((r, i) => {
             const cs = getComputedStyle(r);
-            if (parseFloat(cs.borderTopWidth) < 1 || cs.borderTopStyle !== 'solid') uit.omlijnd = false;
+            // TT-517 fase 2 (huisstijl §24): een vlak zonder zichtbare rand; de rand van 1px is doorzichtig.
+            if (parseFloat(cs.borderTopWidth) !== 1 || cs.borderTopColor !== 'rgba(0, 0, 0, 0)' || cs.backgroundColor === 'rgba(0, 0, 0, 0)') uit.omlijnd = false;
             const a = r.querySelector('.setlist-artiest'), t = r.querySelector('.setlist-titel'), sp = r.querySelector('.setlist-spelers');
             uit.keuzeX.add(tekstX(r.querySelector('.setlist-keuze .wheel-field-label')));
             uit.linksX.add(tekstX(a));
@@ -9836,7 +9841,7 @@ window.TT_STUB.fnAntwoord = {};
                 d87 = page.evaluate(JS87, [soort87])
                 naam87 = f"{soort87} {breedte87}px"
                 ok87 = d87.get("rijen") == 8
-                check(f"{naam87}: acht omlijnde rijen, kop met \"8 nummers\", de i binnen het vak",
+                check(f"{naam87}: acht rijen als vlak zonder zichtbare rand, kop met \"8 nummers\", de i binnen het vak",
                       ok87 and d87["omlijnd"] and d87["kopZichtbaar"] and d87["kopTeller"] == "8 nummers" and d87["kopBinnen"], json.dumps(d87))
                 check(f"{naam87}: \"Beheersing\" in de kop staat recht boven de keuze in elke rij",
                       ok87 and len(d87["keuzeX"]) == 1 and d87["keuzeX"][0] == d87["kopBehX"], json.dumps(d87))
@@ -9935,11 +9940,12 @@ window.TT_STUB.fnAntwoord = {};
         page_errors.clear()
 
         # ────────────────────────────────────────────────────────────
-        # Blok 90 — 11-10-2026 (TT-461, besluit Ronald: "dit wil ik. contrast"):
-        # het scherm Wie ben je is een paneel zoals Zoeken (.search-filters).
-        # De niet-gekozen keuzeknop heeft de kleur en rand van een veld.
+        # Blok 90 — TT-517 fase 2 (huisstijl §7.4, §24; besluit Ronald 31-10-2026):
+        # geen omlijnd paneel om een scherm, nergens. Vervangt het paneel van
+        # TT-461 (11-10-2026). Wie ben je: de velden staan op de pagina, in licht
+        # wit; de niet-gekozen keuzeknop heeft de stand van Zoeken.
         # ────────────────────────────────────────────────────────────
-        print("\nBlok 90 — Wie ben je als paneel (TT-461)")
+        print("\nBlok 90 — geen paneel om een scherm (TT-517 fase 2, was TT-461)")
         page_errors.clear()
         page.evaluate("window.TT_STUB.reset()")
         page.set_viewport_size({"width": 390, "height": 844})
@@ -9952,26 +9958,28 @@ window.TT_STUB.fnAntwoord = {};
             bio: 'Test', naam_tonen: 'gebruikersnaam', weergavenaam: 'ik', musician_instruments: [], musician_genres: [], musician_songs: [], musician_media: [] }];
           showView('profieltegels'); await w(); openTegelScreen('wieBenJe'); await w(600);
           const html = document.documentElement;
-          // .segmented-btn heeft een overgang van 0,15s: wacht tot een themawissel is uitgewerkt.
           const meet = async thema => {
             if (thema) html.dataset.theme = thema; else delete html.dataset.theme;
             await w(400);
             const cs = e => getComputedStyle(document.querySelector(e));
-            const p = cs('#wieBenJeScreen'), z = cs('#view-about .search-filters'), v = cs('#wbjFname');
+            const p = cs('#wieBenJeScreen'), v = cs('#wbjFname'), pagina = getComputedStyle(document.body);
             const uit = cs('#wbjNaamTonenControl .segmented-btn:not(.selected)'), aan = cs('#wbjNaamTonenControl .segmented-btn.selected');
-            return { pBg: p.backgroundColor, zBg: z.backgroundColor, pRand: p.borderTopColor, zRand: z.borderTopColor, pDikte: p.borderTopWidth,
-                     pHoek: p.borderTopLeftRadius, zHoek: z.borderTopLeftRadius, pOpvul: p.paddingLeft, vBg: v.backgroundColor, vRand: v.borderTopColor,
-                     uitBg: uit.backgroundColor, uitRand: uit.borderTopColor, aanBg: aan.backgroundColor };
+            const root = getComputedStyle(html);
+            return { pBg: p.backgroundColor, pDikte: p.borderTopWidth, pOpvul: p.paddingLeft, pHoek: p.borderTopLeftRadius,
+                     vBg: v.backgroundColor, paginaBg: pagina.backgroundColor, uitBg: uit.backgroundColor, uitRand: uit.borderTopColor,
+                     keuzeVlak: root.getPropertyValue('--keuze-vlak').trim(), aanBg: aan.backgroundColor };
           };
           u.licht = await meet('licht'); u.donker = await meet('donker'); delete html.dataset.theme;
-          // Elk tegelscherm hoort bij hetzelfde paneel (consistentie): ook de verborgen schermen geven hun stijl.
-          const ids = ['wieBenJeScreen','watSpeelJeScreen','watZoekJeScreen','jeSetlistScreen','mediahoekScreen','bandWieScreen','bandBezettingScreen','bandMuziekScreen','bandMediaScreen','step0','step1','step2','step3','step4','ouderStap','ouderWacht','ouderWachtwoord'];
+          // Elk scherm dat een paneel had: geen vlak, geen rand, geen opvulling, geen hoek. Ook de verborgen schermen geven hun stijl.
+          const sel = ['#wieBenJeScreen','#watSpeelJeScreen','#watZoekJeScreen','#jeSetlistScreen','#mediahoekScreen','#bandWieScreen','#bandBezettingScreen',
+            '#bandMuziekScreen','#bandMediaScreen','#step0','#step1','#step2','#step3','#step4','#ouderStap','#ouderWacht','#ouderWachtwoord',
+            '#view-auth .auth-panel','#view-reset .auth-panel','#view-about .search-filters','#view-privacy .search-filters','#view-terms .search-filters',
+            '#view-gedragscode .search-filters','#view-instellingen .search-filters','#view-search .search-filters'];
           u.alleSchermen = {};
           for (const th of ['licht', 'donker']) {
             html.dataset.theme = th; await w(200);
-            const z = getComputedStyle(document.querySelector('#view-about .search-filters'));
-            u.alleSchermen[th] = ids.filter(i => { const p = getComputedStyle(document.getElementById(i));
-              return !(p.backgroundColor === z.backgroundColor && p.borderTopColor === z.borderTopColor && p.borderTopWidth === '1px' && p.paddingLeft === '24px' && p.borderTopLeftRadius === z.borderTopLeftRadius); });
+            u.alleSchermen[th] = sel.filter(i => { const e = document.querySelector(i); if (!e) return true; const p = getComputedStyle(e);
+              return !(p.backgroundColor === 'rgba(0, 0, 0, 0)' && p.borderTopWidth === '0px' && p.paddingLeft === '0px' && p.borderTopLeftRadius === '0px'); });
           }
           delete html.dataset.theme;
           currentUser = keep.currentUser; myMusicianId = keep.myMusicianId; hasOwnProfile = keep.hasOwnProfile; S.data.musicians = keep.musicians;
@@ -9979,13 +9987,13 @@ window.TT_STUB.fnAntwoord = {};
         }""")
         for thema90 in ("licht", "donker"):
             m90 = d90[thema90]
-            check(f"Wie ben je ({thema90}): paneel gelijk aan het paneel van Zoeken (vlak, rand, hoek)",
-                  m90["pBg"] == m90["zBg"] and m90["pRand"] == m90["zRand"] and m90["pDikte"] == "1px" and m90["pHoek"] == m90["zHoek"], json.dumps(m90))
-            check(f"Wie ben je ({thema90}): 24px opvulling en de velden hebben een ander vlak dan het paneel",
-                  m90["pOpvul"] == "24px" and m90["vBg"] != m90["pBg"], json.dumps(m90))
-            check(f"Wie ben je ({thema90}): de niet-gekozen keuzeknop heeft vlak en rand van een veld, de gekozen houdt zijn eigen vlak",
-                  m90["uitBg"] == m90["vBg"] and m90["uitRand"] == m90["vRand"] and m90["aanBg"] != m90["uitBg"], json.dumps(m90))
-        check("alle negen tegelschermen, de vijf wizardstappen en de drie ouder-schermen zijn het paneel van Zoeken, licht en donker",
+            check(f"Wie ben je ({thema90}): geen paneel: geen vlak, geen rand, geen opvulling, geen hoek",
+                  m90["pBg"] == "rgba(0, 0, 0, 0)" and m90["pDikte"] == "0px" and m90["pOpvul"] == "0px" and m90["pHoek"] == "0px", json.dumps(m90))
+            check(f"Wie ben je ({thema90}): het veld heeft een eigen vlak op de pagina (licht wit #FFFEFA, donker grijs)",
+                  m90["vBg"] != m90["paginaBg"] and m90["vBg"] == ("rgb(255, 254, 250)" if thema90 == "licht" else "rgb(36, 36, 36)"), json.dumps(m90))
+            check(f"Wie ben je ({thema90}): de niet-gekozen keuzeknop heeft de stand van Zoeken (--keuze-vlak), de gekozen zijn eigen vlak",
+                  m90["aanBg"] != m90["uitBg"], json.dumps(m90))
+        check("geen paneel om een scherm, nergens: negen tegelschermen, vijf wizardstappen, drie ouder-schermen, inloggen, Over ons, juridisch, Instellingen, Zoeken (licht en donker)",
               d90["alleSchermen"]["licht"] == [] and d90["alleSchermen"]["donker"] == [], json.dumps(d90["alleSchermen"]))
         check("geen paginafouten in blok 90", not page_errors, "; ".join(page_errors)[:300])
         page_errors.clear()
@@ -10658,8 +10666,9 @@ window.TT_STUB.fnAntwoord = {};
         check("terug vanaf dat startscherm gaat naar de landingspagina; na een tik op Zoeken onderin doet terug niets",
               d95["landingTerug"] == "landing" and d95["tabTerug"] == "search", json.dumps([d95["landingTerug"], d95["tabTerug"]]))
         oa = d95["optieA"]
-        check("één ondergrond: geen kader om de velden in Zoeken; elders blijft het paneel (optie A, 26-10-2026)",
-              all(oa[t]["kader"] == ["rgba(0, 0, 0, 0)", "0px", "0px"] and oa[t]["ander"] != "rgba(0, 0, 0, 0)" for t in ("donker", "licht")), j95("optieA"))
+        # TT-517 fase 2 (besluit Ronald 31-10-2026): ook elders geen paneel meer (Over ons als voorbeeld; blok 90 toetst alle schermen).
+        check("één ondergrond: geen kader om de velden in Zoeken, en ook elders niet (optie A, 26-10-2026; overal sinds 31-10-2026)",
+              all(oa[t]["kader"] == ["rgba(0, 0, 0, 0)", "0px", "0px"] and oa[t]["ander"] == "rgba(0, 0, 0, 0)" for t in ("donker", "licht")), j95("optieA"))
         check("de onderbalk heeft de kleur van de pagina, in donker en licht",
               all(oa[t]["balk"] == oa[t]["pagina"] for t in ("donker", "licht")), j95("optieA"))
         check("de velden hebben een eigen vlak op de pagina: donker grijs, licht wit (#FFFEFA)",
@@ -11409,6 +11418,108 @@ def blok_0_rijen():
 
 
 # --------------------------------------------------------------------------
+# Blok 109 — TT-517 fase 2: knoppen, vlakken en hoeken (huisstijl §4, §5, §7.4, §21, §24)
+# --------------------------------------------------------------------------
+# Besluiten Ronald 31-10-2026: elke knop een pil (keuzeknoppen en de gestippelde
+# knop blijven 8px); geen omlijnd paneel om een scherm; een rij, kaart of tegel
+# heeft geen rand en geen gele streep, licht een wit vlak met schaduw, donker
+# een stap lichter vlak (#222); de tegels onder Foto's en video's en Links 12px.
+
+TT517_VLAKKEN = ["result-row", "zoek-kaart", "mm-nummer-rij", "gedeeld-rij", "band-card", "tile", "setlist-rij",
+                 "media-rij", "media-thumb", "band-nummer", "completeness-wrap", "ouder-kaart"]
+
+def blok_tt517_fase2():
+    print("\nBlok 109 — TT-517 fase 2: knoppen, vlakken en hoeken")
+    lees = lambda f: open(os.path.join(ROOT, f), encoding="utf-8").read()
+    css = lees("styles.css")
+    donker = css[css.index(':root {'):css.index(':root[data-theme="licht"] {')]
+    licht = css[css.index(':root[data-theme="licht"] {'):]
+    licht = licht[:licht.index('}')]
+    rol = lambda blok, naam: (re.search(r'--' + naam + r':\s*([^;]+);', blok) or [None, None])[1]
+    check("rollen --vlak en --schaduw-vlak: donker #222 zonder schaduw, licht wit met de zachte schaduw van §24",
+          rol(donker, "vlak") == "#222" and rol(donker, "schaduw-vlak") == "none" and rol(licht, "vlak") == "var(--surface)"
+          and rol(licht, "schaduw-vlak") == "0 1px 2px rgba(30,30,30,0.06), 0 4px 14px rgba(30,30,30,0.07)",
+          json.dumps([rol(donker, "vlak"), rol(donker, "schaduw-vlak"), rol(licht, "vlak"), rol(licht, "schaduw-vlak")]))
+    tegel = re.search(r'\n  \.tile \{([^}]*)\}', css)
+    check("geen gele streep links op een tegel meer (.tile zonder eigen rand of vlak)",
+          tegel is not None and not re.search(r'border(-left|-width|-color|-style)?\s*:|background', tegel.group(1)), tegel.group(1) if tegel else ".tile niet gevonden")
+    check("de link-tegel op een profiel is een .profile-media-tegel, geen eigen inline stijl", "tileStyle" not in lees("musicians.js"), "")
+
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        fouten = []
+        uit = {}
+        for thema in ("licht", "donker"):
+            ctx = browser.new_context(viewport={"width": 390, "height": 844}, color_scheme="light" if thema == "licht" else "dark")
+            page = ctx.new_page()
+            page.on("pageerror", lambda e: fouten.append(str(e)))
+            page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+            page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+            page.wait_for_timeout(300)
+            uit[thema] = page.evaluate("""(vlakken) => {
+              const r = {};
+              const pagina = document.getElementById('view-instellingen');
+              const proef = document.createElement('div'); pagina.appendChild(proef);
+              r.vlak = {};
+              const verwacht = getComputedStyle(document.documentElement).getPropertyValue('--vlak').trim();
+              const tmp = document.createElement('div'); tmp.style.background = 'var(--vlak)'; proef.appendChild(tmp);
+              r.vlakKleur = getComputedStyle(tmp).backgroundColor;
+              const schaduw = document.createElement('div'); schaduw.style.boxShadow = 'var(--schaduw-vlak)'; proef.appendChild(schaduw);
+              r.schaduwVerwacht = getComputedStyle(schaduw).boxShadow;
+              for (const k of vlakken) {
+                const e = document.createElement(k === 'tile' || k === 'band-nummer' ? 'button' : 'div'); e.className = k; proef.appendChild(e);
+                const cs = getComputedStyle(e);
+                r.vlak[k] = [cs.backgroundColor === r.vlakKleur, cs.borderTopColor === 'rgba(0, 0, 0, 0)' && cs.borderLeftColor === 'rgba(0, 0, 0, 0)',
+                             cs.borderTopWidth === '1px' && cs.borderLeftWidth === '1px', cs.boxShadow === r.schaduwVerwacht];
+              }
+              const open = document.createElement('div'); open.className = 'gedeeld-rij open'; proef.appendChild(open);
+              r.openRand = getComputedStyle(open).borderTopColor;
+              r.accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+              // Knoppen: elke .btn een pil; keuzeknoppen en de gestippelde knop 8px.
+              const knoppen = [...document.querySelectorAll('.btn')];
+              r.knoppen = knoppen.length;
+              r.geenPil = knoppen.filter(b => getComputedStyle(b).borderTopLeftRadius !== '999px').map(b => b.textContent.trim()).slice(0, 5);
+              r.keuze = {};
+              for (const k of ['tag', 'level-btn', 'segmented-btn', 'search-mode-tab', 'media-tab', 'goal-card', 'level-choice', 'add-link-btn']) {
+                const e = document.createElement('button'); e.className = k; proef.appendChild(e);
+                r.keuze[k] = getComputedStyle(e).borderTopLeftRadius;
+              }
+              const tegel = document.createElement('button'); tegel.className = 'profile-media-tegel'; proef.appendChild(tegel);
+              r.tegelHoek = getComputedStyle(tegel).borderTopLeftRadius;
+              // Velden: op de pagina licht wit; in een venster houden ze het vlak van het venster (§24, wat blijft).
+              r.veldPagina = getComputedStyle(document.getElementById('regEmail')).backgroundColor;
+              const venster = document.querySelector('.modal-box input:not([type=checkbox]):not([type=radio]):not([type=file]), .modal-box textarea');
+              r.veldVenster = venster ? getComputedStyle(venster).backgroundColor : null;
+              proef.remove();
+              return r;
+            }""", TT517_VLAKKEN)
+            ctx.close()
+        for thema in ("licht", "donker"):
+            u = uit[thema]
+            fout = [k for k, v in u["vlak"].items() if not all(v)]
+            check(f"{thema}: elke rij, kaart en tegel een vlak zonder zichtbare rand (1px doorzichtig), met --vlak en --schaduw-vlak ({len(TT517_VLAKKEN)} soorten)",
+                  not fout, json.dumps({k: u["vlak"][k] for k in fout}))
+            check(f"{thema}: het vlak is " + ("wit #FFFEFA met schaduw" if thema == "licht" else "#222 zonder schaduw"),
+                  u["vlakKleur"] == ("rgb(255, 254, 250)" if thema == "licht" else "rgb(34, 34, 34)")
+                  and ((u["schaduwVerwacht"] != "none") if thema == "licht" else (u["schaduwVerwacht"] == "none")), json.dumps([u["vlakKleur"], u["schaduwVerwacht"]]))
+            check(f"{thema}: een open rij in Mix & Match houdt zijn eigen rand (--accent)", u["openRand"] != "rgba(0, 0, 0, 0)", u["openRand"])
+            check(f"{thema}: elke knop (.btn) is een pil, 999px ({u['knoppen']} knoppen)", u["knoppen"] > 20 and not u["geenPil"], json.dumps(u["geenPil"]))
+            check(f"{thema}: keuzeknoppen en de gestippelde knop blijven 8px",
+                  all(v == "8px" for v in u["keuze"].values()), json.dumps(u["keuze"]))
+            check(f"{thema}: de tegels onder Foto's en video's en Links hebben hoeken van 12px", u["tegelHoek"] == "12px", u["tegelHoek"])
+        check("licht: een veld op de pagina is wit (#FFFEFA), donker grijs (#242424)",
+              uit["licht"]["veldPagina"] == "rgb(255, 254, 250)" and uit["donker"]["veldPagina"] == "rgb(36, 36, 36)",
+              json.dumps([uit["licht"]["veldPagina"], uit["donker"]["veldPagina"]]))
+        check("licht: een veld in een venster houdt het crème vlak (vensters houden hun vlak, §24)",
+              uit["licht"]["veldVenster"] == "rgb(246, 243, 236)", json.dumps(uit["licht"]["veldVenster"]))
+        check("geen JS-fout in blok 109", not fouten, "; ".join(fouten)[:300])
+        browser.close()
+    httpd.shutdown()
+
+
+# --------------------------------------------------------------------------
 # Blok 108 — herhaling bij "JWT issued at future" (TT-306, 8D, 31-10-2026)
 # --------------------------------------------------------------------------
 # Echte supabase.js, het netwerk nagebootst: Supabase weigert eerst met
@@ -11482,6 +11593,7 @@ def main():
     print("The Talent Tent — vaste testset, laag 1 (TT-231)")
     blok1_statisch()
     blok_tt517_fase1()
+    blok_tt517_fase2()
     blok_0_rijen()
     blok_browser()
     blok_xss()
