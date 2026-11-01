@@ -1955,12 +1955,29 @@ function meetLogoBreedte(logo, px) {
   return kopLogoMeterEl.scrollWidth;
 }
 
+// De ruimte in het middenvak van de kop, voor het woordmerk of de titel. Gemeten
+// vanaf waar het element werkelijk staat (het midden van de rij plus een
+// eventuele optische verschuiving) tot de binnenkant van elk buitenvak; het
+// element groeit naar twee kanten even ver, dus de krapste kant telt, twee keer.
+function kopRuimte(rij, el) {
+  const vakken = [...rij.querySelectorAll(':scope > .kop-vak')];
+  if (vakken.length < 2) return null;
+  const st = getComputedStyle(rij);
+  const rb = rij.getBoundingClientRect();
+  const pl = parseFloat(st.paddingLeft), pr = parseFloat(st.paddingRight);
+  const tf = getComputedStyle(el).transform;
+  const verschuiving = tf && tf !== 'none' ? new DOMMatrix(tf).m41 : 0;
+  const midden = rb.left + pl + (rij.clientWidth - pl - pr) / 2 + verschuiving;
+  const links = vakken[0].getBoundingClientRect().right;
+  const rechts = vakken[vakken.length - 1].getBoundingClientRect().left;
+  return 2 * Math.min(midden - links, rechts - midden);
+}
+
 function fitKopLogo(root) {
   const scope = root || document;
   scope.querySelectorAll('header').forEach(rij => {
     const logo = rij.querySelector(':scope > .logo');
     if (!logo || !rij.clientWidth) return; // nog niet zichtbaar — niets te meten
-    const st = getComputedStyle(rij);
     // De ruimte voor het woordmerk. TT-318 (24-09-2026): gerekend vanaf de
     // plek waar het woordmerk werkelijk staat — het midden van de rij plus
     // zijn optische verschuiving — tot de binnenkant van elk buitenvak. Het
@@ -1970,21 +1987,45 @@ function fitKopLogo(root) {
     // rechts (drie knoppen) liep het woordmerk daardoor over het ⋯-menu.
     // De vakken zelf veranderen niet met de lettergrootte: ze staan tegen de
     // buitenrand van hun kolom (justify-self start en end).
-    const vakken = [...rij.querySelectorAll(':scope > .kop-vak')];
-    if (vakken.length < 2) return;
-    const rb = rij.getBoundingClientRect();
-    const pl = parseFloat(st.paddingLeft), pr = parseFloat(st.paddingRight);
-    const tf = getComputedStyle(logo).transform;
-    const verschuiving = tf && tf !== 'none' ? new DOMMatrix(tf).m41 : 0;
-    const midden = rb.left + pl + (rij.clientWidth - pl - pr) / 2 + verschuiving;
-    const links = vakken[0].getBoundingClientRect().right;
-    const rechts = vakken[vakken.length - 1].getBoundingClientRect().left;
-    const ruimte = 2 * Math.min(midden - links, rechts - midden);
+    const ruimte = kopRuimte(rij, logo);
+    if (ruimte === null) return;
     for (const px of KOPLOGO_LADDER.concat(KOPLOGO_NOOD)) {
       logo.style.fontSize = px + 'px';
       if (meetLogoBreedte(logo, px) <= ruimte) return;
     }
   });
+}
+
+// TT-517 fase 3 (01-11-2026, besluit Ronald N2: "een naam is heilig en moet
+// zichtbaar zijn"): de titel in de kop wordt nooit afgekapt. Past hij niet op
+// 17px (de rol Tegelkop, huisstijl §2), dan op 15px; past hij dan nog niet,
+// dan op twee regels van 15px (36px hoog, past in de rij van 44px). Alleen
+// maten uit de schaal van zes (TT-517 fase 1). Meestal gaat het om een lange
+// naam op een profiel (een bandnaam mag 40 tekens). Zelfde meting als het
+// woordmerk: buiten beeld, want een gecentreerd element loopt aan twee kanten
+// uit zijn vak.
+const KOPTITEL_LADDER = [17, 15];
+let kopTitelMeterEl = null;
+function fitKopTitel() {
+  const titel = document.getElementById('kopTitel');
+  const rij = titel?.parentElement;
+  if (!titel || !rij || !rij.clientWidth) return; // nog niet zichtbaar
+  const ruimte = kopRuimte(rij, titel);
+  if (ruimte === null) return;
+  if (!kopTitelMeterEl) {
+    kopTitelMeterEl = document.createElement('div');
+    kopTitelMeterEl.className = 'kop-titel naam-meter';
+    document.body.appendChild(kopTitelMeterEl);
+  }
+  kopTitelMeterEl.textContent = titel.textContent;
+  titel.style.maxWidth = Math.floor(ruimte) + 'px';
+  titel.classList.remove('twee-regels');
+  for (const px of KOPTITEL_LADDER) {
+    kopTitelMeterEl.style.fontSize = px + 'px';
+    titel.style.fontSize = px + 'px';
+    if (kopTitelMeterEl.scrollWidth <= ruimte) return;
+  }
+  titel.classList.add('twee-regels');
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -461,7 +461,7 @@ async function appInit() {
   // terugvalletter heeft het woordmerk een andere breedte en klopt de eerste
   // meting niet.
   fitKopLogo(document);
-  if (document.fonts?.ready) document.fonts.ready.then(() => fitKopLogo(document));
+  if (document.fonts?.ready) document.fonts.ready.then(() => { fitKopLogo(document); fitKopTitel(); });
 }
 
 // Bug gevonden door Ronald (05-08-2026): db.auth.signInWithPassword() binnen
@@ -937,8 +937,9 @@ const viewScrollStand = {};
 // ─── Het hoogste scherm (TT-303, 20-09-2026, Ronald) ─────────────────────
 // Ingelogd is dat Mijn Profiel: daar komt iedereen na het inloggen toch al
 // uit, en op de landingspagina heeft een ingelogde gebruiker niets meer te
-// zoeken. Uitgelogd blijft het de landingspagina. Het woordmerk gaat hierheen,
-// en de terugknop op een hoofdtabblad ook.
+// zoeken. Uitgelogd blijft het de landingspagina. De knop "Naar mijn profiel"
+// na het bevestigen gaat hierheen. Het woordmerk niet meer: een tik op titel
+// of woordmerk doet niets (TT-517 fase 3, besluit Ronald C1, 01-11-2026).
 function hoogsteScherm() {
   return currentUser ? 'myprofile' : 'landing';
 }
@@ -949,7 +950,7 @@ function naarHoogsteScherm() {
 // De bovenkant van een tabblad: Zoeken, Berichten, Bands en Mijn Profiel, en
 // het hoogste scherm (de landingspagina als je uitgelogd bent). Daarboven ligt
 // niets: de terugknop doet daar niets (TT-310) en gaat nooit naar een ander
-// tabblad. Naar Mijn Profiel ga je via de onderbalk of het woordmerk.
+// tabblad. Naar Mijn Profiel ga je via de onderbalk.
 // *(TT-428, 07-10-2026, besluit Ronald: "terug blijft binnen het tabblad";
 // vervangt TT-303, waar terug op een tabblad naar Mijn Profiel ging.)*
 const TAB_VIEWS = ['search', 'messages', 'bands', 'myprofile'];
@@ -1070,6 +1071,7 @@ function showView(view, mode, extra) {
 
   const el = document.getElementById(`view-${view}`);
   if (el) el.classList.add('active');
+  zetKopTitel(); // TT-517 fase 3: meteen de goede kop, niet pas een beeld later
 
   const navMap = {
     landing: null, search: 'navSearch',
@@ -1417,6 +1419,63 @@ function syncModalScrollLock() {
   });
 })();
 
+// ─── De titel in de kop (TT-517 fase 3, 01-11-2026, besluiten Ronald) ─────
+// De kop toont de naam van het scherm. Twee uitzonderingen: het profiel van een
+// andere muzikant of een band toont diens naam (die blijft ook groot op het
+// profiel), en het woordmerk staat op de landingspagina en op de
+// goedkeuringspagina (view-toestemming: een ouder komt uit de mail en kent de
+// app niet, besluit Ronald O1; dezelfde view toont de uitkomst van een
+// bevestigingslink).
+// De tekst staat op één plek: de .scherm-titel in het scherm zelf (voor het oog
+// verborgen, styles.css), of data-kop op de view als het scherm geen eigen titel
+// toont (Mijn profiel, een open gesprek: "Berichten"). Welke titel zichtbaar is,
+// wisselt op veel plekken (wizardstap, tegelscherm, zoekscherm, gesprek); één
+// waarnemer is betrouwbaarder dan een aanroep op elk van die plekken, zelfde
+// afweging als bewaakModals() hierboven.
+const KOP_WOORDMERK_VIEWS = ['view-landing', 'view-toestemming'];
+function kopTitelTekst() {
+  const view = document.querySelector('.app-view.active');
+  if (!view || KOP_WOORDMERK_VIEWS.includes(view.id)) return '';
+  if (view.id === 'view-profiel') {
+    return view.querySelector('#profielSchermContent .profile-name')?.textContent.trim() || '';
+  }
+  const bron = [...view.querySelectorAll('.scherm-titel')]
+    .find(el => el.offsetParent !== null && el.textContent.trim());
+  return bron ? bron.textContent.trim() : (view.dataset.kop || '');
+}
+function zetKopTitel() {
+  const kop = document.getElementById('kopTitel');
+  if (!kop) return;
+  const view = document.querySelector('.app-view.active');
+  const woordmerk = !!view && KOP_WOORDMERK_VIEWS.includes(view.id);
+  const root = document.getElementById('appRoot');
+  if (root && root.classList.contains('kop-woordmerk') !== woordmerk) {
+    root.classList.toggle('kop-woordmerk', woordmerk);
+    if (woordmerk) fitKopLogo(document);
+  }
+  const tekst = kopTitelTekst();
+  if (kop.textContent === tekst) return;
+  kop.textContent = tekst;
+  fitKopTitel();
+}
+(function bewaakKopTitel() {
+  const root = document.getElementById('appRoot');
+  if (!root) return;
+  let gepland = false;
+  const plan = () => {
+    if (gepland) return;
+    gepland = true;
+    requestAnimationFrame(() => { gepland = false; zetKopTitel(); });
+  };
+  // Pas beginnen als alle scripts geladen zijn: zetKopTitel() gebruikt
+  // fitKopTitel() en fitKopLogo() uit utils.js.
+  document.addEventListener('DOMContentLoaded', () => {
+    new MutationObserver(plan).observe(root, { subtree: true, childList: true,
+      attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+    plan();
+  });
+})();
+
 // Sluit, indien open, eerst een modal (telt als één "terug"-stap), daarna een
 // open gesprek, en pas daarna een view — voorkomt dat een open profiel-,
 // band- of gespreksscherm zomaar verdwijnt samen met de hele pagina eronder.
@@ -1429,7 +1488,7 @@ function syncModalScrollLock() {
 let naamHermeetTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(naamHermeetTimer);
-  naamHermeetTimer = setTimeout(() => { fitProfileName(document); fitKopLogo(document); }, 150);
+  naamHermeetTimer = setTimeout(() => { fitProfileName(document); fitKopLogo(document); fitKopTitel(); }, 150);
 });
 
 // TT-264 (13-09-2026, Ronald): "als ik een video inline afspeel en ik druk op

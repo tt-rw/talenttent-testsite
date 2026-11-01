@@ -370,7 +370,8 @@
   .kop-terug.gewapend { background: var(--surface); border-color: var(--accent); }
 
   .logo {
-    /* TT-U23 (12-08-2026): het logo is de home-knop, dus ook een tikdoel. */
+    /* 44px hoog, zoals de knoppen naast hem: de rij van de kop. Sinds TT-517
+       fase 3 geen knop meer (besluit C1); was de home-knop (TT-U23). */
     display: inline-flex;
     align-items: center;
     min-height: 44px;
@@ -408,6 +409,46 @@
        Als verhouding geschreven, zodat het woordmerk bij elke trede van
        fitKopLogo() dezelfde vorm houdt. Eén maat voor elk woordmerk. */
     margin-right: calc(2em / 28);
+  }
+
+  /* TT-517 fase 3 (01-11-2026, besluiten Ronald): de titel van het scherm
+     staat in de kop, het woordmerk alleen op de landingspagina en op de
+     goedkeuringspagina voor ouders (besluit O1: "dat geeft de ouder meer
+     context"; .kop-woordmerk, zetKopTitel() in core.js). Titel en
+     woordmerk delen het middenvak; de plaats staat vast, zodat de hamburger
+     altijd in het rechtervak blijft. De titel staat wiskundig in het midden,
+     zoals op de proefpagina (woordmerk E); alleen het woordmerk schuift
+     optisch 7px (TT-318). Rol Tegelkop: 17px vet, tekstkleur van het thema.
+     Een tik doet niets (besluit C1). Te lang: fitKopTitel() in utils.js
+     (17 · 15px, dan twee regels van 15px; nooit afgekapt, besluit N2). */
+  header > .kop-links { grid-column: 1; grid-row: 1; }
+  header > .logo, header > .kop-titel { grid-column: 2; grid-row: 1; }
+  header > .kop-rechts { grid-column: 3; grid-row: 1; }
+  #appRoot:not(.kop-woordmerk) header > .logo { display: none; }
+  #appRoot.kop-woordmerk header > .kop-titel { display: none; }
+  .kop-titel {
+    justify-self: center;
+    min-width: 0;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .kop-titel.twee-regels { white-space: normal; font-size: 15px; }
+  /* De titel in het scherm zelf is de bron van de kop en staat er voor het oog
+     niet meer, anders staat hij dubbel. Een schermlezer leest hem nog. */
+  .app-view .scherm-titel {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .tagline {
@@ -479,10 +520,10 @@
   .panel-ouder.active { display: block; }
 
   /* De ouder-schermen tonen de stappenbalk niet — ze zijn geen genummerde
-     stap. Die balk levert wel de 40px lucht onder de kop (.steps
-     margin-bottom); zonder deze regel plakt de kaart tegen de kop aan. De
-     kaart zelf (opvulling, rand) komt uit de TT-461-regel verderop. */
-  .panel-ouder { margin-top: 40px; }
+     stap. TT-517 fase 3: de ruimte onder de kop komt uit main
+     (--kop-ruimte, 20px), zoals op elk scherm; tot 01-11-2026 stond hier
+     40px. */
+  .panel-ouder { margin-top: 0; }
 
   /* TT-42: het blok dat het kind aan zijn ouder kan laten zien. */
   .ouder-kaart {
@@ -2979,14 +3020,21 @@
      kop, Mijn Profiel zonder bannerbalk ook. Met een bannerbalk blijft die
      direct onder de kop staan (huisstijl §10). Een open gesprek houdt zijn
      eigen kop tegen de bovenkant. */
-  #view-messages > .search-wrap,
-  #view-bands > .search-wrap { padding-top: var(--kop-ruimte); }
+  /* TT-517 fase 3 (01-11-2026, besluit Ronald): de titel van het scherm staat
+     in de kop; op elk scherm begint de inhoud 20px onder de kop. Gold eerst
+     alleen voor Berichten en Bands; Over ons, de drie voorwaarden,
+     Instellingen, de registratie, Profiel bewerken, Inloggen en Nieuw
+     wachtwoord stonden op 0, 24 of 40px. */
+  .app-view > .search-wrap,
+  #view-register > main,
+  #view-profieltegels > main { padding-top: var(--kop-ruimte); }
   #view-messages.active .search-wrap:has(#messagesThreadPanel.gesprek-open) { padding-top: 0; }
   #view-myprofile .my-profile-wrap:not(:has(.profiel-banner)) { padding-top: var(--kop-ruimte); }
 
   /* Kop van Mijn Bands: titel en knop op één rij, op dezelfde middellijn
      (TT-434); de ondertitel staat in de kolom van de titel, smaller dan de
-     knop, en breekt af over twee regels. */
+     knop, en breekt af over twee regels. TT-517 fase 3: de titel staat in de
+     kop van de app; de ondertitel schuift op zijn plek, naast de knop. */
   .mijn-bands-kop {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -2997,7 +3045,7 @@
   }
   .mijn-bands-kop .filter-title { grid-column: 1; grid-row: 1; margin-bottom: 0; }
   .mijn-bands-kop .btn { grid-column: 2; grid-row: 1; white-space: nowrap; }
-  .mijn-bands-sub { grid-column: 1; grid-row: 2; margin: 0; font-size: 12px; color: var(--muted); }
+  .mijn-bands-sub { grid-column: 1; grid-row: 1; margin: 0; font-size: 12px; color: var(--muted); }
 
   /* Standaard witruimte tussen twee blokken in het filterpaneel: 20px, zoals
      §3 van de huisstijl voorschrijft. Stond hier als inline marge van 16px op
@@ -4472,7 +4520,7 @@
        marge-regel (zie huisstijl §3) niet — enige twee schermen die
        afweken. Vaste 60px bovenmarge is op een klein scherm ook onnodig
        groot, er is geen kop-content om vanaf te lopen op dit scherm. */
-    .auth-wrap { padding: 0 16px; margin: 24px auto; }
+    .auth-wrap { padding: 0 16px; margin: var(--kop-ruimte) auto; }
     /* 22-08-2026 (Ronald, "12-1"): de gouden balk bovenaan het profiel
        (.profile-header-band) moet direct tegen de vaste kop aan sluiten,
        geen kloof ertussen. Alleen op Mijn Profiel de bovenmarge weg — de

@@ -1288,24 +1288,29 @@ def blok_browser():
 
         # TT-268 (15-09-2026, Ronald): 12px lucht boven en onder het woordmerk,
         # gouden balk weg, en het profiel van iemand anders houdt de koprij.
+        # TT-517 fase 3 (01-11-2026): buiten de landingspagina staat de titel in
+        # het middenvak, niet het woordmerk. De 12px gelden voor de rij van 44px
+        # (knoppen en woordmerk); de titel staat op dezelfde middellijn.
         kop = page.evaluate("""() => {
           const h = document.querySelector('header');
-          const logo = h.querySelector('.logo');
+          const logo = [h.querySelector('.logo'), document.getElementById('kopTitel')]
+            .find(e => e && e.offsetParent !== null) || h.querySelector('.logo');
+          const knop0 = document.getElementById('navMenuBtn').getBoundingClientRect();
           const knop = document.getElementById('navMenuBtn');
           const hb = h.getBoundingClientRect(), lb = logo.getBoundingClientRect(), kb = knop.getBoundingClientRect();
           return {
-            boven: Math.round(lb.top - hb.top),
-            onder: Math.round(hb.bottom - lb.bottom),
+            boven: Math.round(knop0.top - hb.top),
+            onder: Math.round(hb.bottom - knop0.bottom),
             kopHoogte: Math.round(hb.height),
             knopMidY: Math.round(kb.top + kb.height / 2),
             logoMidY: Math.round(lb.top + lb.height / 2),
             knopRechts: Math.round(window.innerWidth - kb.right),
           };
         }""")
-        check("12px lucht boven en onder het woordmerk",
+        check("12px lucht boven en onder de rij van de kop (knoppen, woordmerk)",
               kop["boven"] == 12 and kop["onder"] == 12, json.dumps(kop))
         check("de kop is daarmee 68px hoog", kop["kopHoogte"] == 68, str(kop["kopHoogte"]))
-        check("de hamburger staat op de middellijn van het woordmerk",
+        check("de hamburger staat op de middellijn van de titel of het woordmerk",
               abs(kop["knopMidY"] - kop["logoMidY"]) <= 1, json.dumps(kop))
 
         profielkop = page.evaluate("""() => {
@@ -1357,8 +1362,10 @@ def blok_browser():
         }""")
         check("geen enkele gouden balk meer in Profiel bewerken",
               appbreed["gouddenBalkenOver"] == 0, str(appbreed["gouddenBalkenOver"]))
-        check("Profiel bewerken begint direct onder de kop",
-              appbreed["mainBoven"] == "0px" and appbreed["mainZij"] == "16px", json.dumps(appbreed))
+        # TT-517 fase 3 (besluit Ronald 01-11-2026): de titel staat in de kop;
+        # elk scherm begint 20px onder de kop (--kop-ruimte). Was 0px.
+        check("Profiel bewerken begint 20px onder de kop (TT-517 fase 3)",
+              appbreed["mainBoven"] == "20px" and appbreed["mainZij"] == "16px", json.dumps(appbreed))
 
         check("geen paginafouten in blok 15", not page_errors, "; ".join(page_errors)[:200])
 
@@ -1847,12 +1854,20 @@ def blok_browser():
           await openProfielScherm('m2');
         }""")
         page.wait_for_timeout(200)
-        page.click("header .logo")
+        # TT-517 fase 3 (besluiten Ronald 01-11-2026): op het profiel van een
+        # ander staat de naam in de kop, niet het woordmerk; een tik op de titel
+        # doet niets (C1). Was: een tik op het woordmerk ging naar het hoogste scherm.
+        kop20 = page.evaluate("""() => ({ titel: document.getElementById('kopTitel').textContent,
+          titelZichtbaar: document.getElementById('kopTitel').offsetParent !== null,
+          woordmerk: document.querySelector('header .logo').offsetParent !== null })""")
+        page.click("#kopTitel")
         page.wait_for_timeout(200)
-        naar_home = page.evaluate("() => document.getElementById('view-landing').classList.contains('active')")
+        blijft = page.evaluate("() => document.getElementById('view-profiel').classList.contains('active')")
         page.evaluate("""() => { hasOwnProfile = window.__was20.hasOwnProfile; myMusicianId = window.__was20.myMusicianId;
           delete window.TT_STUB.rpcResults.tt_get_musicians_public; }""")
-        check("het woordmerk gaat naar het hoogste scherm", naar_home, "")
+        check("op een profiel van een ander staat de naam in de kop, geen woordmerk (TT-517 fase 3)",
+              kop20["titel"] == "dylan" and kop20["titelZichtbaar"] and not kop20["woordmerk"], json.dumps(kop20))
+        check("een tik op de titel in de kop doet niets (TT-517 fase 3, besluit C1)", blijft, "")
         check("geen paginafouten in blok 20", not page_errors, "; ".join(page_errors)[:200])
 
         # ─────────────────────────────────────────────────────────────
@@ -2806,7 +2821,10 @@ def blok_browser():
         check("'THE' staat nergens meer in het woordmerk",
               "THE </span>" not in html_bron, "woordmerk bevat nog THE")
 
+        # TT-517 fase 3: het woordmerk staat alleen nog op de landingspagina
+        # (en de goedkeuringspagina); daar wordt het gemeten.
         kop301 = page.evaluate("""() => {
+          showView('landing');
           const h = document.querySelector('header');
           const logo = h.querySelector('.logo');
           const terug = document.getElementById('navTerugBtn');
@@ -2931,6 +2949,7 @@ def blok_browser():
         page.set_viewport_size({"width": 561, "height": 844})
         page.wait_for_timeout(80)
         smal = page.evaluate("""() => {
+          showView('landing');
           fitKopLogo(document);
           const h = document.querySelector('header');
           const logo = h.querySelector('.logo');
@@ -3042,11 +3061,13 @@ def blok_browser():
               json.dumps(volgorde))
 
         # .naam-meter is het onzichtbare meetelement van fitKopLogo(), geen woordmerk.
-        merk = page.evaluate("""() => [...document.querySelectorAll('.logo:not(.naam-meter)')]
-          .map(el => el.getAttribute('onclick') || '')""")
-        check("elk woordmerk gaat naar het hoogste scherm, niet vast naar de landingspagina",
-              len(merk) >= 1 and all("naarHoogsteScherm()" in o for o in merk)
-              and not any("showView('landing')" in o for o in merk), json.dumps(merk))
+        # TT-517 fase 3 (besluit Ronald C1, 01-11-2026): een tik op woordmerk of
+        # titel doet niets; naar Mijn profiel ga je met de onderbalk. Vervangt
+        # TT-303 (het woordmerk ging naar het hoogste scherm).
+        merk = page.evaluate("""() => [...document.querySelectorAll('header .logo:not(.naam-meter), #kopTitel')]
+          .map(el => (el.getAttribute('onclick') || '') + (el.getAttribute('role') || '') + (el.style.cursor || ''))""")
+        check("woordmerk en titel in de kop zijn geen knop: een tik doet niets (TT-517 fase 3, C1)",
+              len(merk) == 2 and all(o == "" for o in merk), json.dumps(merk))
 
         hoogste = page.evaluate("""async () => {
           const btn = document.getElementById('navTerugBtn');
@@ -9426,25 +9447,38 @@ window.TT_STUB.fnAntwoord = {};
             musician_instruments: [], musician_genres: [], musician_songs: [], musician_media: [] }];
           const kop = () => document.querySelector('header').getBoundingClientRect().bottom;
           const top = sel => { const e = document.querySelector(sel); return e ? Math.round((e.getBoundingClientRect().top - kop()) * 10) / 10 : null; };
-          showView('search'); await w(); u.zoeken = top('#zoekStart .zoek-titel'); // TT-520: de titel Zoeken
-          showView('messages'); await w(); u.berichten = top('#messagesInboxPanel .filter-title');
+          // TT-517 fase 3: de titel staat in de kop; gemeten wordt het eerste
+          // blok dat je ziet (de tegel Muzikanten, de eerste rij of lege staat).
+          const eerste = sel => { let t = 1e9;
+            for (const e of document.querySelectorAll(sel + ' *')) { if (e.closest('.scherm-titel')) continue;
+              const r = e.getBoundingClientRect(); if (r.height < 1 || r.width < 1) continue;
+              const cs = getComputedStyle(e); if (cs.visibility === 'hidden') continue;
+              const iets = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) || cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || cs.boxShadow !== 'none';
+              if (iets && r.top < t) t = r.top; }
+            return Math.round((t - kop()) * 10) / 10; };
+          showView('search'); await w(); u.zoeken = eerste('#zoekStart');
+          // Zonder berichten: het blok van de lege staat (die heeft zijn eigen 60px binnenruimte, huisstijl §15).
+          showView('messages'); await w(); u.berichten = top('#messagesInboxList > *');
           showView('bands'); await w(); u.bands = top('#mijnBandsKop .btn');
-          const sub = document.querySelector('.mijn-bands-sub').getBoundingClientRect(), knop = document.querySelector('#mijnBandsKop .btn').getBoundingClientRect(),
-                titel = document.querySelector('#mijnBandsKop .filter-title').getBoundingClientRect();
-          u.sub = { rechtsVoorKnop: sub.right <= knop.left, onderTitel: sub.top >= titel.bottom, links: Math.round(sub.left), knopLinks: Math.round(knop.left),
-                    middenTitel: Math.round((titel.top + titel.bottom) / 2), middenKnop: Math.round((knop.top + knop.bottom) / 2) };
+          const sub = document.querySelector('.mijn-bands-sub').getBoundingClientRect(), knop = document.querySelector('#mijnBandsKop .btn').getBoundingClientRect();
+          u.sub = { rechtsVoorKnop: sub.right <= knop.left, links: Math.round(sub.left), knopLinks: Math.round(knop.left),
+                    middenSub: Math.round((sub.top + sub.bottom) / 2), middenKnop: Math.round((knop.top + knop.bottom) / 2) };
           showView('myprofile'); await w(800); u.profiel = top('#myProfileContent .profile-avatar-initials');
           currentUser = keep.currentUser; myMusicianId = keep.myMusicianId; hasOwnProfile = keep.hasOwnProfile; S.data.musicians = keep.musicians;
           return u;
         }""")
-        check("de eerste knop of titel (Zoeken: de titel van het startscherm, TT-520) staat op Zoeken, Berichten, Bands en Mijn Profiel (zonder bannerbalk) 20px onder de kop",
+        check("het eerste blok staat op Zoeken, Berichten, Bands en Mijn Profiel (zonder bannerbalk) 20px onder de kop (titel in de kop, TT-517 fase 3)",
               d83["zoeken"] == d83["berichten"] == d83["bands"] == d83["profiel"] == 20, json.dumps(d83))
-        check("Mijn bands: de ondertitel staat onder de titel en stopt vóór de knop; titel en knop op één middellijn",
-              d83["sub"]["rechtsVoorKnop"] and d83["sub"]["onderTitel"] and d83["sub"]["links"] == 16
-              and abs(d83["sub"]["middenTitel"] - d83["sub"]["middenKnop"]) <= 1, json.dumps(d83["sub"]))
+        # TT-517 fase 3: "Mijn bands" staat in de kop; de ondertitel neemt de
+        # plek van de titel in, naast de knop, op één middellijn (was: onder de titel).
+        check("Mijn bands: de ondertitel staat naast de knop en stopt ervoor; ondertitel en knop op één middellijn",
+              d83["sub"]["rechtsVoorKnop"] and d83["sub"]["links"] == 16
+              and abs(d83["sub"]["middenSub"] - d83["sub"]["middenKnop"]) <= 1, json.dumps(d83["sub"]))
         css83 = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
-        check("--kop-ruimte staat in :root en de drie regels (Zoeken, Berichten en Bands, Mijn Profiel) gebruiken hem",
-              "--kop-ruimte: 20px" in css83 and css83.count("var(--kop-ruimte)") == 3, "")
+        # TT-517 fase 3: elk scherm 20px onder de kop; vier regels: Zoeken, elk
+        # scherm met .search-wrap of main, Mijn Profiel, Inloggen en Nieuw wachtwoord.
+        check("--kop-ruimte staat in :root en de vier regels (Zoeken, schermen met .search-wrap of main, Mijn Profiel, Inloggen) gebruiken hem",
+              "--kop-ruimte: 20px" in css83 and css83.count("var(--kop-ruimte)") == 4, str(css83.count("var(--kop-ruimte)")))
         check("geen paginafouten in blok 83", not page_errors, "; ".join(page_errors)[:300])
         page_errors.clear()
 
@@ -11526,6 +11560,135 @@ def blok_tt517_fase2():
 # "JWT issued at future". De app moet dan na 2 seconden precies één keer
 # opnieuw vragen, en bij elke andere fout niet.
 
+def blok_tt517_fase3():
+    # TT-517 fase 3 (01-11-2026, besluiten Ronald): de kop. De titel van het
+    # scherm staat in de kop (17px vet, tekstkleur), het woordmerk alleen op de
+    # landingspagina en de goedkeuringspagina (O1); op het profiel van een
+    # andere muzikant of een band de naam (N2: nooit afgekapt, 17 · 15px, dan
+    # twee regels van 15px); in een gesprek "Berichten" (B3); "Toestemming"
+    # (a); een tik op titel of woordmerk doet niets (C1); de inhoud begint op
+    # elk scherm 20px onder de kop.
+    print("\nBlok 110 — TT-517 fase 3: de titel in de kop")
+    html = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+    kop = html[html.index("<header>"):html.index("</header>")]
+    check("de kop heeft één titelvak (h1#kopTitel) naast het woordmerk",
+          kop.count('id="kopTitel"') == 1 and '<h1 class="kop-titel" id="kopTitel">' in kop, "")
+    check("het woordmerk is geen knop meer: geen onclick, geen cursor (C1)",
+          re.search(r'<div class="logo"[^>]*onclick', kop) is None and "cursor:pointer" not in kop, "")
+    check("de te lange titel heet nu \"Toestemming\" (besluit a)",
+          ">Toestemming</div>" in html and "Je hebt toestemming van thuis nodig" not in html, "")
+    check("Mijn profiel en Berichten geven hun titel via data-kop",
+          'id="view-myprofile" data-kop="Mijn profiel"' in html and 'id="view-messages" data-kop="Berichten"' in html, "")
+
+    SC = [
+      ("landing", 0, [], ""), ("auth", 0, ["showView('auth')"], "Inloggen"), ("reset", 0, ["showView('reset')"], "Nieuw wachtwoord"),
+      ("wizard", 0, ["showView('register')"], "Wie ben je"), ("toestemming", 0, ["showView('register')", "ouderStapTonen()"], "Toestemming"),
+      ("over", 0, ["showView('about')"], "Over ons"), ("privacy", 0, ["showView('privacy')"], "Privacyverklaring"),
+      ("voorwaarden", 0, ["showView('terms')"], "Gebruiksvoorwaarden"), ("gedragscode", 0, ["showView('gedragscode')"], "Gedragscode"),
+      ("zoeken", 0, ["showView('search')"], "Zoeken"), ("muzikanten", 0, ["showView('search')", "openZoekScherm('muzikanten')"], "Muzikanten"),
+      ("mixmatch", 0, ["showView('search')", "openZoekScherm('mixmatch')"], "Mix & Match"), ("ouderpagina", 0, ["showView('toestemming')"], ""),
+      ("profiel", 0, ["window.TT_STUB.rpcResults.tt_get_musicians_public=()=>[{id:'m2',username:'dylan',age:30,city:'Delft',bio:'',goal:null,avatar_url:null,instrument_levels:[],genres:[],songs:[],media:[]}]", "openProfielScherm('m2')"], "dylan"),
+      ("mijnprofiel", 1, ["showView('myprofile')"], "Mijn profiel"), ("berichten", 1, ["showView('messages')"], "Berichten"),
+      ("gesprek", 1, ["showView('messages')", "openConversation('m2','Dylan de Vries','',false,false)"], "Berichten"),
+      ("bands", 1, ["showView('bands')"], "Mijn bands"), ("bandaanmaken", 1, ["showView('bands')", "showCreateBandForm()"], "Band aanmaken"),
+      ("instellingen", 1, ["showView('instellingen')"], "Instellingen"), ("tegels", 1, ["showView('profieltegels')"], "Profiel bewerken"),
+      ("tegel", 1, ["showView('profieltegels')", "openTegelScreen('wieBenJe')"], "Wie ben je"),
+      ("band", 1, ["openBandScherm('b1')"], "Van Delft"),
+      ("bandlang", 1, ["window.TT_STUB.data.bands.forEach(b=>{if(b.id==='b1')b.name='De Nachtploeg uit Leidschenveen-Ypenburg'})", "openBandScherm('b1')"],
+       "De Nachtploeg uit Leidschenveen-Ypenburg"),
+    ]
+    WOORDMERK = {"landing", "ouderpagina"}
+    # Schermen die hun eigen bovenkant houden: de foto op de landingspagina, de
+    # goedkeuringspagina, een open gesprek (de rij met de naam staat vast onder
+    # de kop) en een profiel (de hoes sluit aan op de kop, fase 4).
+    EIGEN_BOVENKANT = {"landing", "ouderpagina", "gesprek", "profiel", "band", "bandlang"}
+    MEET = r"""() => {
+      const h = document.querySelector('header'), hb = h.getBoundingClientRect();
+      const k = document.getElementById('kopTitel'), kb = k.getBoundingClientRect(), ks = getComputedStyle(k);
+      const logo = h.querySelector('.logo');
+      const l = document.querySelector('.kop-links .nav-menu-btn').getBoundingClientRect(), r = document.getElementById('navMenuBtn').getBoundingClientRect();
+      const v = document.querySelector('.app-view.active'); let top = 1e9;
+      for (const e of v.querySelectorAll('*')) { if (e.closest('.scherm-titel')) continue;
+        const b = e.getBoundingClientRect(); if (b.height < 1 || b.width < 1) continue;
+        const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+        const iets = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) || ['INPUT','IMG','BUTTON','TEXTAREA','svg'].includes(e.tagName)
+          || cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || cs.boxShadow !== 'none' || (cs.borderTopWidth !== '0px' && cs.borderTopStyle !== 'none');
+        if (iets && b.top < top) top = b.top; }
+      const tekst = getComputedStyle(document.body).getPropertyValue('--text');
+      const proef = document.createElement('span'); proef.style.color = 'var(--text)'; document.body.appendChild(proef);
+      const tekstKleur = getComputedStyle(proef).color; proef.remove();
+      const bron = [...v.querySelectorAll('.scherm-titel')].filter(e => e.offsetParent !== null);
+      return { titel: k.textContent, titelZichtbaar: k.offsetParent !== null, woordmerk: logo.offsetParent !== null,
+        maat: ks.fontSize, gewicht: ks.fontWeight, kleur: ks.color, tekstKleur, tweeRegels: k.classList.contains('twee-regels'),
+        kop: Math.round(hb.height), ruimte: Math.round(top - hb.bottom),
+        midden: Math.round((kb.left + kb.right) / 2 - (hb.left + hb.right) / 2),
+        vrijLinks: Math.round(kb.left - l.right), vrijRechts: Math.round(r.left - kb.right),
+        afgekapt: k.scrollWidth > k.clientWidth + 1 || k.scrollHeight > k.clientHeight + 1,
+        bronVerborgen: bron.every(e => { const b = e.getBoundingClientRect(); return b.width <= 1 && b.height <= 1; }),
+        middellijn: Math.round(((kb.top + kb.bottom) - (r.top + r.bottom)) / 2) };
+    }"""
+    stub_js = open(STUB, encoding="utf-8").read()
+    # Ingelogd met een eigen profiel; de stub voegt geen gekoppelde tabellen
+    # samen, dus de lege lijsten staan op de rij zelf (zoals in blok 83). Met
+    # drie berichten, zodat Berichten een lijst toont.
+    ingelogd = stub_js + """
+window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
+window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instruments: m.musician_instruments || [],
+  musician_genres: m.musician_genres || [], musician_songs: m.musician_songs || [], musician_media: m.musician_media || [] }));
+window.TT_STUB.data.messages = ['Hoi!', 'Hoi, zin om te jammen?', 'Zaterdag?'].map((t, i) => ({ id: 'x' + i,
+  sender_id: i % 2 ? 'm1' : 'm2', recipient_id: i % 2 ? 'm2' : 'm1', body: t,
+  created_at: new Date(Date.now() - (3 - i) * 600000).toISOString(), read_at: new Date().toISOString() }));
+"""
+    httpd, port = serve()
+    res, fouten = {}, []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        for breed, thema in ((390, "light"), (360, "dark")):
+            for naam, inl, stappen, _ in SC:
+                ctx = browser.new_context(viewport={"width": breed, "height": 844}, color_scheme=thema)
+                page = ctx.new_page()
+                page.on("pageerror", lambda e, n=naam: fouten.append(f"{n}: {e}"))
+                body = ingelogd if inl else stub_js
+                page.route("**/supabase.js*", (lambda bd: (lambda r: r.fulfill(status=200, content_type="application/javascript", body=bd)))(body))
+                for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+                    page.route(pat, lambda r: r.abort())
+                page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+                page.wait_for_timeout(500)
+                for st in stappen:
+                    page.evaluate(st)
+                    page.wait_for_timeout(300)
+                page.wait_for_timeout(300)
+                page.evaluate("window.scrollTo(0, 0)")
+                page.wait_for_timeout(100)
+                res[(breed, naam)] = page.evaluate(MEET)
+                ctx.close()
+        browser.close()
+    httpd.shutdown()
+    fout = lambda pred: {f"{b}:{n}": m for (b, n), m in res.items() if not pred(n, m)}
+    verwacht = {n: t for n, _, _, t in SC}
+    f1 = fout(lambda n, m: m["titel"] == verwacht[n])
+    check(f"elk scherm toont zijn eigen titel in de kop ({len(SC)} schermen, 390px licht en 360px donker)", not f1, json.dumps(f1)[:600])
+    f2 = fout(lambda n, m: m["woordmerk"] == (n in WOORDMERK) and m["titelZichtbaar"] == (n not in WOORDMERK))
+    check("het woordmerk staat alleen op de landingspagina en de goedkeuringspagina, elders de titel (O1)", not f2, json.dumps(f2)[:600])
+    f3 = fout(lambda n, m: n in WOORDMERK or (m["gewicht"] == "700" and m["kleur"] == m["tekstKleur"]
+                                              and m["maat"] == ("15px" if n == "bandlang" else "17px")))
+    check("de titel is 17px vet in de tekstkleur van het thema (rol Tegelkop)", not f3, json.dumps(f3)[:600])
+    f4 = fout(lambda n, m: n in WOORDMERK or (abs(m["midden"]) <= 1 and abs(m["middellijn"]) <= 1))
+    check("de titel staat in het midden van de kop, op de middellijn van de knoppen", not f4, json.dumps(f4)[:600])
+    f5 = fout(lambda n, m: n in WOORDMERK or (m["vrijLinks"] >= 0 and m["vrijRechts"] >= 0 and not m["afgekapt"]))
+    check("de titel raakt de knoppen niet en is nooit afgekapt", not f5, json.dumps(f5)[:600])
+    f6 = fout(lambda n, m: m["kop"] == 68)
+    check("de kop is op elk scherm 68px hoog, ook met een titel op twee regels", not f6, json.dumps(f6)[:600])
+    f7 = fout(lambda n, m: n in EIGEN_BOVENKANT or m["ruimte"] == 20)
+    check("de inhoud begint op elk scherm 20px onder de kop (besluit Ronald 01-11-2026)", not f7, json.dumps({k: v["ruimte"] for k, v in f7.items()}))
+    f8 = fout(lambda n, m: m["bronVerborgen"])
+    check("de titel staat niet dubbel: de titel in het scherm is voor het oog verborgen", not f8, json.dumps(f8)[:600])
+    lang = res[(360, "bandlang")]
+    check("een lange bandnaam (40 tekens) staat volledig in de kop, op twee regels van 15px (N2)",
+          lang["tweeRegels"] and lang["maat"] == "15px" and not lang["afgekapt"], json.dumps(lang))
+    check("op een korte naam blijft de titel op één regel van 17px", not res[(360, "band")]["tweeRegels"] and res[(360, "band")]["maat"] == "17px", json.dumps(res[(360, "band")]))
+    check("geen paginafouten in blok 110", not fouten, "; ".join(fouten)[:400])
+
 def blok_jwt_herhaling():
     print("\nBlok 108 — herhaling bij 'JWT issued at future' (TT-306)")
     core = open(os.path.join(ROOT, "core.js"), encoding="utf-8").read()
@@ -11594,6 +11757,7 @@ def main():
     blok1_statisch()
     blok_tt517_fase1()
     blok_tt517_fase2()
+    blok_tt517_fase3()
     blok_0_rijen()
     blok_browser()
     blok_xss()
