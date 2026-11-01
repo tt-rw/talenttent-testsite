@@ -3870,6 +3870,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           // app. Het menu staat bij de naam, recht onder de hamburger.
           const meet = async (soort) => {
             if (soort === 'muzikant') await openProfielScherm('m2'); else await openBandScherm('b2');
+            // TT-517 fase 9: het profiel schuift 0,32 s van rechts in; meet waar het eindigt.
+            await new Promise(ok => setTimeout(ok, 400));
             hasOwnProfile = true;
             zetVeiligheidMenu('profielSchermActies', soort, soort === 'band' ? 'b2' : 'm2', 'Test');
             hasOwnProfile = false;
@@ -5274,9 +5276,15 @@ window.TT_STUB.fnAntwoord = {};
 
         # 8. Op een telefoon blijft na een tik geen vlak achter de terugknop staan.
         css47 = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
-        guard = css47.find("@media (hover: hover)")
-        los_hover = [m.start() for m in re.finditer(r"\.nav-menu-btn:hover", css47)
-                     if not (guard != -1 and guard < m.start() < css47.find("\n  }\n", guard))]
+        # TT-517 fase 9: er zijn nu meer hover-guards (elke :hover staat in een
+        # @media (hover: hover), op zijn eigen plek). Telt: staat de regel binnen een guard.
+        def in_guard(tekst, pos):
+            open_ = []
+            for m in re.finditer(r"[{}]", tekst[:pos]):
+                if m.group() == "{": open_.append(tekst.rfind("\n", 0, m.start()) + 1)
+                elif open_: open_.pop()
+            return any("@media (hover: hover)" in tekst[b:tekst.find("{", b) + 1] for b in open_)
+        los_hover = [m.start() for m in re.finditer(r"\.nav-menu-btn:hover", css47) if not in_guard(css47, m.start())]
         check("de aanwijsstand van .nav-menu-btn staat alleen in de hover-guard (TT-182)",
               not los_hover, f"los op positie {los_hover}")
         p47.evaluate("() => showView('search')"); p47.wait_for_timeout(150)
@@ -9927,7 +9935,7 @@ window.TT_STUB.fnAntwoord = {};
             check(f"{soort88}: geen lijn boven de eerste rij en elke rij is 44px hoog",
                   d["bovenlijn"] == "0px" and all(h == 44 for h in d["hoogtes"]), json.dumps(d, ensure_ascii=False))
             if page.query_selector("#navVoorwaarden"): page.click("#navVoorwaarden")
-            page.wait_for_timeout(120)
+            page.wait_for_timeout(400)  # TT-517 fase 9: de tik veert 0,31 s; meet de rij daarna
             d = page.evaluate(JS88, [ingelogd88])
             verwacht_open = (["Instellingen"] if ingelogd88 else []) + ["Voorwaarden", "Gebruiksvoorwaarden", "Privacyverklaring", "Gedragscode", "Over ons", "Uitloggen" if ingelogd88 else "Inloggen"]
             check(f"{soort88}: een tik op Voorwaarden klapt de drie items open, het menu blijft open",
@@ -12732,6 +12740,280 @@ def blok_jwt_herhaling():
           f"{len(log['proef_e'])} vragen, {uit['e']}")
 
 
+def blok_tt517_fase9():
+    # TT-517 fase 9 (01-11-2026, huisstijl §23, besluit Ronald 1A, 2A en 3A):
+    # leven bij een tik. (1) Wat je aanraakt, wordt 2% kleiner en veert terug,
+    # pas na 50 ms en niet tijdens scrollen; de verstuurknop en de tegel in
+    # Instellingen vallen daaronder (Ronald: "we hebben dit toch al gedaan?").
+    # (2) Het profiel schuift in 0,32 s van rechts over de lijst, terug
+    # andersom, zonder te wachten. (3) Een verstuurd bericht schuift in 0,3 s
+    # uit het invoerveld naar zijn plek. Met "minder beweging": niets.
+    print("\nBlok 116 — TT-517 fase 9: leven bij een tik")
+    lees = lambda f: open(os.path.join(ROOT, f), encoding="utf-8").read()
+    css, core, msg = lees("styles.css"), lees("core.js"), lees("messages.js")
+    actief = re.findall(r"([^{}\n]*:active[^{}]*)\{([^}]*)\}", css)
+    check("geen eigen tikteken meer in de CSS: elke :active zet alleen nog de muisaanwijzer",
+          all(re.fullmatch(r"\s*cursor:\s*\w+;\s*", b) for _, b in actief), str(actief))
+    check("de verstuurknop groeit niet meer onder de muis (bleef op een telefoon na de tik op 105%)",
+          ".messages-send-btn:hover" not in css)
+    check("indrukken: 2% (0.98), in 90 ms, terug 220 ms met de veer, na 50 ms",
+          "const TIK_IN_MS = 90, TIK_TERUG_MS = 220, TIK_WACHT_MS = 50, TIK_SCHAAL = '0.98';" in core
+          and "const TIK_VEER = 'cubic-bezier(.34, 1.56, .64, 1)';" in core)
+    check("het profiel schuift in 320 ms, kromme (.2, .8, .2, 1), de lijst 30% mee en iets donkerder",
+          "const SCHUIF_MS = 320, SCHUIF_KROMME = 'cubic-bezier(.2, .8, .2, 1)';" in core
+          and "translateX(-30%)', filter: 'brightness(.8)'" in core)
+    check("versturen: 300 ms, van 92% naar volle grootte", "scale(.92)" in msg and "duration: 300, easing: 'cubic-bezier(.2, .8, .2, 1)'" in msg)
+    # Een telefoon houdt de aanwijsstand na een tik vast (TT-373): dan kreeg een tik
+    # een tweede, blijvend teken. Elke aanwijsstand staat in @media (hover: hover).
+    buiten, stapel = [], []
+    for nr, regel in enumerate(css.split("\n"), 1):
+        if ":hover" in regel and "{" in regel and not any("hover: hover" in x for x in stapel + [regel]):
+            buiten.append(f"{nr}: {regel.strip()[:60]}")
+        for t in regel:
+            if t == "{": stapel.append(regel)
+            elif t == "}" and stapel: stapel.pop()
+    # Uitgezonderd: de schuifbalk, de dode .result-card (open punt uit fase 3) en een
+    # uitgeschakelde knop, waar :hover een teken juist opheft.
+    buiten = [b for b in buiten if "scrollbar-thumb" not in b and ".result-card" not in b and ":disabled:hover" not in b]
+    check("elke aanwijsstand (:hover) geldt alleen met een muis: na een tik blijft niets hangen", not buiten, str(buiten))
+    check("alle drie vragen dezelfde functie of er beweging mag (magBewegen)",
+          core.count("!magBewegen()") == 2 and msg.count("!magBewegen()") == 1)
+
+    stub_js = open(STUB, encoding="utf-8").read() + """
+window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
+window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instruments: m.musician_instruments || [],
+  musician_genres: m.musician_genres || [], musician_songs: m.musician_songs || [], musician_media: m.musician_media || [] }));
+"""
+    httpd, port = serve()
+    res, fouten = {}, []
+    BREED = "id => Math.round(document.querySelector(id).getBoundingClientRect().width * 100) / 100"
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        def telefoon(rustig=False, thema="light", breed=390):
+            mobiel = breed < 500
+            ctx = browser.new_context(viewport={"width": breed, "height": 844}, has_touch=mobiel, is_mobile=mobiel,
+                                      color_scheme=thema, reduced_motion="reduce" if rustig else "no-preference")
+            page = ctx.new_page()
+            page.on("pageerror", lambda e: fouten.append(str(e)))
+            page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+            for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+                page.route(pat, lambda r: r.abort())
+            page.goto(f"http://127.0.0.1:{port}/index.html#about", wait_until="load")
+            page.wait_for_timeout(600)
+            cdp = ctx.new_cdp_session(page)
+            def raak(sel, x=None, y=None):
+                b = page.evaluate("s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }", sel)
+                cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x or b[0], "y": y or b[1]}]})
+                return b
+            def schuif(x, y):
+                cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": y}]})
+            def los():
+                cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+            return ctx, page, raak, schuif, los
+
+        # 1. Indrukken, in Instellingen (de tegel) en in een gesprek (de verstuurknop).
+        ctx, page, raak, schuif, los = telefoon()
+        page.evaluate("showView('instellingen')"); page.wait_for_timeout(400)
+        T = "#view-instellingen .tile:not(.menu-anchor *)"
+        page.evaluate("""() => { const t = [...document.querySelectorAll('#view-instellingen .tile')].filter(e => e.getBoundingClientRect().height);
+          t[3].id = 'proefTegel'; t[4].id = 'proefTegel2'; }""")
+        res["tegel_voor"] = page.evaluate(BREED, "#proefTegel")
+        res["buur_voor"] = page.evaluate("() => document.getElementById('proefTegel2').getBoundingClientRect().top")
+        raak("#proefTegel"); page.wait_for_timeout(40)
+        res["tegel_30ms"] = page.evaluate(BREED, "#proefTegel")
+        page.wait_for_timeout(160)
+        res["tegel_in"] = page.evaluate(BREED, "#proefTegel")
+        res["buur_in"] = page.evaluate("() => document.getElementById('proefTegel2').getBoundingClientRect().top")
+        res["vlak_in"] = page.evaluate("() => getComputedStyle(document.getElementById('proefTegel')).backgroundColor")
+        res["vlak_buur"] = page.evaluate("() => getComputedStyle(document.getElementById('proefTegel2')).backgroundColor")
+        los(); page.wait_for_timeout(450)
+        res["tegel_na"] = page.evaluate(BREED, "#proefTegel")
+        page.evaluate("document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none')")
+        # Een snelle tik (korter dan 50 ms) krijgt toch een teken.
+        page.evaluate("""() => { window.__min = 999; const el = document.getElementById('proefTegel2'); const t0 = performance.now();
+          const f = () => { window.__min = Math.min(window.__min, el.getBoundingClientRect().width); if (performance.now() - t0 < 500) requestAnimationFrame(f); };
+          requestAnimationFrame(f); }""")
+        raak("#proefTegel2"); page.wait_for_timeout(15); los(); page.wait_for_timeout(550)
+        res["snel_min"] = page.evaluate("Math.round(window.__min * 100) / 100")
+        res["snel_na"] = page.evaluate(BREED, "#proefTegel2")
+        page.evaluate("document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none')")
+        # Scrollt de vinger binnen 50 ms, dan drukt er niets in.
+        b = raak("#proefTegel"); page.wait_for_timeout(15); schuif(b[0], b[1] - 30); page.wait_for_timeout(150)
+        res["scroll_in"] = page.evaluate(BREED, "#proefTegel")
+        los(); page.wait_for_timeout(300)
+        # Een rij met een eigen knop: alleen het aangeraakte deel drukt in. Een uitgeschakelde knop niet.
+        page.evaluate("""() => { const r = document.createElement('div'); r.id = 'proefRij'; r.style.cssText = 'cursor:pointer;height:60px;display:flex;align-items:center;justify-content:flex-end';
+          r.innerHTML = '<button id="proefKnop" style="width:44px;height:44px">x</button><button id="proefUit" disabled style="width:44px;height:44px">y</button>';
+          document.querySelector('#view-instellingen .search-filters').prepend(r); }""")
+        raak("#proefKnop"); page.wait_for_timeout(200)
+        res["knop_in"] = page.evaluate(BREED, "#proefKnop"); res["rij_bij_knop"] = page.evaluate(BREED, "#proefRij")
+        los(); page.wait_for_timeout(400)
+        raak("#proefUit"); page.wait_for_timeout(200)
+        res["uit_in"] = page.evaluate(BREED, "#proefUit"); res["rij_bij_uit"] = page.evaluate(BREED, "#proefRij")
+        los(); page.wait_for_timeout(400)
+        # Een vlak dat je veegt (de hoes) drukt niet in.
+        page.evaluate("""() => { const s = document.createElement('div'); s.className = 'hoes-spoor'; s.id = 'proefSpoor';
+          s.innerHTML = '<button id="proefInSpoor" style="width:200px;height:60px">z</button>'; document.querySelector('#view-instellingen .search-filters').prepend(s); }""")
+        raak("#proefInSpoor"); page.wait_for_timeout(200)
+        res["spoor_in"] = page.evaluate(BREED, "#proefInSpoor")
+        los(); page.wait_for_timeout(300)
+        page.evaluate("document.getElementById('proefSpoor').remove(); document.getElementById('proefRij').remove()")
+        # De verstuurknop, in een gesprek.
+        page.evaluate("""() => { const l = []; for (let i = 0; i < 24; i++) l.push({ id: 'x' + i, sender_id: i % 2 ? 'm1' : 'm2',
+            recipient_id: i % 2 ? 'm2' : 'm1', body: 'Bericht ' + i, created_at: new Date(Date.now() - (24 - i) * 60000).toISOString(), read_at: null });
+          window.TT_STUB.data.messages = l; }""")
+        page.evaluate("showView('messages')"); page.wait_for_timeout(300)
+        page.evaluate("openConversation('m2', 'Dylan', '', false, false)"); page.wait_for_timeout(600)
+        page.tap("#messagesReplyInput"); page.fill("#messagesReplyInput", "Zaterdag 14:00?"); page.wait_for_timeout(200)
+        K = "#messagesThreadPanel .messages-send-btn"
+        res["knop44"] = page.evaluate(BREED, K)
+        raak(K); page.wait_for_timeout(200)
+        res["verstuur_in"] = page.evaluate(BREED, K)
+        los(); page.wait_for_timeout(30)
+        # 3. Versturen: het nieuwe bericht vertrekt uit het invoerveld en eindigt waar het hoort.
+        res["vlieg"] = page.evaluate("""() => { const b = [...document.querySelectorAll('#messagesThreadList .message-bubble.own')].pop();
+          const a = b.getAnimations(); const k = a.length ? a[0].effect.getKeyframes() : [];
+          return { tekst: b.textContent, aantal: a.length, duur: a.length ? a[0].effect.getTiming().duration : 0,
+            van: k.length ? k[0].transform : '', naar: k.length ? k[k.length - 1].transform : '' }; }""")
+        page.wait_for_timeout(450)
+        res["vlieg_na"] = page.evaluate("""() => { const b = [...document.querySelectorAll('#messagesThreadList .message-bubble.own')].pop();
+          const r = b.getBoundingClientRect(); const a = b.getAnimations().length;
+          const v = document.querySelector('#messagesThreadPanel .messages-thread-footer').getBoundingClientRect();
+          return { a, rechts: Math.round(r.right), onder: Math.round(r.bottom), voet: Math.round(v.top), transform: getComputedStyle(b).transform }; }""")
+        res["verstuur_na"] = page.evaluate(BREED, K)
+        res["verstuur_vorm"] = page.evaluate(f"() => getComputedStyle(document.querySelector('{K}')).transform")
+        ctx.close()
+
+        # 2. Naar een profiel en terug.
+        def overgang(rustig=False, thema="light", breed=390):
+            ctx, page, raak, schuif, los = telefoon(rustig, thema, breed)
+            page.evaluate("showView('instellingen')"); page.wait_for_timeout(400)
+            kop = page.evaluate("() => [document.querySelector('header').getBoundingClientRect().top, document.getElementById('appBottomNav').getBoundingClientRect().top]")
+            r = {"kop_voor": kop}
+            TEGEL = "document.querySelector('#view-instellingen .tile').getBoundingClientRect().top"
+            voor = page.evaluate(TEGEL)
+            r["meteen"] = page.evaluate("""() => { openProfielScherm('m2');
+              return { view: huidigeView, actief: document.querySelector('.app-view.active')?.id }; }""")
+            r["sprong_lijst"] = page.evaluate(TEGEL) - voor
+            page.wait_for_timeout(150)
+            # Naast de kolom van de app (op een computer) is niets van de lijst te zien.
+            r["naast"] = page.evaluate("""() => { const k = document.getElementById('appRoot').getBoundingClientRect();
+              if (k.left < 20) return 'geen kolom'; const e = document.elementFromPoint(k.left - 10, 300);
+              return e && e.closest('.app-view') ? e.closest('.app-view').id : 'leeg'; }""")
+            r["midden"] = page.evaluate("""() => { const p = document.getElementById('view-profiel'), l = document.getElementById('view-instellingen');
+              return { profielX: Math.round(p.getBoundingClientRect().left - document.getElementById('appRoot').getBoundingClientRect().left), lijstX: Math.round(l.getBoundingClientRect().left - document.getElementById('appRoot').getBoundingClientRect().left),
+                lijstWeg: l.classList.contains('view-weg'), lijstZichtbaar: getComputedStyle(l).display !== 'none',
+                lijstTik: getComputedStyle(l).pointerEvents, profielBoven: +getComputedStyle(p).zIndex > +getComputedStyle(l).zIndex,
+                kop: [document.querySelector('header').getBoundingClientRect().top, document.getElementById('appBottomNav').getBoundingClientRect().top] }; }""")
+            page.wait_for_timeout(400)
+            r["eind"] = page.evaluate("""() => ({ zichtbaar: [...document.querySelectorAll('.app-view')].filter(v => getComputedStyle(v).display !== 'none').map(v => v.id),
+              klassen: document.querySelectorAll('.view-weg, .view-erin, .view-profiel-schuift').length,
+              profielX: Math.round(document.getElementById('view-profiel').getBoundingClientRect().left - document.getElementById('appRoot').getBoundingClientRect().left),
+              stijl: document.getElementById('view-instellingen').getAttribute('style') || '' })""")
+            HOES = "document.querySelector('#view-profiel .hoes').getBoundingClientRect().top"
+            voor = page.evaluate(HOES)
+            page.evaluate("terugKnop()")
+            r["sprong_profiel"] = page.evaluate(HOES) - voor
+            page.wait_for_timeout(150)
+            r["naast_terug"] = page.evaluate("""() => { const k = document.getElementById('appRoot').getBoundingClientRect();
+              if (k.left < 20) return 'geen kolom'; const e = document.elementFromPoint(k.right + 10, 300);
+              return e && e.closest('.app-view') ? e.closest('.app-view').id : 'leeg'; }""")
+            r["terug_midden"] = page.evaluate("""() => { const p = document.getElementById('view-profiel'), l = document.getElementById('view-instellingen');
+              return { profielX: Math.round(p.getBoundingClientRect().left - document.getElementById('appRoot').getBoundingClientRect().left), lijstX: Math.round(l.getBoundingClientRect().left - document.getElementById('appRoot').getBoundingClientRect().left),
+                profielWeg: p.classList.contains('view-weg'), profielBoven: +getComputedStyle(p).zIndex > +getComputedStyle(l).zIndex }; }""")
+            page.wait_for_timeout(400)
+            r["terug_eind"] = page.evaluate("""() => ({ zichtbaar: [...document.querySelectorAll('.app-view')].filter(v => getComputedStyle(v).display !== 'none').map(v => v.id),
+              klassen: document.querySelectorAll('.view-weg, .view-erin, .view-profiel-schuift').length, view: huidigeView })""")
+            # Snel heen en terug: de eerste overgang wordt meteen afgemaakt.
+            page.evaluate("openProfielScherm('m2')"); page.wait_for_timeout(60); page.evaluate("terugKnop()"); page.wait_for_timeout(450)
+            r["snel"] = page.evaluate("""() => ({ zichtbaar: [...document.querySelectorAll('.app-view')].filter(v => getComputedStyle(v).display !== 'none').map(v => v.id),
+              klassen: document.querySelectorAll('.view-weg, .view-erin, .view-profiel-schuift').length })""")
+            # Een link (omleiding) wisselt in één keer.
+            page.evaluate("openProfielScherm('m2', { redirect: true })"); page.wait_for_timeout(20)
+            r["omleiding"] = page.evaluate("document.getAnimations().filter(a => a.effect && a.effect.target && a.effect.target.classList.contains('app-view')).length")
+            ctx.close()
+            return r
+        res["o"] = overgang()
+        res["o_donker"] = overgang(thema="dark")
+        res["o_computer"] = overgang(breed=1280)
+        res["o_rustig"] = overgang(rustig=True)
+
+        # Minder beweging: geen indrukken en geen vliegend bericht.
+        ctx, page, raak, schuif, los = telefoon(rustig=True)
+        page.evaluate("showView('instellingen')"); page.wait_for_timeout(400)
+        page.evaluate("() => { [...document.querySelectorAll('#view-instellingen .tile')].filter(e => e.getBoundingClientRect().height)[3].id = 'proefTegel'; }")
+        raak("#proefTegel"); page.wait_for_timeout(200)
+        res["rustig_tegel"] = page.evaluate(BREED, "#proefTegel")
+        los(); page.wait_for_timeout(300)
+        page.evaluate("document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none')")
+        page.evaluate("showView('messages')"); page.wait_for_timeout(300)
+        page.evaluate("openConversation('m2', 'Dylan', '', false, false)"); page.wait_for_timeout(500)
+        page.tap("#messagesReplyInput"); page.fill("#messagesReplyInput", "Hoi"); page.tap("#messagesThreadPanel .messages-send-btn"); page.wait_for_timeout(20)
+        res["rustig_vlieg"] = page.evaluate("[...document.querySelectorAll('#messagesThreadList .message-bubble.own')].pop().getAnimations().length")
+        ctx.close()
+        browser.close()
+    httpd.shutdown()
+
+    v = res["tegel_voor"]
+    check("een tegel in Instellingen drukt 2% in: 7 pixels smaller (358 naar 351)",
+          v == 358 and abs(res["tegel_in"] - v * 0.98) <= 0.1, f"{v} -> {res['tegel_in']}")
+    check("de tegel eronder verschuift niet (0 pixels)", res["buur_in"] == res["buur_voor"], f"{res['buur_voor']} -> {res['buur_in']}")
+    check("geen ander vlak meer bij een tik op een tegel", res["vlak_in"] == res["vlak_buur"], f"{res['vlak_in']} / {res['vlak_buur']}")
+    check("binnen de eerste 50 ms drukt er nog niets in", res["tegel_30ms"] == v, str(res["tegel_30ms"]))
+    check("na loslaten veert de tegel terug op zijn maat", res["tegel_na"] == v, str(res["tegel_na"]))
+    check("een snelle tik (15 ms) geeft toch een teken, en eindigt op de eigen maat",
+          res["snel_min"] < v - 3 and res["snel_na"] == v, f"kleinste {res['snel_min']}, na {res['snel_na']}")
+    check("begint de vinger binnen 50 ms te scrollen, dan drukt er niets in", res["scroll_in"] == v, str(res["scroll_in"]))
+    check("een rij met een eigen knop: alleen de knop drukt in, de rij niet",
+          abs(res["knop_in"] - 44 * 0.98) <= 0.1 and res["rij_bij_knop"] == 358, f"knop {res['knop_in']}, rij {res['rij_bij_knop']}")
+    check("een uitgeschakelde knop drukt niet in, en de rij eromheen ook niet",
+          res["uit_in"] == 44 and res["rij_bij_uit"] == 358, f"knop {res['uit_in']}, rij {res['rij_bij_uit']}")
+    check("in een vlak dat je veegt (de hoes) drukt niets in", res["spoor_in"] == 200, str(res["spoor_in"]))
+    check("de verstuurknop drukt in zoals elke knop: 2% (44 naar 43,12)",
+          res["knop44"] == 44 and abs(res["verstuur_in"] - 43.12) <= 0.1, f"{res['knop44']} -> {res['verstuur_in']}")
+    check("na de tik staat de verstuurknop weer op 44 pixels, zonder eigen vorm",
+          res["verstuur_na"] == 44 and res["verstuur_vorm"] == "none", f"{res['verstuur_na']} {res['verstuur_vorm']}")
+    vl, vn = res["vlieg"], res["vlieg_na"]
+    check("versturen: het bericht schuift in 0,3 s vanuit het invoerveld (verschoven en 92%)",
+          vl["aantal"] == 1 and vl["duur"] == 300 and "translate(" in vl["van"] and "scale(0.92)" in vl["van"] and vl["naar"] == "none"
+          and "Zaterdag 14:00?" in vl["tekst"], json.dumps(vl))
+    check("en eindigt precies op zijn plek: geen beweging meer, net boven het invoerveld",
+          vn["a"] == 0 and vn["transform"] == "none" and 0 <= vn["voet"] - vn["onder"] <= 40, json.dumps(vn))
+    for naam in ("o", "o_donker", "o_computer"):
+        o = res[naam]
+        check(f"[{naam}] de lijst en het profiel springen niet bij het begin van de overgang (0 pixels)",
+              o["sprong_lijst"] == 0 and o["sprong_profiel"] == 0, f"lijst {o['sprong_lijst']}, profiel {o['sprong_profiel']}")
+        check(f"[{naam}] naast de kolom van de app is niets van de overgang te zien",
+              o["naast"] in ("geen kolom", "leeg") and o["naast_terug"] in ("geen kolom", "leeg"), f"{o['naast']} / {o['naast_terug']}")
+        check(f"[{naam}] het profiel staat meteen klaar: niets wacht op de overgang",
+              o["meteen"] == {"view": "profiel", "actief": "view-profiel"}, json.dumps(o["meteen"]))
+        m = o["midden"]
+        check(f"[{naam}] halverwege schuift het profiel van rechts over de lijst; de lijst gaat mee naar links",
+              0 < m["profielX"] < 390 * (2 if naam == "o_computer" else 1) and -0.3 * 640 <= m["lijstX"] < 0 and m["lijstWeg"] and m["lijstZichtbaar"] and m["profielBoven"],
+              json.dumps(m))
+        check(f"[{naam}] de lijst eronder vangt geen tik meer", m["lijstTik"] == "none", m["lijstTik"])
+        check(f"[{naam}] kop en onderbalk staan stil", m["kop"] == o["kop_voor"], f"{o['kop_voor']} -> {m['kop']}")
+        e = o["eind"]
+        check(f"[{naam}] na 0,32 s: alleen het profiel in beeld, op zijn plek, niets blijft achter",
+              e["zichtbaar"] == ["view-profiel"] and e["klassen"] == 0 and e["profielX"] == 0 and e["stijl"] == "", json.dumps(e))
+        t = o["terug_midden"]
+        check(f"[{naam}] terug: het profiel schuift naar rechts weg, boven de lijst die terugkomt",
+              t["profielX"] > 0 and t["lijstX"] < 0 and t["profielWeg"] and t["profielBoven"], json.dumps(t))
+        te = o["terug_eind"]
+        check(f"[{naam}] na terug: alleen Instellingen in beeld, niets blijft achter",
+              te["zichtbaar"] == ["view-instellingen"] and te["klassen"] == 0 and te["view"] == "instellingen", json.dumps(te))
+        check(f"[{naam}] snel heen en terug: de eerste overgang wordt afgemaakt, één scherm in beeld",
+              o["snel"]["zichtbaar"] == ["view-instellingen"] and o["snel"]["klassen"] == 0, json.dumps(o["snel"]))
+        check(f"[{naam}] een omleiding (een link) wisselt in één keer", o["omleiding"] == 0, str(o["omleiding"]))
+    r = res["o_rustig"]
+    check("minder beweging: het profiel staat er in één keer, heen en terug",
+          r["midden"]["profielX"] == 0 and not r["midden"]["lijstWeg"] and not r["terug_midden"]["profielWeg"]
+          and r["eind"]["zichtbaar"] == ["view-profiel"] and r["terug_eind"]["zichtbaar"] == ["view-instellingen"], json.dumps(r["midden"]))
+    check("minder beweging: niets drukt in", res["rustig_tegel"] == 358, str(res["rustig_tegel"]))
+    check("minder beweging: het bericht staat er meteen", res["rustig_vlieg"] == 0, str(res["rustig_vlieg"]))
+    check("geen paginafouten in blok 116", not fouten, "; ".join(fouten)[:300])
+
+
 def main():
     print("The Talent Tent — vaste testset, laag 1 (TT-231)")
     blok1_statisch()
@@ -12743,6 +13025,7 @@ def main():
     blok_tt517_fase6()
     blok_tt517_fase7()
     blok_tt517_fase8()
+    blok_tt517_fase9()
     blok_0_rijen()
     blok_browser()
     blok_xss()

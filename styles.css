@@ -319,6 +319,18 @@
   /* ── App views ───────────────────────────── */
   .app-view { display: none; }
   .app-view.active { display: block; }
+  /* TT-517 fase 9 (huisstijl §23, besluit Ronald 2A): de overgang naar en van
+     een profiel (schuifProfiel() in core.js). De vorige view blijft 0,32 s
+     staan, vast op zijn plek, onder de nieuwe; het profiel ligt bovenop, met
+     een zachte schaduw aan de linkerrand. Kop en onderbalk liggen hoger
+     (z-index 50 en 200) en staan stil. Een eigen vlak, zodat de view eronder
+     niet doorschijnt; flow-root houdt de bovenmarge van de eerste regel (de hoes
+     8px onder de kop) binnen dat vlak, zodat er geen streep van de view eronder
+     zichtbaar is. De inhoud staat daardoor op dezelfde plek. */
+  .app-view.view-weg { display: block; position: fixed; z-index: 1; margin: 0; pointer-events: none; }
+  .app-view.view-erin { display: flow-root; position: relative; z-index: 2; }
+  .app-view.view-erin, .app-view.view-profiel-schuift { background: var(--bg); min-height: 100vh; }
+  .app-view.view-profiel-schuift { z-index: 3; box-shadow: -8px 0 24px rgba(0, 0, 0, .18); }
 
   /* Alleen op desktop/web: pagina's vullen minimaal de schermhoogte,
      zodat er minder onnodig gescrold hoeft te worden. Op mobiel blijft
@@ -330,6 +342,8 @@
     #appRoot { display: flex; flex-direction: column; min-height: 100vh; }
     .app-topbar { flex-shrink: 0; }
     .app-view.active { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    /* TT-517 fase 9: de view die even blijft staan, houdt dezelfde opbouw. */
+    .app-view.view-weg { display: flex; flex-direction: column; }
   }
 
 /* ── Sticky topbar (header + nav blijven altijd zichtbaar) ── */
@@ -618,7 +632,7 @@
     cursor: pointer;
     min-height: 44px;
   }
-  .stille-link:hover { color: var(--text); }
+  @media (hover: hover) { .stille-link:hover { color: var(--text); } } /* TT-517 fase 9: alleen met een muis */
 
   /* ── Melding (huisstijl §13, vastgelegd en gebouwd 27-09-2026) ──────────
      Eén vorm voor elke melding bovenaan een scherm: "Nog één stap", "Je bent
@@ -954,7 +968,7 @@
     background-position: right 14px center;
     background-size: 12px 8px;
   }
-  .delete-band-choice:hover { border-color: var(--accent); }
+  @media (hover: hover) { .delete-band-choice:hover { border-color: var(--accent); } } /* TT-517 fase 9: alleen met een muis */
   .delete-band-choice:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 
   textarea { resize: vertical; min-height: 80px; }
@@ -1022,7 +1036,7 @@
     font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700;
     cursor: pointer;
   }
-  .password-toggle:hover { color: var(--accent); }
+  @media (hover: hover) { .password-toggle:hover { color: var(--accent); } } /* TT-517 fase 9: alleen met een muis */
 
   /* TT-316 (24-09-2026, besluit Ronald K6): één gestippelde vorm voor
      "iets toevoegen" — de voorzetten voor de bio en "+ Link toevoegen".
@@ -1374,9 +1388,16 @@
     color: var(--merk-tekst);
   }
 
-  .btn-primary:hover {
-    background: var(--merk-hover);
-    transform: translateY(-1px);
+  /* TT-517 fase 9 (huisstijl §23 en TT-373): een telefoon houdt de aanwijsstand
+     na een tik vast. Dan kreeg een tik een tweede, blijvend teken (een ander
+     vlak, 1px omhoog) naast het indrukken. Elke aanwijsstand staat daarom in
+     @media (hover: hover), hier op zijn eigen plek, zodat de volgorde van de
+     regels gelijk blijft; met een muis verandert er niets. */
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background: var(--merk-hover);
+      transform: translateY(-1px);
+    }
   }
 
   /* TT-316 (24-09-2026, besluit Ronald K5): tekst wit, rand --line. Was
@@ -1393,7 +1414,7 @@
     border: var(--line) solid var(--rand-knop);
   }
 
-  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+  @media (hover: hover) { .btn-ghost:hover { color: var(--text); border-color: var(--text); } } /* TT-517 fase 9: alleen met een muis */
 
   /* Een knop die nog niet kan (vinkje niet gezet, wachttijd loopt): half
      zichtbaar, geen handje, geen verschuiving bij aanwijzen. Eén regel voor
@@ -2757,7 +2778,7 @@
     flex-shrink: 0;
   }
 
-  .nav-btn:hover { color: var(--text); }
+  @media (hover: hover) { .nav-btn:hover { color: var(--text); } } /* TT-517 fase 9: alleen met een muis */
   .nav-btn.active {
     background: var(--surface);
     border-color: var(--border);
@@ -2836,7 +2857,7 @@
     cursor: pointer;
     transition: background 0.15s;
   }
-  .nav-menu-item:hover { background: var(--tint); color: var(--accent); }
+  @media (hover: hover) { .nav-menu-item:hover { background: var(--tint); color: var(--accent); } } /* TT-517 fase 9: alleen met een muis */
   .nav-menu-item + .nav-menu-item { border-top: 1px solid var(--border); }
 
   /* TT-427 (10-10-2026, besluit Ronald): het hamburgermenu heeft een map,
@@ -2946,7 +2967,7 @@
     cursor: pointer;
     transition: border-color 0.15s, transform 0.15s;
   }
-  .messages-conv-row:hover { border-color: var(--accent); transform: translateY(-1px); }
+  @media (hover: hover) { .messages-conv-row:hover { border-color: var(--accent); transform: translateY(-1px); } } /* TT-517 fase 9: alleen met een muis */
   .messages-conv-row.unread { background: var(--tint); border-color: var(--accent); } /* §1.1 */
   .messages-conv-avatar {
     width: 48px; height: 48px;
@@ -3037,10 +3058,10 @@
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
-    transition: transform 0.1s;
   }
-  .messages-send-btn:hover { transform: scale(1.05); }
-  .messages-send-btn:active { transform: scale(0.95); }
+  /* TT-517 fase 9 (huisstijl §23, besluit Ronald 1A): de verstuurknop drukt in
+     zoals elke knop (core.js, initTikIndrukken). Was 95% bij een tik en 105%
+     bij de muis erboven; op een telefoon bleef die 105% na de tik staan. */
 
   /* ── Auth scherm ─────────────────────────── */
 /* TT-225 (hersteld 09-09-2026): eigen max-width weg + width:100% (TT-224-vervolg),
@@ -3216,7 +3237,7 @@
     gap: 16px;
   }
 
-  .result-row:hover { background: var(--surface2); }
+  @media (hover: hover) { .result-row:hover { background: var(--surface2); } } /* TT-517 fase 9: alleen met een muis */
 
   /* TT-30 (07-08-2026): segmented control — vervangt losse ovale pillen bij
      "Sorteren op" en de nieuwe "Weergave"-toggle door aaneengesloten
@@ -4232,7 +4253,7 @@
   /* ── Band kaarten ────────────────────────── */
   /* TT-385 fase 4: de hele kaart opent de bandpagina, niet alleen de kop. */
   .band-card { border-radius:var(--radius);overflow:hidden;margin-bottom:16px;transition:border-color 0.2s;cursor:pointer; }
-  .band-card:hover { border-color:var(--rand-menu); }
+  @media (hover: hover) { .band-card:hover { border-color:var(--rand-menu); } } /* TT-517 fase 9: alleen met een muis */
   .band-card-header { display:flex;align-items:center;gap:16px;padding:20px;flex-wrap:wrap; }
   .band-avatar { width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--podium);flex-shrink:0; } /* TT-517 fase 6: zonder foto de schijnwerper */
   .band-name { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.3px; line-height: 1.1; }
@@ -4250,7 +4271,8 @@
      bandformulier), .star-display is alleen-lezen (profiel/zoekresultaat). */
   .star-picker { display:flex; gap:4px; }
   .star-picker .star { font-size:22px; line-height:1; color:var(--border); cursor:pointer; user-select:none; transition:color 0.1s; }
-  .star-picker .star:hover, .star-picker .star.filled { color:var(--merk); }
+  .star-picker .star.filled { color:var(--merk); }
+  @media (hover: hover) { .star-picker .star:hover { color:var(--merk); } } /* TT-517 fase 9: alleen met een muis */
   .star-display { font-size:12px; letter-spacing:1px; white-space:nowrap; }
   /* TT-369 (besluit Ronald, 29-09-2026): een gevulde ster is overal goud
      (--merk), ook in licht: "dat wordt dan goud. net als overal." */
@@ -4764,7 +4786,8 @@
     box-shadow: var(--schaduw-vlak);
   }
 
-  .tile:active { background: var(--surface2); }
+  /* TT-517 fase 9 (huisstijl §23, besluit Ronald 1A): een tegel drukt in zoals
+     elke rij en kaart (core.js, initTikIndrukken). Was een ander vlak bij een tik. */
   .tile-title { font-size: 17px; font-weight: 700; }
   .tile-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   /* TT-260 (12-09-2026): was 11px met een eigen marge van 5px. Geen van
@@ -5183,7 +5206,7 @@
     transition: background 0.12s;
   }
   .choice-option + .choice-option { border-top: 1px solid var(--border); }
-  .choice-option:hover { background: var(--tint); }
+  @media (hover: hover) { .choice-option:hover { background: var(--tint); } } /* TT-517 fase 9: alleen met een muis */
   .choice-option.selected { color: var(--accent); font-weight: 700; }
   .choice-option-check { color: var(--accent); font-size: 12px; }
 

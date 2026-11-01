@@ -1035,6 +1035,7 @@ function ontwapenTerug() {
 // is waar als het profiel in de app is geopend en onwaar bij een link; `soort`
 // is 'band' voor een bandpagina, anders een muzikant.
 function showView(view, mode, extra) {
+  stopSchuif(); // TT-517 fase 9: een nieuwe stap maakt een lopende overgang meteen af
   // TT-404: onthoud waar je in de view stond die je verlaat.
   if (huidigeView && huidigeView !== view) viewScrollStand[huidigeView] = window.scrollY;
   const vorigeView = huidigeView;
@@ -1065,6 +1066,10 @@ function showView(view, mode, extra) {
   if (bandWizardOpen()) { resetBandForm(); zetBandWizardZichtbaar(false); }
   sluitAlleMenus();
   sluitOpruimModals(); // TT-264: een view-wissel laat nooit een spelende video achter
+  // TT-517 fase 9: waar de vorige view stond, voor de overgang naar of van een profiel.
+  const oudEl = document.querySelector('.app-view.active');
+  const oudVak = oudEl ? oudEl.getBoundingClientRect() : null;
+  const oudKind = oudEl && oudEl.firstElementChild ? oudEl.firstElementChild.getBoundingClientRect().top : 0;
   document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.bottom-nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
@@ -1279,11 +1284,69 @@ function showView(view, mode, extra) {
   // TT-393: meteen bovenaan, niet vloeiend. Een vloeiende scroll bleef op de telefoon
   // halverwege hangen als de inhoud van het scherm net wisselde (Berichten).
   else window.scrollTo({ top: 0, behavior: 'instant' });
+  schuifProfiel(vorigeView, view, mode, oudEl, oudVak, oudKind); // TT-517 fase 9
   // TT-142 (25-08-2026): geen automatische focus meer bij het openen van een
   // view. Was bedoeld als gemak (TT-37), maar opende ongevraagd het
   // toetsenbord en verstoorde daarmee de "bovenaan beginnen"-scroll — de
   // gebruiker moet zelf op een veld tikken voordat het toetsenbord komt.
   // autofocusFirstField() is op 16-09-2026 verwijderd als dode code.
+}
+
+// ─── Leven bij een tik: naar een profiel (TT-517 fase 9, huisstijl §23, besluit Ronald 2A) ───
+// Het profiel schuift in 0,32 s van rechts over de lijst; de lijst schuift 30%
+// mee naar links en wordt iets donkerder. Terug: andersom. Kop en onderbalk
+// staan stil (ze liggen boven de views). Er wordt nergens op gewacht: de
+// nieuwe view staat al klaar en vult zich zoals altijd; alleen het beeld
+// beweegt. De vorige view blijft daarvoor 0,32 s staan, vast op de plek waar
+// hij stond (.view-weg), en vangt geen tik meer. Geen overgang bij een
+// omleiding ('redirect', bijv. het openen van een link), van profiel naar
+// profiel, of met "minder beweging" op het toestel: dan wisselt het scherm in
+// één keer, zoals voorheen. Werkt met Web Animations; een toestel zonder
+// wisselt ook in één keer.
+const SCHUIF_MS = 320, SCHUIF_KROMME = 'cubic-bezier(.2, .8, .2, 1)';
+var schuifKlaar = null; // var: showView kan al lopen voordat deze regel is gelezen
+function stopSchuif() { if (schuifKlaar) schuifKlaar(); }
+function schuifProfiel(vorigeView, view, mode, oudEl, oudVak, oudKind) {
+  const heen = view === 'profiel' && vorigeView !== 'profiel';
+  const terug = vorigeView === 'profiel' && view !== 'profiel';
+  if ((!heen && !terug) || mode === 'redirect' || !magBewegen() || !oudEl || !oudVak) return;
+  const nieuwEl = document.getElementById(`view-${view}`);
+  if (!nieuwEl || nieuwEl === oudEl || !nieuwEl.animate) return;
+  const profiel = heen ? nieuwEl : oudEl, lijst = heen ? oudEl : nieuwEl;
+  // Vast op zijn plek. Een view met een bovenmarge in zijn eerste regel (de hoes
+  // staat 8px onder de kop) houdt die marge vast gezet binnen zich, waar hij hem
+  // eerst naar buiten doorgaf: meet de inhoud en zet die terug waar hij stond
+  // (oudKind: de bovenkant van de eerste regel, gemeten vóór de wissel).
+  oudEl.classList.add('view-weg');
+  Object.assign(oudEl.style, { top: oudVak.top + 'px', left: oudVak.left + 'px', width: oudVak.width + 'px' });
+  const kind = oudEl.firstElementChild;
+  if (kind) oudEl.style.top = (oudVak.top - (kind.getBoundingClientRect().top - oudKind)) + 'px';
+  nieuwEl.classList.add('view-erin');
+  profiel.classList.add('view-profiel-schuift');
+  const opties = { duration: SCHUIF_MS, easing: SCHUIF_KROMME };
+  const lijstUit = [{ transform: 'none', filter: 'none' }, { transform: 'translateX(-30%)', filter: 'brightness(.8)' }];
+  const profielIn = [{ transform: 'translateX(100%)' }, { transform: 'none' }];
+  // De vaste view valt buiten de knip van #appRoot. Op een computer (de app als
+  // kolom in het midden) zou hij naast die kolom zichtbaar worden; het knipvlak
+  // schuift daarom precies tegen de beweging in, zodat alleen het deel binnen
+  // zijn eigen kolom te zien is. De schaduw links van het profiel blijft zichtbaar.
+  if (heen) { lijstUit[0].clipPath = 'inset(0 0 0 0)'; lijstUit[1].clipPath = 'inset(0 0 0 30%)'; }
+  else { profielIn[0].clipPath = 'inset(0 100% 0 -24px)'; profielIn[1].clipPath = 'inset(0 0 0 -24px)'; }
+  const animaties = [
+    profiel.animate(heen ? profielIn : [...profielIn].reverse(), opties),
+    lijst.animate(heen ? lijstUit : [...lijstUit].reverse(), opties)
+  ];
+  const klaar = () => {
+    if (schuifKlaar !== klaar) return;
+    schuifKlaar = null;
+    animaties.forEach(a => a.cancel());
+    oudEl.classList.remove('view-weg');
+    oudEl.style.top = oudEl.style.left = oudEl.style.width = '';
+    nieuwEl.classList.remove('view-erin');
+    profiel.classList.remove('view-profiel-schuift');
+  };
+  schuifKlaar = klaar;
+  animaties[0].finished.then(klaar, klaar);
 }
 
 // ─── De landingspagina (TT-61, 30-09-2026, besluiten Ronald) ────────────────
@@ -1646,4 +1709,79 @@ function isTypveld(el) {
       if (!isTypveld(document.activeElement)) document.body.classList.remove('toetsenbord-open');
     }, 0);
   });
+})();
+
+// ─── Leven bij een tik: indrukken (TT-517 fase 9, huisstijl §23, besluit Ronald 1A) ───
+// Wat je aanraakt (een rij, kaart, tegel of knop) wordt 2% kleiner en veert
+// terug. "Aanraakbaar" is de dichtstbijzijnde knop of link, anders het
+// buitenste element van een rij met een handje als muisaanwijzer (cursor:
+// pointer; dat erft door naar alles erin, dus de tegel zelf en niet de regel
+// tekst die je raakt). Zo valt elk nieuw onderdeel er vanzelf onder, en drukt
+// in een rij met een eigen knop alleen het aangeraakte deel in. Pas na 50 ms
+// vinger op het scherm; begint de vinger binnen die tijd te scrollen (meer dan
+// 10px, of de browser neemt het over), dan drukt er niets in. Een snelle tik
+// krijgt toch een teken: even in, dan terug.
+// Het werkt met de eigenschap `scale`, niet met `transform`: zo blijft een
+// verschuiving die een knop al heeft (bijv. translateY(-50%)) gewoon staan.
+// De animatie loopt los van de CSS (Web Animations), dus een bestaande
+// `transition` op het element blijft onaangeroerd. Niet in een vlak dat je
+// veegt (de hoes, het wiel, de uitsnede), niet op een uitgeschakelde knop,
+// niet op een typveld, niet op iets hoger dan het halve scherm (geen rij of
+// knop meer). Met "minder beweging" op het toestel: niets.
+const TIK_IN_MS = 90, TIK_TERUG_MS = 220, TIK_WACHT_MS = 50, TIK_SCHAAL = '0.98';
+const TIK_VEER = 'cubic-bezier(.34, 1.56, .64, 1)';
+function tikDoel(doel) {
+  if (!doel || !doel.closest || isTypveld(doel) || doel.tagName === 'SELECT') return null;
+  if (doel.closest('.hoes-spoor, .wheel-scroll, .uitsnede-vlak')) return null;
+  let el = null;
+  for (let e = doel; e && e !== document.body; e = e.parentElement) {
+    if (e.matches('button, a[href], [role="button"]')) { el = e; break; }
+    if (getComputedStyle(e).cursor === 'pointer') el = e;
+    else if (el) break;
+  }
+  if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return null;
+  const r = el.getBoundingClientRect();
+  return r.width && r.height <= window.innerHeight / 2 ? el : null;
+}
+(function initTikIndrukken() {
+  if (!document.documentElement.animate) return; // een toestel zonder Web Animations: geen teken, verder alles gelijk
+  let actief = null, ingedrukt = null, klok = 0, start = null;
+  const drukIn = el => {
+    ingedrukt = el.animate([{ scale: '1' }, { scale: TIK_SCHAAL }],
+      { duration: TIK_IN_MS, easing: 'ease-out', fill: 'forwards' });
+  };
+  const laatLos = (el, veer) => {
+    if (ingedrukt) { ingedrukt.cancel(); ingedrukt = null; }
+    if (veer) el.animate([{ scale: TIK_SCHAAL }, { scale: '1' }], { duration: TIK_TERUG_MS, easing: TIK_VEER });
+  };
+  const stop = () => { // scrollen of de browser neemt het over: gewoon terug, geen veer
+    clearTimeout(klok);
+    if (actief) laatLos(actief, false);
+    actief = null;
+  };
+  document.addEventListener('pointerdown', e => {
+    stop();
+    if (!e.isPrimary || e.button > 0 || !magBewegen()) return;
+    const el = tikDoel(e.target);
+    if (!el) return;
+    actief = el; start = { x: e.clientX, y: e.clientY };
+    klok = setTimeout(() => { if (actief === el) drukIn(el); }, TIK_WACHT_MS);
+  }, { passive: true, capture: true });
+  document.addEventListener('pointermove', e => {
+    if (actief && (Math.abs(e.clientX - start.x) > 10 || Math.abs(e.clientY - start.y) > 10)) stop();
+  }, { passive: true, capture: true });
+  document.addEventListener('pointerup', () => {
+    clearTimeout(klok);
+    const el = actief; actief = null;
+    if (!el) return;
+    if (ingedrukt) { laatLos(el, true); return; }
+    // Een snelle tik: even in, dan terug met dezelfde veer.
+    el.animate([
+      { scale: '1', easing: 'ease-out' },
+      { scale: TIK_SCHAAL, easing: TIK_VEER, offset: TIK_IN_MS / (TIK_IN_MS + TIK_TERUG_MS) },
+      { scale: '1' }
+    ], { duration: TIK_IN_MS + TIK_TERUG_MS });
+  }, { passive: true, capture: true });
+  document.addEventListener('pointercancel', stop, { passive: true, capture: true });
+  window.addEventListener('scroll', () => { if (actief) stop(); }, { passive: true, capture: true });
 })();

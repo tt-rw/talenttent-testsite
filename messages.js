@@ -135,6 +135,7 @@ async function sendReplyInThread() {
   // een toetsenbord dat wegviel. Nu staat het bericht er meteen; de
   // verversing gebeurt daarna, zonder melding.
   const draad = document.getElementById('messagesThreadList');
+  const vanaf = input.getBoundingClientRect(); // TT-517 fase 9: hier vertrekt het bericht
   const tijd = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
   // TT-277: het voorlopige bericht krijgt dezelfde opbouw als na de
   // verversing — lege staat weg, "Vandaag" erboven als die nog ontbreekt.
@@ -158,6 +159,7 @@ async function sendReplyInThread() {
   input.value = '';
   updateCharCounter('messagesReplyInput', 'messagesReplyCounter', 2000);
   scrollThreadToBottom();
+  vliegBericht(voorlopig, vanaf);
 
   const ok = await insertMessage(activeConversationId, tekst);
   if (ok) {
@@ -172,6 +174,22 @@ async function sendReplyInThread() {
     input.value = tekst;
     updateCharCounter('messagesReplyInput', 'messagesReplyCounter', 2000);
   }
+}
+
+// TT-517 fase 9 (huisstijl §23, besluit Ronald 3A): je bericht komt uit het
+// invoerveld en schuift in 0,3 s naar zijn plek, van 92% naar volle grootte.
+// Alleen transform en doorzichtigheid bewegen: het bericht eindigt precies
+// waar het zonder beweging staat, en de lijst verschuift niet mee. Versturen
+// wacht nergens op. Met "minder beweging" op het toestel: het staat er meteen.
+function vliegBericht(el, vanaf) {
+  if (!el.animate || !magBewegen() || !vanaf || !vanaf.width) return;
+  const doel = el.getBoundingClientRect();
+  const dx = vanaf.left + 12 - doel.left;
+  const dy = vanaf.top + (vanaf.height - doel.height) / 2 - doel.top;
+  el.animate([
+    { transform: `translate(${dx}px, ${dy}px) scale(.92)`, transformOrigin: '100% 100%', opacity: .6 },
+    { transform: 'none', transformOrigin: '100% 100%', opacity: 1 }
+  ], { duration: 300, easing: 'cubic-bezier(.2, .8, .2, 1)' });
 }
 
 // TT-34/TT-451: de dag-scheiding in een gesprek, voor gewone gesprekken en
