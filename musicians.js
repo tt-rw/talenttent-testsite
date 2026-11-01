@@ -66,6 +66,8 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
   return `
     ${profielHoesHTML({
       foto: avatarSrc, naam: displayName, media: m.musician_media,
+      // TT-517 fase 6: zonder foto ziet alleen de eigenaar "Voeg een foto toe".
+      fotoToevoegen: isOwn ? 'voegFotoToe()' : null,
       // TT-420 (09-10-2026, Ronald): geen tweede naam op het profiel. Er staat één naam: de gekozen.
       regels: `<div class="profile-meta" style="margin-bottom:0;">${age} jaar · ${escHtml(m.city)}${m.distance_km != null ? ` · ${m.distance_km.toFixed(1)} km` : ''}</div>`,
       knoppen: profielKnoppenHTML('profiel', m.id, displayName, ownerMenuHTML + veiligheidPlekHTML, null, isOwn || m.delen_aan !== false)
@@ -83,6 +85,15 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
         ${nummerLijstHTML(songRows)}
       </div>` : ''}
     ${profielMediaHTML(m.musician_media)}`;
+}
+
+// TT-517 fase 6 (huisstijl §21, besluit Ronald 31-10-2026): de knop "Voeg een
+// foto toe" in de hoes opent Je mediahoek; voor de beheerder van een band Onze
+// media. Daar kiest de eigenaar zijn foto. Muzikant en band gelijk.
+async function voegFotoToe(bandId) {
+  if (bandId) openBandTegels(bandId);
+  else { if (!(await getMyMusicianId())) return; showView('profieltegels'); }
+  openTegelScreen(bandId ? 'bandMedia' : 'mediahoek');
 }
 
 // TT-385 (02-10-2026): het mediaraster en de links onder een profiel, voor
@@ -1465,7 +1476,7 @@ function mhRenderAvatar() {
     preview.innerHTML = `<img ${kleinFotoAttr(safeUrl(mhAvatarUrl))} alt="profielfoto">`;
     document.getElementById('mhAvatarRemoveBtn').classList.add('visible');
   } else {
-    preview.innerHTML = `<span id="mhAvatarInitials" class="avatar-t">T</span>`;
+    preview.innerHTML = ''; // TT-517 fase 6: de schijnwerper met silhouet (styles.css)
     document.getElementById('mhAvatarRemoveBtn').classList.remove('visible');
   }
 }

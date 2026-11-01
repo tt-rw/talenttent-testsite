@@ -100,7 +100,7 @@ function populateWizardFieldsFromState() {
     avatarPreview.innerHTML = `<img ${kleinFotoAttr(safeUrl(state.avatarUrl))} alt="profielfoto">`;
     document.getElementById('avatarRemoveBtn').classList.add('visible');
   } else {
-    avatarPreview.innerHTML = `<span id="avatarInitials" class="avatar-t">T</span>`;
+    avatarPreview.innerHTML = ''; // TT-517 fase 6: de schijnwerper met silhouet (styles.css)
     document.getElementById('avatarRemoveBtn').classList.remove('visible');
   }
 }
@@ -1754,7 +1754,7 @@ function removeAvatar() {
   state.avatarFile = null;
   state.avatarPath = null;
   const preview = document.getElementById('avatarPreview');
-  preview.innerHTML = `<span id="avatarInitials" class="avatar-t">T</span>`;
+  preview.innerHTML = ''; // TT-517 fase 6: de schijnwerper met silhouet (styles.css)
   preview.style.borderColor = '';
   document.getElementById('avatarRemoveBtn').classList.remove('visible');
 }

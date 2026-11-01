@@ -128,6 +128,14 @@
     --op-foto-zacht: #F3E7D6;               /* de regel "waarvoor" op de foto */
     --op-foto-donker: #52575F;              /* TT-517 fase 4: antraciet op een lichte foto in de hoes, geen zwart (huisstijl §21) */
     --podium: #101114;                      /* TT-517 fase 4: de hoes zonder foto, het lege podium (huisstijl §21) */
+    /* TT-517 fase 6: de schijnwerper, twee warme lichtbundels in warmgeel (--merk), van linksboven en rechtsboven
+       (huisstijl §21). In licht en donker gelijk: hij staat op het podium, niet op het thema.
+       Klein in een rondje of vierkant (lijst, bezetting, gesprek); groot in de hoes, boven de naam. */
+    --bundel-klein: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><defs><filter id='z' x='-.5' y='-.5' width='2' height='2'><feGaussianBlur stdDeviation='2.5'/></filter><linearGradient id='l' x2='0' y2='1'><stop offset='0' stop-color='%23FFB81C' stop-opacity='.4'/><stop offset='1' stop-color='%23FFB81C' stop-opacity='.14'/></linearGradient><radialGradient id='e'><stop offset='0' stop-color='%23FFB81C' stop-opacity='.5'/><stop offset='1' stop-color='%23FFB81C' stop-opacity='0'/></radialGradient></defs><g filter='url(%23z)' fill='url(%23l)'><polygon points='4,0 18,0 70,80 34,80'/><polygon points='82,0 96,0 66,80 30,80'/></g><ellipse cx='50' cy='80' rx='34' ry='9' fill='url(%23e)'/></svg>");
+    /* TT-517 fase 6: het silhouet in de voorbeeldfoto bij het uploaden, zwart met een smalle warme
+       rand, zonder instrument (huisstijl §2): één persoon of drie (band). */
+    --silhouet-muzikant: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23050506' stroke='%238A6A22' stroke-width='1.4' stroke-linejoin='round'><g transform='translate(50 0) scale(1)' transform-origin='0 100'><circle cx='0' cy='38' r='9.5'/><path d='M-15 100 L-14 62 Q-13 51 -4 50 L4 50 Q13 51 14 62 L15 100 Z'/></g></svg>");
+    --silhouet-band: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23050506' stroke='%238A6A22' stroke-width='1.4' stroke-linejoin='round'><g transform='translate(26 0) scale(0.74)' transform-origin='0 100'><circle cx='0' cy='38' r='9.5'/><path d='M-15 100 L-14 62 Q-13 51 -4 50 L4 50 Q13 51 14 62 L15 100 Z'/></g><g transform='translate(74 0) scale(0.74)' transform-origin='0 100'><circle cx='0' cy='38' r='9.5'/><path d='M-15 100 L-14 62 Q-13 51 -4 50 L4 50 Q13 51 14 62 L15 100 Z'/></g><g><g transform='translate(50 0) scale(0.8)' transform-origin='0 100'><circle cx='0' cy='38' r='9.5'/><path d='M-15 100 L-14 62 Q-13 51 -4 50 L4 50 Q13 51 14 62 L15 100 Z'/></g></g></svg>");
     --foto-verloop: linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0) 28%, rgba(0,0,0,0.75) 78%);
     --foto-leeg: radial-gradient(55% 65% at 75% 30%, rgba(255,170,90,0.6), transparent 62%), radial-gradient(50% 60% at 25% 75%, rgba(120,70,40,0.45), transparent 70%), linear-gradient(160deg, #6a3b22, #1f120b);
     --onderbalk-hoogte: 61px;               /* gemeten door landingBijwerken() in core.js */
@@ -214,8 +222,8 @@
      TT-365 (28-09-2026, besluit Ronald): het bestand is nu Tentype, het
      lettertype dat Ronald liet ontwerpen. Het verving het nagetekende
      woordmerk van TT-318. Het bestand bevat alleen A, E, H, L, N, T en de
-     spatie: genoeg voor "TALENTTENT" en voor de T van het logo in een lege
-     profielfoto (AVATAR_T_FALLBACK, TT-33). Voor lopende tekst is het dus
+     spatie: genoeg voor "TALENTTENT" en voor de T van het logo (.avatar-t).
+     Voor lopende tekst is het dus
      onbruikbaar. Het staat in de repo zelf, niet bij Google Fonts: 1,4 kB,
      geen extern verzoek. font-display: block — het woordmerk verschijnt meteen in de
      goede vorm; fitKopLogo() meet pas als het geladen is (core.js).
@@ -242,15 +250,31 @@
   :root {
     --font-display: 'TT Woordmerk', 'Inter', sans-serif;
   }
-  /* De T van het logo op een plek zonder foto of zonder toegang: een lege
-     profielfoto (AVATAR_T_FALLBACK in search.js), de voorbeeldfoto bij het
-     uploaden, en een afgeschermd medium (TT-45). Eén klasse voor elke T.
+  /* De T van het logo: het gesprek met The Talent Tent zelf (TT_AVATAR_HTML
+     in messages.js) en, tot fase 7 van TT-517, een afgeschermd medium (TT-45).
+     Een lege profielfoto is de T niet meer, maar de schijnwerper (hieronder).
      Bevinding Ronald 28-09-2026: de T is 25% groter dan de letter van zijn
      vak ("voer dat door in de hele app"). De maat van elk vak blijft staan. */
   .avatar-t {
     font-family: var(--font-display);
     font-size: 1.25em;
     line-height: 1;
+  }
+  /* Het gesprek met The Talent Tent: het logo, een zwarte T op geel. */
+  .avatar-logo {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; border-radius: inherit;
+    background: var(--merk); color: var(--merk-tekst);
+  }
+  /* TT-517 fase 6 (huisstijl §21): zonder foto de schijnwerper, klein. Twee
+     bundels uit de bovenhoeken vallen samen op het midden. Eén klasse
+     voor elke plek zonder foto (ZONDER_FOTO_HTML in search.js); het vak
+     eromheen geeft maat en vorm. Vervangt de gele T. */
+  .schijnwerper {
+    display: block;
+    width: 100%; height: 100%;
+    border-radius: inherit;
+    background: var(--bundel-klein) center / 100% 100% no-repeat, var(--podium);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1609,17 +1633,16 @@
 
   .avatar-preview {
     width: 96px; height: 96px;
-    /* TT-341 stap 2: het profielvlak is overal geel met een zwarte T (Ronald,
-       26-09-2026). Er is geen profielkleur per persoon meer. */
     border-radius: 50%;
-    background: var(--merk);
+    /* TT-517 fase 6 (huisstijl §2, besluiten Ronald 31-10-2026): zolang er
+       geen foto is de schijnwerper met een silhouet, één persoon, zonder
+       instrument. Een gekozen foto ligt erover (img hieronder). */
+    background: var(--silhouet-muzikant) center bottom / 100% 100% no-repeat,
+      var(--bundel-klein) center / 100% 100% no-repeat, var(--podium);
     border: 3px solid var(--merk);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Inter', sans-serif;
-    font-size: 34px;
-    color: var(--merk-tekst);
     overflow: hidden;
     transition: border-color 0.3s;
     cursor: pointer;
@@ -1652,6 +1675,11 @@
 
   .avatar-info { flex: 1; }
   .avatar-info strong { font-size: 12px; display: block; margin-bottom: 6px; }
+  /* TT-517 fase 6 (huisstijl §2, besluit Ronald 31-10-2026: "kop met foto is
+     goed"): zonder foto "Upload een foto van jezelf", met foto "Je
+     profielfoto" (band: "Jullie bandfoto"). De foto in het rondje beslist. */
+  .avatar-upload-area:has(.avatar-preview img) .kop-zonder-foto,
+  .avatar-upload-area:not(:has(.avatar-preview img)) .kop-met-foto { display: none; }
   .avatar-info p { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
   /* TT-381 (30-09-2026, Ronald): "Foto verwijderen" is het kruisje
@@ -1835,6 +1863,23 @@
   .hoes .pb-kaart { background: var(--podium); border: 0; border-radius: 0; color: var(--op-foto); }
   .hoes .pb-kaart-titel { color: var(--op-foto); }
   .hoes .pb-kaart-platform { color: var(--merk); } /* op het podium in elk thema gelijk, zoals de foto */
+
+  /* TT-517 fase 6 (huisstijl §21): zonder foto de schijnwerper, groot. Twee
+     bundels, van linksboven en rechtsboven, die samen op de naam vallen;
+     de lichtvlek ligt op de naam. hoesBundelZetten() in utils.js meet de naam
+     en tekent de bundels op de maat van de hoes. */
+  .hoes-bundel { position: absolute; inset: 0; pointer-events: none; }
+  .hoes-bundel svg { display: block; width: 100%; height: 100%; }
+  /* Alleen voor de eigenaar: een pil "Voeg een foto toe" in het midden van
+     de hoes, horizontaal en verticaal (besluit Ronald 01-11-2026: "centreer
+     de knop verticaal en horizontaal. dan gaat het altijd goed"). De vorm is
+     de hoofdknop (§5); hier alleen de plek. */
+  .hoes-foto-knop {
+    position: absolute; z-index: 1;
+    top: 50%; left: 50%;
+    translate: -50% -50%; /* los van transform, die de hoofdknop bij aanwijzen 1px optilt */
+    white-space: nowrap;
+  }
 
   /* Tekst-only, geen icoon: de app telt tien vaste tekens en een elfde
      erbij is een besluit, geen bijvangst (huisstijl §12). */
@@ -2893,11 +2938,10 @@
     width: 48px; height: 48px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    /* TT-341 stap 2: het profielvlak is overal geel met een zwarte T (Ronald,
-       26-09-2026). Er is geen profielkleur per persoon meer. */
+    /* TT-517 fase 6: zonder foto de schijnwerper (.schijnwerper); de maat
+       van de letter is voor de T van het gesprek met The Talent Tent. */
     font-size: 20px;
-    background: var(--merk);
-    color: var(--merk-tekst);
+    background: var(--podium);
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -3247,11 +3291,8 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    /* Zonder foto: de T op geel, zoals overal (TT-341). */
-    background: var(--merk);
-    color: var(--merk-tekst);
-    font-size: 48px;
-    font-weight: 700;
+    /* Zonder foto: de schijnwerper (TT-517 fase 6, huisstijl §21). */
+    background: var(--podium);
   }
   .zoek-kaart-foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
   .zoek-kaart-hoek {
@@ -3386,12 +3427,8 @@
     width: 44px; height: 44px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Inter', sans-serif;
-    /* TT-341 stap 2: het profielvlak is overal geel met een zwarte T (Ronald,
-       26-09-2026). Er is geen profielkleur per persoon meer. */
-    font-size: 18px;
-    background: var(--merk);
-    color: var(--merk-tekst);
+    /* TT-517 fase 6: zonder foto de schijnwerper (.schijnwerper). */
+    background: var(--podium);
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -3674,8 +3711,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--merk);
-    font-size: 16px;
+    background: var(--podium); /* TT-517 fase 6: zonder foto de schijnwerper */
   }
   .gedeeld-speler-foto img { width: 100%; height: 100%; object-fit: cover; }
   .gedeeld-speler-naam {
@@ -3942,7 +3978,12 @@
 
   /* Wie zijn we: de bandfoto naast de bandnaam, zoals het oude bandformulier.
      De foto is vierkant, net als op de pagina (hoeken 12px). */
-  .avatar-preview.avatar-preview-vierkant { border-radius: 12px; }
+  .avatar-preview.avatar-preview-vierkant {
+    border-radius: 12px;
+    /* TT-517 fase 6: een bandfoto, drie personen in de bundel (huisstijl §2). */
+    background: var(--silhouet-band) center bottom / 100% 100% no-repeat,
+      var(--bundel-klein) center / 100% 100% no-repeat, var(--podium);
+  }
 
   /* Een rij in Onze bezetting: foto, naam en regel, rechts de drie puntjes. */
   .bb-rij { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
@@ -3950,7 +3991,7 @@
     width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  .bb-foto-t { background: var(--merk); color: var(--merk-tekst); font-size: 16px; }
+  .bb-foto-leeg { background: var(--podium); } /* TT-517 fase 6: zonder foto de schijnwerper */
   .bb-foto.bezetting-open-rondje { font-size: 18px; }
   .bb-wacht { opacity: .55; }
   .bb-tekst { flex: 1; min-width: 0; }
@@ -4179,7 +4220,7 @@
   .band-card { border-radius:var(--radius);overflow:hidden;margin-bottom:16px;transition:border-color 0.2s;cursor:pointer; }
   .band-card:hover { border-color:var(--rand-menu); }
   .band-card-header { display:flex;align-items:center;gap:16px;padding:20px;flex-wrap:wrap; }
-  .band-avatar { width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:24px;background:var(--merk);color:var(--merk-tekst);flex-shrink:0; }
+  .band-avatar { width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--podium);flex-shrink:0; } /* TT-517 fase 6: zonder foto de schijnwerper */
   .band-name { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.3px; line-height: 1.1; }
   .band-meta { font-size: 12px;color:var(--muted);margin-top:3px; }
   /* TT-520: .band-status-badge (de status achter de plaats in een bandrij in

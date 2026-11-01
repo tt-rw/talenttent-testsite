@@ -1952,7 +1952,7 @@ def blok_browser():
           const rij = document.querySelector('#gedeeldGekozenList .result-row');
           return { gekozen: gedeeldGekozen.map(g => g.naam), veld: document.getElementById('gedeeldNaam').value,
             naam: rij?.querySelector('.result-row-naam')?.textContent, meta: rij?.querySelector('.result-row-meta')?.textContent,
-            foto: !!rij?.querySelector('.result-row-avatar .avatar-t, .result-row-avatar img, .result-row-avatar'),
+            foto: !!rij?.querySelector('.result-row-avatar .schijnwerper, .result-row-avatar img, .result-row-avatar'),
             teller: document.getElementById('gedeeldTeller').textContent,
             resultaat: document.getElementById('gedeeldResults').innerHTML.trim(),
             x: [...document.querySelectorAll('#gedeeldGekozenList .song-remove')].map(b => Math.round(b.getBoundingClientRect().width)) };
@@ -3766,10 +3766,13 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               and "font-family:'Alfa Slab" not in js318, "Alfa Slab One nog in gebruik")
         # Bevinding Ronald 28-09-2026: de vorm van de T staat sinds die dag in
         # .avatar-t, met --font-display. Blok 47 meet het lettertype in de browser.
-        check("de T in een lege profielfoto gebruikt --font-display (TT-33), via .avatar-t",
-              "const AVATAR_T_FALLBACK = `<span class=\"avatar-t\">T</span>`;" in js318
+        # TT-517 fase 6: een lege profielfoto is de schijnwerper; de T blijft het
+        # logo (het gesprek met The Talent Tent) en, tot fase 7, een afgeschermd medium.
+        check("de T van het logo gebruikt --font-display, via .avatar-t; een lege profielfoto is de schijnwerper (TT-517 fase 6)",
+              "const ZONDER_FOTO_HTML = '<span class=\"schijnwerper\" aria-hidden=\"true\"></span>';" in js318
+              and "AVATAR_T_FALLBACK" not in js318
               and re.search(r"\.avatar-t\s*\{[^}]*font-family:\s*var\(--font-display\)", css318) is not None,
-              "AVATAR_T_FALLBACK of .avatar-t wijkt af")
+              "ZONDER_FOTO_HTML of .avatar-t wijkt af")
 
         wm = page.evaluate("""async () => {
           await document.fonts.load("28px 'TT Woordmerk'");
@@ -4462,7 +4465,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         # Besluit Ronald, 27-09-2026: de gele accenten terug in donker.
         check("donker: --accent is warmgeel #FFB81C (TT-517)", d40["accent"] == "#FFB81C", d40["accent"])
         check("donker: ondergrond ongewijzigd #0d0d0d", d40["bg"] == "rgb(13, 13, 13)", d40["bg"])
-        check("donker: profielvlak geel met zwarte T", d40["avatar"] == ["rgb(255, 184, 28)", "rgb(0, 0, 0)"], json.dumps(d40["avatar"]))
+        # TT-517 fase 6: het profielvlak zonder foto is het podium van de schijnwerper (huisstijl §21), niet meer geel met de T.
+        check("donker: profielvlak zonder foto is het podium #101114 (TT-517 fase 6)", d40["avatar"][0] == "rgb(16, 17, 20)", json.dumps(d40["avatar"]))
         # TT-371 (variant C) en TT-440 (Ronald, 08-10-2026, "1 - rustig"): niet grijs, warm goud, niet het merkgeel. Blok 47 toetst de kleur.
         check("donker: je eigen bericht is warm goud #E5A623, niet het merkgeel", d40["eigen"] == "rgb(229, 166, 35)", d40["eigen"])
         # TT-520 (besluit Ronald 25-10-2026, richting A): de gekozen knop blijft
@@ -4491,7 +4495,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               l40["knop"] == ["rgb(255, 184, 28)", "rgb(30, 30, 30)", "none"], json.dumps(l40["knop"]))
         check("licht: gekozen tabblad is een geel vlak met zwarte tekst",
               l40["gekozen"] == ["rgb(255, 184, 28)", "rgb(30, 30, 30)"], json.dumps(l40["gekozen"]))
-        check("licht: profielvlak geel met zwarte T", l40["avatar"] == ["rgb(255, 184, 28)", "rgb(30, 30, 30)"], json.dumps(l40["avatar"]))
+        check("licht: profielvlak zonder foto is het podium #101114, in elk thema gelijk (TT-517 fase 6)", l40["avatar"][0] == "rgb(16, 17, 20)", json.dumps(l40["avatar"]))
         check("licht: je eigen bericht vol geel #FFC94D (TT-440)", l40["eigen"] == "rgb(255, 201, 77)", l40["eigen"])
         check("licht: ongelezen blijft hetzelfde rood als donker", l40["ongelezen"] == d40["ongelezen"], l40["ongelezen"])
         check("licht: veldlabel donker, gewone letters",
@@ -5228,24 +5232,18 @@ window.TT_STUB.fnAntwoord = {};
               nm == ["15px"] * 5, json.dumps(nm))
 
         # 7. De T: één klasse, in het lettertype van het logo, 25% groter dan zijn vak.
+        # TT-517 fase 6: alleen nog het logo (het gesprek met The Talent Tent) en,
+        # tot fase 7, een afgeschermd medium. Een lege foto is de schijnwerper (blok 113).
         t47 = p47.evaluate("""() => {
           const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
-          plek.innerHTML = '<div class="result-row-avatar">' + AVATAR_T_FALLBACK + '</div>'
-            + '<div class="messages-conv-avatar">' + AVATAR_T_FALLBACK + '</div>'
-            + '<div class="band-avatar">' + AVATAR_T_FALLBACK + '</div>'
+          plek.innerHTML = '<div class="messages-conv-avatar">' + TT_AVATAR_HTML + '</div>'
             + mediaAfgeschermdHTML('tegel') + mediaAfgeschermdHTML('banner');
           const r = [...plek.children].map(v => { const t = v.querySelector('span');
             return t ? [t.className, Math.round(parseFloat(getComputedStyle(t).fontSize) / parseFloat(getComputedStyle(v).fontSize) * 100),
                         getComputedStyle(t).fontFamily.includes('TT Woordmerk')] : null; });
-          // TT-385 fase 4: de bandfoto kies je in de tegel Onze media, niet meer in Band aanmaken.
-          const voorbeeld = ['avatarInitials', 'mhAvatarInitials'].map(id => {
-            const e = document.getElementById(id); return e ? e.className : 'ontbreekt'; })
-            .concat([(document.querySelector('#bmFotoPreview > span') || { className: 'ontbreekt' }).className]);
-          plek.remove(); return { r, voorbeeld }; }""")
-        check("elke T zonder foto is .avatar-t, in het lettertype van het logo, 125% van zijn vak",
-              all(x and x[0] == "avatar-t" and x[1] == 125 and x[2] for x in t47["r"]), json.dumps(t47["r"]))
-        check("de T bij het uploaden van een foto is ook .avatar-t (wizard, mediahoek, band)",
-              t47["voorbeeld"] == ["avatar-t"] * 3, json.dumps(t47["voorbeeld"]))
+          plek.remove(); return { r }; }""")
+        check("elke T is .avatar-t, in het lettertype van het logo, 125% van zijn vak",
+              len(t47["r"]) == 3 and all(x and x[0].split()[0] == "avatar-t" and x[1] == 125 and x[2] for x in t47["r"]), json.dumps(t47["r"]))
 
         # 8. Op een telefoon blijft na een tik geen vlak achter de terugknop staan.
         css47 = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
@@ -5971,7 +5969,7 @@ window.TT_STUB.fnAntwoord = {};
             nummerDicht: vak().querySelectorAll('div.band-nummer .media-afgeschermd').length,
             socialDicht: vak().querySelectorAll('.social-dicht').length,
             socialLink: vak().querySelectorAll('a.social-knop').length,
-            gezichtenT: vak().querySelectorAll('.bezetting-lid .bb-foto-t').length,
+            gezichtenT: vak().querySelectorAll('.bezetting-lid .bb-foto-leeg .schijnwerper').length, // TT-517 fase 6: de schijnwerper
             open: [...vak().querySelectorAll('.bezetting-open')].map(e => [...e.querySelectorAll('.bb-foto, .bb-naam, .bb-sub')].map(c => c.textContent.trim()).join(' ')),
             openKnop: vak().querySelectorAll('button.bezetting-open').length,
             ledenKnop: vak().querySelectorAll('button.bezetting-lid:not(.bezetting-open)').length,
@@ -6123,7 +6121,7 @@ window.TT_STUB.fnAntwoord = {};
             pct: vak().querySelector('.completeness-pct')?.textContent,
             balkLaatst: vak().lastElementChild?.classList.contains('completeness-wrap'),
             menu: [...vak().querySelectorAll('.profiel-knoppen .nav-menu-item')].map(b => b.textContent),
-            fotoKnop: !!vak().querySelector('button.hoes-leeg[onclick^="openBandTegels("]'), // TT-517 fase 4: het lege podium in de hoes
+            fotoKnop: !!vak().querySelector('.hoes button.hoes-foto-knop[onclick^="voegFotoToe("]'), // TT-517 fase 6: "Voeg een foto toe" in de hoes
             tags: [...vak().querySelectorAll('.profile-badges .tag-solid')].map(t => t.textContent.trim()).filter(t => /^(Zoekend|Compleet)/.test(t)) };
           // Het ⋯-menu sluit bij een tik op de donkere laag (was alleen op Mijn Bands).
           vak().querySelector('.profiel-knoppen .profile-actions-menu-wrap .nav-menu-btn').click(); await w(50);
@@ -6315,7 +6313,7 @@ window.TT_STUB.fnAntwoord = {};
               d58["leeg"]["uitnodigingen"] == ["+ Wie spelen er in de band?", "+ Vertel wie jullie zijn", "+ Laat horen hoe jullie klinken",
                                                "+ Foto's en video's toevoegen", "+ Instagram, TikTok of YouTube", "+ Welke covers spelen jullie?"]
               and d58["leeg"]["pct"] == "15%" and d58["leeg"]["balkLaatst"], j58("leeg"))
-        check("privé: ⋯ met Bandprofiel bewerken, een lege bandfoto is een knop",
+        check("privé: ⋯ met Bandprofiel bewerken, zonder bandfoto de knop \"Voeg een foto toe\" (TT-517 fase 6)",
               d58["leeg"]["menu"] == ["Bandprofiel bewerken"] and d58["leeg"]["fotoKnop"], j58("leeg"))
         check("het ⋯-menu van een band sluit bij een tik op de donkere laag, ook op de bandpagina",
               d58["menuOpen"] and d58["menuDicht"], json.dumps([d58["menuOpen"], d58["menuDicht"]]))
@@ -6658,7 +6656,7 @@ window.TT_STUB.fnAntwoord = {};
           u.nacht = { tags: n.querySelectorAll('.tag-solid').length, rechts: rechts(n), soort: (n.querySelector('.result-row-soort') || {}).textContent,
                       foto: !!n.querySelector('.result-row-avatar img'), hoek: getComputedStyle(n.querySelector('.result-row-avatar')).borderRadius,
                       meta: n.querySelector('.result-row-meta').textContent.trim(), bericht: !!n.querySelector('.result-row-msg-btn') };
-          u.zout = { rechts: rechts(z), meta: z.querySelector('.result-row-meta').textContent.trim(), t: !!z.querySelector('.result-row-avatar .avatar-t') };
+          u.zout = { rechts: rechts(z), meta: z.querySelector('.result-row-meta').textContent.trim(), t: !!z.querySelector('.result-row-avatar .schijnwerper') };
           u.solo = { rechts: rechts(s), meta: s.querySelector('.result-row-meta').textContent.trim() };
           // UI: foto 44px, naam 16px, BAND 11px, Zoekt rechts in de rij.
           const av = n.querySelector('.result-row-avatar'), zk = n.querySelector('.result-row-zoekt');
@@ -6701,7 +6699,7 @@ window.TT_STUB.fnAntwoord = {};
             b7: { id: 'b7', name: 'Stille Week', city: 'Delft', genres: [], status: 'inactief', pauze: true, members: [], wanted: [], invallers: [] } }[id])).filter(Boolean);
           await runSearch(); await w(200);
           u.anon = { namen: rijen().map(naamVan), rechts: rijen()[0] ? rechts(rijen()[0]) : null,
-                     t: !!(rijen()[0] && rijen()[0].querySelector('.result-row-avatar .avatar-t')) };
+                     t: !!(rijen()[0] && rijen()[0].querySelector('.result-row-avatar .schijnwerper')) };
           zetZoekSoortKnoppen('alles');
           hasOwnProfile = true;
           // Het blok Bands op Mijn Profiel.
@@ -6723,7 +6721,7 @@ window.TT_STUB.fnAntwoord = {};
           u.blok = { er: !!blok, rijen: bandRijen.map(x => [x.querySelector('.bb-naam').textContent, (x.querySelector('.bb-sub') || {}).textContent || '']),
                      naBio: blok && blok.previousElementSibling && blok.previousElementSibling.textContent === 'Gitarist en zanger.',
                      voorRepertoire: blok && blok.nextElementSibling && blok.nextElementSibling.classList.contains('profile-songs'),
-                     knop: bandRijen[0] && bandRijen[0].tagName, t: !!(bandRijen[1] && bandRijen[1].querySelector('.bb-foto-t')) };
+                     knop: bandRijen[0] && bandRijen[0].tagName, t: !!(bandRijen[1] && bandRijen[1].querySelector('.bb-foto-leeg .schijnwerper')) };
           if (blok) {
             const titel = blok.querySelector('.profile-media-title'), eerste = bandRijen[0], foto = eerste.querySelector('.bb-foto');
             u.blokMaten = { titelRij: Math.round(r(eerste).top - r(titel).bottom), rijH: Math.round(r(eerste).height), links: Math.round(r(eerste).left), rechts: Math.round(390 - r(eerste).right),
@@ -11835,7 +11833,8 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
     gm = r[(390, "geenfotowelmedia")]
     check("zonder profielfoto maar met gekozen media: de hoes begint met die media, geen podium (besluit Ronald 01-11-2026, A)",
           gm["aantal"] == 2 and gm["leegKnop"] is None and gm["eersteIsFoto"] and gm["stippen"] == 2 and gm["donker"], json.dumps(gm))
-    check("band zonder foto: de beheerder tikt op het podium en kiest een foto (TT-385 punt 2)", (r[(390, "bandleeg")]["leegKnop"] or "").startswith("BUTTON:openBandTegels("), str(r[(390, "bandleeg")]["leegKnop"]))
+    # TT-517 fase 6: het podium is geen knop meer; de beheerder kiest een foto met "Voeg een foto toe" (blok 113).
+    check("band zonder foto: het podium zelf is geen knop, ook niet voor de beheerder (TT-517 fase 6)", r[(390, "bandleeg")]["leegKnop"] == "DIV:", str(r[(390, "bandleeg")]["leegKnop"]))
     bn = r[(390, "banner")]
     check("de banner zit in de hoes: eerst de profielfoto, dan de gekozen media (drie van vier), geen bannerbalk meer",
           bn["aantal"] == 4 and bn["eersteIsFoto"] and bn["balk"] == 0 and r[(390, "mijn")]["balk"] == 0, json.dumps(bn))
@@ -12008,6 +12007,200 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
     check("blok 112: geen paginafouten", not fouten, "; ".join(fouten)[:300])
 
 
+def blok_tt517_fase6():
+    # TT-517 fase 6 (01-11-2026, huisstijl §2 en §21, besluiten Ronald
+    # 31-10-2026): zonder foto. De schijnwerper groot in de hoes (de bundel
+    # recht van boven op de naam, zo breed als de naam) en klein in elke lijst,
+    # de bezetting en berichten; de voorbeeldfoto met silhouet bij het
+    # uploaden; "Voeg een foto toe" in het licht, alleen voor de eigenaar; de
+    # teksten naast de foto. De gele T verdwijnt als lege foto.
+    print("\nBlok 113 — TT-517 fase 6: zonder foto")
+    lees = lambda f: open(os.path.join(ROOT, f), encoding="utf-8").read()
+    css, html = lees("styles.css"), lees("index.html")
+    js = "".join(lees(f) for f in JS_FILES)
+    oud = [w for w in ("AVATAR_T_FALLBACK", "bb-foto-t", "leegTik", "avatarInitials", "zonder-foto'") if w in js + html + css]
+    check("de gele T als lege foto en zijn code zijn weg (dode code)", not oud, str(oud))
+    regel = lambda sel: (re.search(re.escape(sel) + r"\s*\{([^}]*)\}", css) or [None, ""])[1]
+    vakken = [".result-row-avatar", ".messages-conv-avatar", ".gedeeld-speler-foto", ".bb-foto-leeg", ".band-avatar", ".zoek-kaart-foto", ".avatar-preview"]
+    f = [v for v in vakken if re.search(r"background:[^;]*var\(--merk\)", regel(v)) or "var(--podium)" not in regel(v)]
+    check("elk vak zonder foto heeft het podium als ondergrond, geen geel (zeven vakken)", not f, str(f))
+    rol = lambda n: (re.search(r"--" + n + r":\s*(url\(\"data:image/svg\+xml,[^\n]*\"\));", css) or [None, ""])[1]
+    utl6 = lees("utils.js")
+    check("twee bundels in warmgeel: klein #FFB81C uit de twee bovenhoeken, groot in --merk; het silhouet zwart met een warme rand #8A6A22 (huisstijl §2, §21)",
+          "%23FFB81C" in rol("bundel-klein") and rol("bundel-klein").count("<polygon") == 2 and "--bundel-groot" not in css
+          and 'style="stop-color:var(--merk)"' in utl6
+          and all("%23050506" in rol(n) and "%238A6A22" in rol(n) for n in ("silhouet-muzikant", "silhouet-band"))
+          and rol("silhouet-band").count("<circle") == 3 and rol("silhouet-muzikant").count("<circle") == 1)
+    check("de regel \"3× meer reacties\" is weg, op beide plekken (huisstijl §2)", "meer reacties" not in html)
+    check("de teksten naast de foto: zonder foto de kop, met foto \"Je profielfoto\" of \"Jullie bandfoto\"",
+          html.count('<span class="kop-zonder-foto">Upload een foto van jezelf</span><span class="kop-met-foto">Je profielfoto</span>') == 2
+          and html.count('<span class="kop-zonder-foto">Upload een foto van de band</span><span class="kop-met-foto">Jullie bandfoto</span>') == 1
+          and html.count("<p>JPG of PNG, maximaal 5 MB.</p>") == 3)
+
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    basis = f"http://127.0.0.1:{port}"
+    ingelogd = stub_js + """
+window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
+window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instruments: m.musician_instruments || [],
+  musician_genres: m.musician_genres || [], musician_songs: m.musician_songs || [], musician_media: m.musician_media || [] }));
+window.TT_STUB.data.bands[0].founder_id = 'm1';
+"""
+    naam = lambda n: "Object.assign(window.TT_STUB.data.musicians[1], {username:'" + n + "', weergavenaam:'" + n + "'})"
+    # Meet de hoes: de bundel tegen de letters van de naam, de knop, en het
+    # helderste punt van de bundel achter de naam (de bundel zelf op een
+    # canvas getekend, zonder de naam; wit tegen dat punt).
+    MEET = r"""async () => {
+      const ho = document.querySelector('.app-view.active .hoes');
+      if (!ho) return { geen: true };
+      const be = ho.querySelector('.hoes-beeld').getBoundingClientRect();
+      const n = ho.querySelector('.profile-name'), rg = document.createRange(); rg.selectNodeContents(n);
+      const nb = rg.getBoundingClientRect();
+      const bu = ho.querySelector('.hoes-bundel svg'), kn = ho.querySelector('.hoes-foto-knop');
+      const u = { bundel: !!bu, knop: kn ? kn.textContent : null, naamKleur: getComputedStyle(n).color,
+        vlakKnop: ho.querySelector('.hoes-leeg') ? ho.querySelector('.hoes-leeg').tagName : null };
+      const nx = nb.left - be.left, nr = nb.right - be.left, ny = (nb.top + nb.bottom) / 2 - be.top;
+      if (bu) {
+        // Twee bundels, van linksboven en rechtsboven, elk onderaan zo breed als de naam (8px erbij), op het midden van de naam.
+        const p = [...bu.querySelectorAll('polygon')].map(pl => pl.getAttribute('points').split(' ').map(q => q.split(',').map(Number)));
+        const W = be.width;
+        u.bundels = p.length;
+        u.lampen = p.map(q => Math.round(((q[0][0] + q[1][0]) / 2) / W * 100));
+        u.voet = Math.max(...p.map(q => Math.max(Math.abs(q[3][0] - (nx - 8)), Math.abs(q[2][0] - (nr + 8)), Math.abs(q[2][1] - ny), Math.abs(q[3][1] - ny))));
+        const el = bu.querySelector('ellipse');
+        u.vlek = Math.round(Math.max(Math.abs(+el.getAttribute('cx') - (nx + nr) / 2), Math.abs(+el.getAttribute('cy') - ny)));
+        u.maat = bu.getAttribute('viewBox') === `0 0 ${Math.round(be.width)} ${Math.round(be.height)}`;
+        const ids = [...bu.querySelectorAll('[id]')].map(e => e.id);
+        u.eigenIds = ids.length === 3 && [...bu.innerHTML.matchAll(/url\(#([^)]+)\)/g)].every(m => ids.includes(m[1]))
+          && ids.every(i => document.querySelectorAll('#' + i).length === 1);
+        // De bundels op een canvas, op de maat van de hoes, het podium eronder.
+        const img = new Image();
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(bu.outerHTML.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ').replaceAll('var(--merk)', '#FFB81C'));
+        await img.decode();
+        const c = document.createElement('canvas'); c.width = Math.round(be.width); c.height = Math.round(be.height);
+        const x = c.getContext('2d'); x.fillStyle = '#101114'; x.fillRect(0, 0, c.width, c.height);
+        x.drawImage(img, 0, 0, c.width, c.height);
+        const d = x.getImageData(Math.round(nb.left - be.left), Math.round(nb.top - be.top), Math.round(nb.width), Math.round(nb.height)).data;
+        const lum = (r, g, b) => [r, g, b].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }).reduce((s, v, i) => s + v * [.2126, .7152, .0722][i], 0);
+        let mx = 0; for (let i = 0; i < d.length; i += 4) mx = Math.max(mx, lum(d[i], d[i + 1], d[i + 2]));
+        u.contrast = Math.round(1.05 / (mx + .05) * 10) / 10;
+      }
+      if (kn) {
+        const k = kn.getBoundingClientRect(), cs = getComputedStyle(kn);
+        u.knopMaat = [Math.round(k.height), cs.borderTopLeftRadius, cs.backgroundColor, cs.color, cs.fontSize];
+        u.knopBovenNaam = Math.round(nb.top - k.bottom);
+        // In het midden van de hoes, horizontaal en verticaal (besluit Ronald 01-11-2026).
+        u.knopMidden = [Math.round((k.left + k.right) / 2 - (be.left + be.right) / 2), Math.round((k.top + k.bottom) / 2 - (be.top + be.bottom) / 2)];
+        u.knopActie = kn.getAttribute('onclick');
+      }
+      return u;
+    }"""
+    SC = [
+        ("mijn", ["showView('myprofile')"]),
+        ("ander", ["openProfielScherm('m2')"]),
+        ("lang", [naam("Sanne van der Heijden-B"), "openProfielScherm('m2')"]),
+        ("kort", [naam("Kim"), "openProfielScherm('m2')"]),
+        ("band", ["openBandScherm('b1')"]),
+        ("bandander", ["openBandScherm('b2')"]),
+        ("metfoto", ["window.TT_STUB.data.musicians[0].avatar_url = location.origin + '/icon-192.png'", "showView('myprofile')"]),
+    ]
+    res, fouten = {}, []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        def nieuw(breed, thema):
+            ctx = browser.new_context(viewport={"width": breed, "height": 844}, color_scheme=thema, has_touch=True, is_mobile=True)
+            page = ctx.new_page()
+            page.on("pageerror", lambda e: fouten.append(str(e)))
+            page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=ingelogd))
+            for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+                page.route(pat, lambda r: r.abort())
+            page.goto(f"{basis}/index.html", wait_until="load"); page.wait_for_timeout(500)
+            return ctx, page
+        for breed, thema in ((390, "light"), (360, "dark")):
+            for nm, stappen in SC:
+                ctx, page = nieuw(breed, thema)
+                for st in stappen:
+                    page.evaluate(st); page.wait_for_timeout(300)
+                page.wait_for_timeout(700)
+                res[(breed, nm)] = page.evaluate(MEET)
+                if nm in ("mijn", "band") and breed == 390:
+                    # Een tik op de knop opent Je mediahoek (band: Onze media).
+                    page.click(".app-view.active .hoes-foto-knop"); page.wait_for_timeout(900)
+                    res[(breed, nm + "-tik")] = page.evaluate("""() => ({ view: document.querySelector('.app-view.active').id,
+                      scherm: ['mediahoekScreen', 'bandMediaScreen'].filter(id => document.getElementById(id).style.display !== 'none'),
+                      kop: document.getElementById('kopTitel').textContent })""")
+                ctx.close()
+        # Klein: elk vak zonder foto toont de schijnwerper, het vak geeft maat en vorm.
+        ctx, page = nieuw(390, "light")
+        klein = page.evaluate("""() => {
+          const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
+          const vak = (k, el) => '<' + (el || 'div') + ' class="' + k + '">' + ZONDER_FOTO_HTML + '</' + (el || 'div') + '>';
+          plek.innerHTML = vak('result-row-avatar') + vak('result-row-avatar result-vierkant') + vak('messages-conv-avatar') + vak('band-avatar')
+            + vak('gedeeld-speler-foto', 'span') + vak('bb-foto bb-foto-leeg', 'span') + vak('bb-foto bb-foto-leeg bb-foto-vierkant', 'span')
+            + '<div class="zoek-kaarten">' + zoekKaartHTML({ naam: 'X', eerste: 'Gitaar', plaats: 'Delft', klik: '' }) + '</div>'
+            + '<div class="messages-conv-avatar">' + TT_AVATAR_HTML + '</div>';
+          const uit = [...plek.querySelectorAll('.schijnwerper')].map(s => { const v = s.parentElement, a = s.getBoundingClientRect(), b = v.getBoundingClientRect(), cs = getComputedStyle(s);
+            return [Math.round(a.width - b.width), Math.round(a.height - b.height), cs.borderTopLeftRadius === getComputedStyle(v).borderTopLeftRadius,
+                    cs.backgroundImage.includes('data:image/svg+xml') && cs.backgroundColor === 'rgb(16, 17, 20)', getComputedStyle(v).backgroundColor, s.getAttribute('aria-hidden')]; });
+          const logo = getComputedStyle(plek.querySelector('.avatar-logo')), kleur = [logo.backgroundColor, logo.color];
+          plek.remove();
+          return { uit, logo: kleur }; }""")
+        # De voorbeeldfoto bij het uploaden: zonder foto de schijnwerper met silhouet, met foto de foto en de andere kop.
+        voorbeeld = page.evaluate("""() => {
+          const meet = id => { const e = document.getElementById(id), area = e.closest('.avatar-upload-area');
+            const zicht = s => { const x = area.querySelector(s); return x && x.getClientRects().length > 0; };
+            return { leeg: e.children.length === 0, laag: getComputedStyle(e).backgroundImage.split('url("data:').length - 1,
+              silhouet: (getComputedStyle(e).backgroundImage.match(/<circle/g) || []).length, kop: zicht('.kop-zonder-foto') && !zicht('.kop-met-foto'),
+              wijzig: area.querySelector('.avatar-edit-btn').textContent.trim() }; };
+          ['step4', 'tegelScreens', 'mediahoekScreen', 'bandMediaScreen'].forEach(id => { const e = document.getElementById(id); if (e) { e.style.display = 'block'; e.classList.add('active'); } });
+          document.querySelectorAll('.app-view').forEach(v => v.classList.add('active'));
+          const zonder = ['avatarPreview', 'mhAvatarPreview', 'bmFotoPreview'].map(meet);
+          ['avatarPreview', 'mhAvatarPreview', 'bmFotoPreview'].forEach(id => { document.getElementById(id).innerHTML = '<img src="icon-192.png" alt="">'; });
+          const met = ['avatarPreview', 'mhAvatarPreview', 'bmFotoPreview'].map(id => { const area = document.getElementById(id).closest('.avatar-upload-area');
+            const zicht = s => area.querySelector(s).getClientRects().length > 0;
+            return zicht('.kop-met-foto') && !zicht('.kop-zonder-foto') ? area.querySelector('.kop-met-foto').textContent : null; });
+          return { zonder, met }; }""")
+        ctx.close()
+        browser.close()
+    httpd.shutdown()
+    r = res
+    hoes = [(b, n) for b in (390, 360) for n in ("mijn", "ander", "lang", "kort", "band", "bandander")]
+    f = {f"{b}:{n}": r[(b, n)] for b, n in hoes if not (r[(b, n)]["bundel"] and r[(b, n)]["bundels"] == 2 and r[(b, n)]["lampen"] == [6, 94] and r[(b, n)]["maat"])}
+    check("zonder foto: twee bundels, van linksboven en rechtsboven (lampen in de hoeken, optie A), op de maat van de hoes; muzikant en band, ook een lange en een korte naam", not f, json.dumps(f)[:400])
+    f = {f"{b}:{n}": [r[(b, n)]["voet"], r[(b, n)]["vlek"]] for b, n in hoes if r[(b, n)]["voet"] > 1 or r[(b, n)]["vlek"] > 1}
+    check("beide bundels eindigen op de naam, zo breed als de naam; de lichtvlek op het midden van de naam (1px)", not f, json.dumps(f))
+    f = {f"{b}:{n}": 1 for b, n in hoes if not r[(b, n)]["eigenIds"]}
+    check("elke hoes heeft eigen namen voor filter en verloop (een verborgen scherm neemt ze niet weg)", not f, json.dumps(f))
+    f = {f"{b}:{n}": [r[(b, n)]["naamKleur"], r[(b, n)]["contrast"]] for b, n in hoes if r[(b, n)]["naamKleur"] != "rgb(255, 255, 255)" or r[(b, n)]["contrast"] < 4.5}
+    check("de naam is wit en leesbaar op het helderste punt van de bundel (4,5:1 of meer)", not f, json.dumps(f))
+    f = {f"{b}:{n}": r[(b, n)]["vlakKnop"] for b, n in hoes if r[(b, n)]["vlakKnop"] != "DIV"}
+    check("het podium zelf is geen knop", not f, json.dumps(f))
+    eigen = [(b, n) for b in (390, 360) for n in ("mijn", "band")]
+    f = {f"{b}:{n}": r[(b, n)].get("knop") for b, n in eigen if r[(b, n)].get("knop") != "Voeg een foto toe"}
+    f.update({f"{b}:{n}": r[(b, n)].get("knop") for b, n in hoes if n not in ("mijn", "band") and r[(b, n)].get("knop") is not None})
+    check("\"Voeg een foto toe\" alleen voor de eigenaar: Mijn profiel en de beheerder van de band; een bezoeker ziet alleen de schijnwerper", not f, json.dumps(f))
+    f = {f"{b}:{n}": r[(b, n)]["knopMaat"] for b, n in eigen if r[(b, n)]["knopMaat"][0] < 44 or r[(b, n)]["knopMaat"][1:] != ["999px", "rgb(255, 184, 28)", "rgb(30, 30, 30)" if b == 390 else "rgb(0, 0, 0)", "15px"]}
+    check("de knop is de hoofdknop: een pil in warmgeel met zwarte tekst, minstens 44px hoog, 15px", not f, json.dumps(f))
+    f = {f"{b}:{n}": [r[(b, n)][k] for k in ("knopBovenNaam", "knopMidden")] for b, n in eigen
+         if not (r[(b, n)]["knopBovenNaam"] > 0 and all(abs(v) <= 1 for v in r[(b, n)]["knopMidden"]))}
+    check("de knop staat in het midden van de hoes, horizontaal en verticaal (1px), boven de naam (besluit Ronald 01-11-2026)", not f, json.dumps(f))
+    check("een tik op de knop opent Je mediahoek, voor de band Onze media",
+          r[(390, "mijn-tik")]["scherm"] == ["mediahoekScreen"] and r[(390, "band-tik")]["scherm"] == ["bandMediaScreen"]
+          and r[(390, "mijn-tik")]["view"] == r[(390, "band-tik")]["view"] == "view-profieltegels"
+          and r[(390, "band")]["knopActie"] == "voegFotoToe('b1')", json.dumps([r[(390, "mijn-tik")], r[(390, "band-tik")]]))
+    check("met een foto: geen bundel en geen knop", all(not r[(b, "metfoto")]["bundel"] and r[(b, "metfoto")]["knop"] is None for b in (390, 360)), json.dumps(r[(390, "metfoto")]))
+    f = [x for x in klein["uit"] if not (x[0] == 0 and x[1] == 0 and x[2] and x[3] and x[4] == "rgb(16, 17, 20)" and x[5] == "true")]
+    check("klein: elke plek zonder foto (rij, rij band, gesprek, bandkaart, Mix & Match, bezetting, kaart) is de schijnwerper op het podium, in de vorm van zijn vak",
+          len(klein["uit"]) == 8 and not f, json.dumps(klein))
+    check("het gesprek met The Talent Tent houdt het logo: een zwarte T op geel", klein["logo"] == ["rgb(255, 184, 28)", "rgb(30, 30, 30)"], json.dumps(klein["logo"]))
+    z = voorbeeld["zonder"]
+    check("de voorbeeldfoto bij het uploaden: de schijnwerper met silhouet, één persoon (wizard, Je mediahoek), drie (Onze media), geen T",
+          [x["silhouet"] for x in z] == [1, 1, 3] and all(x["leeg"] and x["laag"] == 2 for x in z), json.dumps(z))
+    check("zonder foto de kop \"Upload een foto …\", met foto \"Je profielfoto\" of \"Jullie bandfoto\"; het knopje heet altijd \"Wijzig\"",
+          all(x["kop"] and x["wijzig"] == "Wijzig" for x in z) and voorbeeld["met"] == ["Je profielfoto", "Je profielfoto", "Jullie bandfoto"], json.dumps(voorbeeld))
+    check("geen paginafouten in blok 113", not fouten, "; ".join(fouten)[:400])
+
+
 def blok_jwt_herhaling():
     print("\nBlok 108 — herhaling bij 'JWT issued at future' (TT-306)")
     core = open(os.path.join(ROOT, "core.js"), encoding="utf-8").read()
@@ -12079,6 +12272,7 @@ def main():
     blok_tt517_fase3()
     blok_tt517_fase4()
     blok_tt517_fase5()
+    blok_tt517_fase6()
     blok_0_rijen()
     blok_browser()
     blok_xss()

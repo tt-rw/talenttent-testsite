@@ -10,6 +10,9 @@ let activeConversationId = null; // musician-id van de open gespreksdraad
 // gesprek is alleen te lezen: geen invoerveld, geen menu.
 const TT_GESPREK_ID = 'talent-tent';
 const TT_GESPREK_NAAM = 'Talent Tent';
+// Het gesprek met The Talent Tent zelf heeft het logo als foto: een zwarte T
+// op geel. Geen lege foto, dus geen schijnwerper (TT-517 fase 6).
+const TT_AVATAR_HTML = '<span class="avatar-t avatar-logo">T</span>';
 let activeConversationSysteem = false; // waar zolang het gesprek met Talent Tent open staat
 let ttBerichtenBeschikbaar = true;     // onwaar na de eerste mislukte vraag: één logregel per bezoek
 
@@ -50,7 +53,7 @@ function openMessageComposer(recipientId, recipientName, bandNaam) {
   } else {
     gesprekVanuit = null;
   }
-  // Zonder foto-argument blijft de vorige foto staan; null geeft de T.
+  // Zonder foto-argument blijft de vorige foto staan; null geeft de schijnwerper.
   openConversation(recipientId, recipientName, null, false, false);
   // De foto komt los binnen; de kop staat er meteen.
   (async () => {
@@ -324,7 +327,7 @@ async function loadInbox(opties) {
       // naam i.p.v. de generieke "Muzikant"-fallback van displayNameOf().
       const name = info ? displayNameOf(info) : 'Verwijderde gebruiker';
       const avatarSrc = info ? safeUrl(info.avatar_url) : null;
-      const avatarHTML = avatarSrc ? `<img ${kleinFotoAttr(avatarSrc)} alt="${escHtml(name)}">` : AVATAR_T_FALLBACK;
+      const avatarHTML = avatarSrc ? `<img ${kleinFotoAttr(avatarSrc)} alt="${escHtml(name)}">` : ZONDER_FOTO_HTML;
       const isOwn = c.lastMessage.sender_id === mid;
       const previewPrefix = isOwn ? 'Jij: ' : '';
       const preview = c.lastMessage.body.length > 50 ? c.lastMessage.body.slice(0, 50) + '…' : c.lastMessage.body;
@@ -402,7 +405,7 @@ async function openConversation(otherId, otherName, otherAvatarSrc, stil, delete
   // kop staat er dan al.
   if (otherAvatarSrc !== undefined) {
     const avatarEl = document.getElementById('messagesThreadAvatar');
-    avatarEl.innerHTML = otherAvatarSrc ? `<img ${kleinFotoAttr(safeUrl(otherAvatarSrc))} alt="${escHtml(otherName)}">` : AVATAR_T_FALLBACK;
+    avatarEl.innerHTML = otherAvatarSrc ? `<img ${kleinFotoAttr(safeUrl(otherAvatarSrc))} alt="${escHtml(otherName)}">` : ZONDER_FOTO_HTML;
   }
   document.getElementById('messagesInboxPanel').style.display = 'none';
   document.getElementById('messagesThreadPanel').style.display = 'block';
@@ -593,7 +596,7 @@ function talentTentRijHTML(berichten) {
   const ongelezen = berichten.filter(b => !b.read_at).length;
   return `
     <div class="messages-conv-row ${ongelezen ? 'unread' : ''}" onclick="openTalentTentGesprek()">
-      <div class="messages-conv-avatar">${AVATAR_T_FALLBACK}</div>
+      <div class="messages-conv-avatar">${TT_AVATAR_HTML}</div>
       <div class="messages-conv-main">
         <div class="messages-conv-name">${escHtml(TT_GESPREK_NAAM)}${ongelezen ? ` <span class="unread-badge" style="position:static;">${ongelezen}</span>` : ''}</div>
         <div class="messages-conv-preview">${escHtml(talentTentKernzin(laatste.inhoud))}</div>
@@ -649,7 +652,7 @@ function talentTentBerichtHTML(bericht, info) {
     const foto = safeUrl(bi.avatar_url);
     const beeld = foto
       ? `<img class="bb-foto bb-foto-vierkant" ${kleinFotoAttr(foto)} alt="">`
-      : `<span class="bb-foto bb-foto-t bb-foto-vierkant" aria-hidden="true">${AVATAR_T_FALLBACK}</span>`;
+      : `<span class="bb-foto bb-foto-leeg bb-foto-vierkant" aria-hidden="true">${ZONDER_FOTO_HTML}</span>`;
     const regel1 = [bi.city, b.km != null ? `${b.km} km` : ''].filter(Boolean).join(' · ');
     const regel2 = (b.zoekt || []).map(i => TT_TEKSTEN.bandZoekt.replace('{instrument}', i)).join(' · ');
     return `<button type="button" class="bb-rij bb-rij-knop" onclick="openBandScherm('${jsAttr(b.id)}')" aria-label="Band ${escHtml(bi.name)}">${beeld}<span class="bb-tekst"><span class="bb-naam">${escHtml(bi.name)}</span>${regel1 ? `<span class="bb-sub">${escHtml(regel1)}</span>` : ''}${regel2 ? `<span class="bb-sub">${escHtml(regel2)}</span>` : ''}</span></button>`;
@@ -671,7 +674,7 @@ async function openTalentTentGesprek(stil) {
   paneel.classList.remove('thread-verwijderd');
   paneel.classList.add('gesprek-open');
   document.getElementById('messagesThreadName').textContent = TT_GESPREK_NAAM;
-  document.getElementById('messagesThreadAvatar').innerHTML = AVATAR_T_FALLBACK;
+  document.getElementById('messagesThreadAvatar').innerHTML = TT_AVATAR_HTML;
   zetVeiligheidMenu('messagesThreadActies', 'gesprek', null, ''); // geen melden, blokkeren of verwijderen
   document.getElementById('messagesInboxPanel').style.display = 'none';
   paneel.style.display = 'block';

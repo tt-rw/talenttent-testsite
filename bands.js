@@ -867,7 +867,7 @@ async function loadMyBands(opties) {
     const verzoekVoorMij = !isFounder && confirmed.some(m => m.musician_id === mid && m.founder_offer);
     return `<div class="band-card" onclick="openBandScherm('${jsAttr(b.id)}')">
       <div class="band-card-header">
-        ${b.avatar_url ? `<img ${kleinFotoAttr(safeUrl(b.avatar_url))} alt="${escHtml(b.name)}" class="band-avatar" style="object-fit:cover;">` : `<div class="band-avatar">${AVATAR_T_FALLBACK}</div>`}
+        ${b.avatar_url ? `<img ${kleinFotoAttr(safeUrl(b.avatar_url))} alt="${escHtml(b.name)}" class="band-avatar" style="object-fit:cover;">` : `<div class="band-avatar">${ZONDER_FOTO_HTML}</div>`}
         <div style="flex:1;">
           <div class="band-name">${escHtml(b.name)}</div>
           <div class="band-meta">${escHtml(b.city||'')}${b.city&&b.genres?.length?' · ':''}${escHtml((b.genres||[]).slice(0,2).join(', '))}</div>
@@ -1008,7 +1008,8 @@ function invallerDatum(datum) {
 
 // Eén lid in de bezetting: dezelfde rij als in Onze bezetting en op het
 // muzikantprofiel (`.bb-rij`, foto links, tekst rechts). Zonder foto (of
-// afgeschermd) de T, zoals de lege profielfoto (huisstijl §18.7).
+// afgeschermd) de schijnwerper, zoals elke lege profielfoto (huisstijl §21;
+// afgeschermd wordt wazig in fase 7 van TT-517, §18.7).
 function bezettingLidHTML(l) {
   const rol = l.instrumenten.length ? l.instrumenten.join(' · ') : roleLabel(l.rol);
   const inhoud = `${bbFotoHTML(l.avatar_url)}<span class="bb-tekst"><span class="bb-naam">${escHtml(l.naam)}</span><span class="bb-sub">${escHtml(rol)}</span></span>`;
@@ -1075,7 +1076,7 @@ function profielBandsHTML(bands) {
     const foto = safeUrl(b.foto);
     const beeld = foto
       ? `<img class="bb-foto bb-foto-vierkant" ${kleinFotoAttr(foto)} alt="">`
-      : `<span class="bb-foto bb-foto-t bb-foto-vierkant" aria-hidden="true">${AVATAR_T_FALLBACK}</span>`;
+      : `<span class="bb-foto bb-foto-leeg bb-foto-vierkant" aria-hidden="true">${ZONDER_FOTO_HTML}</span>`;
     const sub = b.instrumenten.concat(b.rol === 'Oprichter' ? [roleLabel(b.rol)] : []).join(' · ');
     return `<button type="button" class="bb-rij bb-rij-knop" onclick="openBandScherm('${jsAttr(b.id)}')">${beeld}<span class="bb-tekst"><span class="bb-naam">${escHtml(b.naam)}</span>${sub ? `<span class="bb-sub">${escHtml(sub)}</span>` : ''}</span></button>`;
   }).join(''));
@@ -1117,10 +1118,9 @@ function bandSocialsHTML(b) {
 function bandPaginaHTML(b, kijker) {
   const beheer = kijker === 'beheerder';
   const foto = safeUrl(b.avatar_url);
-  // De beheerder tikt op een lege bandfoto om er een te kiezen (TT-385 punt 2).
-  // TT-517 fase 4: de foto staat groot in de hoes; zonder foto tikt de
-  // beheerder op het lege podium.
-  const leegTik = !foto && beheer ? `openBandTegels('${jsAttr(b.id)}')` : null;
+  // TT-517 fase 6 (huisstijl §21): zonder foto ziet alleen de beheerder in
+  // de hoes de knop "Voeg een foto toe"; die opent Onze media.
+  const fotoToevoegen = beheer ? `voegFotoToe('${jsAttr(b.id)}')` : null;
 
   // Het ⋯-menu: een lid kan de band verlaten (TT-385 punt 13); een bezoeker
   // meldt de band (TT-06, de inhoud zet zetVeiligheidMenu() erin). De
@@ -1169,7 +1169,7 @@ function bandPaginaHTML(b, kijker) {
   // TT-517 fase 4 (01-11-2026): de kop is de hoes, zoals bij de muzikant (huisstijl §21).
   let h = `
     ${profielHoesHTML({
-      foto, naam: b.name, media: b.media, leegTik,
+      foto, naam: b.name, media: b.media, fotoToevoegen,
       regels: `<div class="profile-meta" style="margin-bottom:0;">${escHtml(b.city || '')}</div>`,
       knoppen: profielKnoppenHTML('band', b.id, b.name, menuHTML, deelActie, beheer || b.delen_aan !== false)
     })}
@@ -1744,7 +1744,7 @@ function bbFotoHTML(url, wacht) {
   const extra = wacht ? ' bb-wacht' : '';
   return veilig
     ? `<img class="bb-foto${extra}" ${kleinFotoAttr(veilig)} alt="">`
-    : `<span class="bb-foto bb-foto-t${extra}" aria-hidden="true">${AVATAR_T_FALLBACK}</span>`;
+    : `<span class="bb-foto bb-foto-leeg${extra}" aria-hidden="true">${ZONDER_FOTO_HTML}</span>`;
 }
 
 // Eén rij: foto, naam, een regel eronder (al als HTML), en rechts de drie
@@ -2184,7 +2184,7 @@ function bmZet(b) {
 function bmRenderFoto() {
   const vak = document.getElementById('bmFotoPreview');
   const url = safeUrl(bmFotoUrl);
-  vak.innerHTML = url ? `<img ${kleinFotoAttr(url)} alt="bandfoto">` : '<span class="avatar-t">T</span>';
+  vak.innerHTML = url ? `<img ${kleinFotoAttr(url)} alt="bandfoto">` : ''; // TT-517 fase 6: zonder foto de schijnwerper met silhouet (styles.css)
   document.getElementById('bmFotoRemoveBtn').classList.toggle('visible', !!url);
 }
 

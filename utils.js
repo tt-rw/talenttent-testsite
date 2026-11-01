@@ -2419,8 +2419,9 @@ const HOES_PIJL = r => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 
 // o.foto: de profiel- of bandfoto (uit safeUrl) of null; o.naam: de naam als
 // tekst; o.regels: HTML van de regel onder de naam; o.knoppen: HTML van
-// profielKnoppenHTML(); o.media: de media voor de banner; o.leegTik: JavaScript
-// voor een tik op een leeg podium (de beheerder van een band kiest zo een foto).
+// profielKnoppenHTML(); o.media: de media voor de banner; o.fotoToevoegen:
+// JavaScript voor de knop "Voeg een foto toe" op een leeg podium, alleen voor de
+// eigenaar (TT-517 fase 6, huisstijl §21); anders null.
 function profielHoesHTML(o) {
   const items = profielBannerItems(o.media);
   // TT-385 (02-10-2026, besluit Ronald): een afgeschermde banner staat er
@@ -2438,9 +2439,14 @@ function profielHoesHTML(o) {
   const eerste = !voor ? '' : o.foto
     ? `<button type="button" class="hoes-vlak" onclick="openMediaLightbox('${jsAttr(o.foto)}')" aria-label="Foto van ${naam} groot bekijken">` +
       `<img class="hoes-img" ${hoesBronAttr(o.foto)} alt="${naam}"></button>`
-    : o.leegTik
-      ? `<button type="button" class="hoes-vlak hoes-leeg" onclick="${o.leegTik}" aria-label="Kies een foto"></button>`
-      : `<div class="hoes-vlak hoes-leeg" role="img" aria-label="Nog geen foto"></div>`;
+    // TT-517 fase 6: zonder foto de schijnwerper, twee bundels die samen op
+    // de naam vallen (hoesBundelZetten()). Het podium zelf is geen knop.
+    : `<div class="hoes-vlak hoes-leeg" role="img" aria-label="Nog geen foto"><span class="hoes-bundel"></span></div>`;
+  // Alleen de eigenaar ziet de knop "Voeg een foto toe" (besluit Ronald
+  // 31-10-2026, optie A), in het midden van de hoes (besluit 01-11-2026); een
+  // bezoeker ziet alleen de schijnwerper.
+  const knop = podium && o.fotoToevoegen
+    ? `<button type="button" class="btn btn-primary hoes-foto-knop" onclick="${o.fotoToevoegen}">Voeg een foto toe</button>` : '';
 
   const vlakken = banner.map((it, i) => {
     const url = it.veilig;
@@ -2479,7 +2485,7 @@ function profielHoesHTML(o) {
     : '';
 
   return `<div class="hoes">
-    <div class="hoes-beeld"><div class="hoes-spoor">${eerste}${vlakken}</div>${meer}</div>
+    <div class="hoes-beeld"><div class="hoes-spoor">${eerste}${vlakken}</div>${meer}${knop}</div>
     <div class="hoes-tekst"><div class="profile-name">${naam}</div><div class="profiel-regels">${o.regels}</div></div>
     ${o.knoppen}
   </div>`;
@@ -2617,7 +2623,50 @@ function hoesStarten(root) {
     if (vorige) { vorige.onclick = () => naar(-1); volgende.onclick = () => naar(1); }
     vlakken.forEach(v => hoesVlakMeten(v, zet));
     zet();
+    // TT-517 fase 6: zonder foto vallen de bundels op de naam. Opnieuw bij elke
+    // andere maat van de naam (fitProfileName(), een gedraaide telefoon) en
+    // als het lettertype binnen is. Een hoes die uit de pagina gaat, meldt
+    // nog één keer een maat; dan stopt de waarnemer.
+    if (hoes.querySelector('.hoes-bundel')) {
+      hoesBundelZetten(hoes);
+      if (document.fonts) document.fonts.ready.then(() => hoesBundelZetten(hoes));
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => { if (!hoes.isConnected) ro.disconnect(); else hoesBundelZetten(hoes); });
+        ro.observe(hoes.querySelector('.profile-name'));
+      }
+    }
   });
+}
+
+// TT-517 fase 6 (huisstijl §21): de schijnwerper. Twee bundels, van linksboven
+// en rechtsboven, vallen samen op de naam (Ronald 01-11-2026: "lichtstralen
+// van linksboven en rechtsboven"). De app meet waar de naam werkelijk staat (de
+// letters, niet zijn vak) en tekent de bundels op de maat van de hoes: elke
+// bundel eindigt zo breed als de naam, de lichtvlek ligt op de naam.
+// Elke hoes eigen namen voor zijn filter en verlopen: een verborgen scherm met
+// dezelfde namen zou ze anders wegnemen.
+let hoesBundelTeller = 0;
+function hoesBundelZetten(hoes) {
+  const naam = hoes.querySelector('.profile-name');
+  const beeld = hoes.querySelector('.hoes-beeld');
+  const vak = hoes.querySelector('.hoes-bundel');
+  if (!naam || !vak || !beeld.clientWidth) return;
+  const r = document.createRange();
+  r.selectNodeContents(naam);
+  const n = r.getBoundingClientRect(), b = beeld.getBoundingClientRect();
+  const W = Math.round(b.width), H = Math.round(b.height);
+  const x0 = Math.round(n.left - b.left) - 8, x1 = Math.round(n.right - b.left) + 8;
+  const x = (n.left + n.right) / 2 - b.left, y = Math.round((n.top + n.bottom) / 2 - b.top);
+  const bron = Math.round(W * 0.07); // de halve breedte van een bundel bij de lamp
+  const bundel = lx => `<polygon points="${lx - bron},-8 ${lx + bron},-8 ${x1},${y} ${x0},${y}"/>`;
+  const geel = 'style="stop-color:var(--merk)"';
+  const id = vak.dataset.id || (vak.dataset.id = 'hb' + (++hoesBundelTeller));
+  vak.innerHTML = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><defs>` +
+    `<filter id="${id}z" x="-.5" y="-.5" width="2" height="2"><feGaussianBlur stdDeviation="${Math.max(4, W / 60).toFixed(1)}"/></filter>` +
+    `<linearGradient id="${id}l" x2="0" y2="1"><stop offset="0" ${geel} stop-opacity=".36"/><stop offset="1" ${geel} stop-opacity=".12"/></linearGradient>` +
+    `<radialGradient id="${id}e"><stop offset="0" ${geel} stop-opacity=".5"/><stop offset="1" ${geel} stop-opacity="0"/></radialGradient></defs>` +
+    `<g filter="url(#${id}z)" fill="url(#${id}l)">${bundel(Math.round(W * 0.06))}${bundel(Math.round(W * 0.94))}</g>` +
+    `<ellipse cx="${Math.round(x)}" cy="${y}" rx="${Math.round((x1 - x0) * 0.62)}" ry="${Math.round(H * 0.11)}" fill="url(#${id}e)"/></svg>`;
 }
 
 // TT-457 (10-10-2026, besluit Ronald): de zin "niet beschikbaar" op een

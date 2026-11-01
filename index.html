@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261101d">
+<link rel="stylesheet" href="styles.css?v=20261101e">
 </head>
 <body>
 
@@ -581,15 +581,13 @@
       <label>Profielfoto</label>
       <div class="avatar-upload-area">
         <div class="avatar-preview-wrap">
-          <div class="avatar-preview" id="avatarPreview" onclick="document.getElementById('avatarInput').click()">
-            <span id="avatarInitials" class="avatar-t">T</span>
-          </div>
+          <div class="avatar-preview" id="avatarPreview" onclick="document.getElementById('avatarInput').click()"></div>
           <div class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()" style="font-size:11px;font-weight:700;">Wijzig</div>
           <button type="button" class="avatar-remove-btn" id="avatarRemoveBtn" onclick="askRemoveAvatar()" aria-label="Profielfoto verwijderen">✕</button>
         </div>
         <div class="avatar-info">
-          <strong>Upload een foto van jezelf</strong>
-          <p>Een echte foto zorgt voor 3× meer reacties.<br>JPG of PNG, maximaal 5 MB.</p>
+          <strong><span class="kop-zonder-foto">Upload een foto van jezelf</span><span class="kop-met-foto">Je profielfoto</span></strong>
+          <p>JPG of PNG, maximaal 5 MB.</p>
         </div>
       </div>
       <input type="file" accept="image/*" class="avatar-upload-input" id="avatarInput" autocomplete="off" onchange="handleAvatarUpload(this.files[0]); this.value=''">
@@ -1009,15 +1007,13 @@
       <label>Profielfoto</label>
       <div class="avatar-upload-area">
         <div class="avatar-preview-wrap">
-          <div class="avatar-preview" id="mhAvatarPreview" onclick="document.getElementById('mhAvatarInput').click()">
-            <span id="mhAvatarInitials" class="avatar-t">T</span>
-          </div>
+          <div class="avatar-preview" id="mhAvatarPreview" onclick="document.getElementById('mhAvatarInput').click()"></div>
           <div class="avatar-edit-btn" onclick="document.getElementById('mhAvatarInput').click()" style="font-size:11px;font-weight:700;">Wijzig</div>
           <button type="button" class="avatar-remove-btn" id="mhAvatarRemoveBtn" onclick="mhAskRemoveAvatar()" aria-label="Profielfoto verwijderen">✕</button>
         </div>
         <div class="avatar-info">
-          <strong>Upload een foto van jezelf</strong>
-          <p>Een echte foto zorgt voor meer reacties.<br>JPG of PNG, maximaal 5 MB.</p>
+          <strong><span class="kop-zonder-foto">Upload een foto van jezelf</span><span class="kop-met-foto">Je profielfoto</span></strong>
+          <p>JPG of PNG, maximaal 5 MB.</p>
         </div>
       </div>
       <input type="file" accept="image/*" class="avatar-upload-input" id="mhAvatarInput" autocomplete="off" onchange="mhHandleAvatarUpload(this.files[0]); this.value=''">
@@ -1262,14 +1258,12 @@
       <label>Bandfoto</label>
       <div class="avatar-upload-area">
         <div class="avatar-preview-wrap">
-          <div class="avatar-preview avatar-preview-vierkant" id="bmFotoPreview" onclick="document.getElementById('bmFotoInput').click()">
-            <span class="avatar-t">T</span>
-          </div>
+          <div class="avatar-preview avatar-preview-vierkant" id="bmFotoPreview" onclick="document.getElementById('bmFotoInput').click()"></div>
           <div class="avatar-edit-btn" onclick="document.getElementById('bmFotoInput').click()" style="font-size:11px;font-weight:700;">Wijzig</div>
           <button type="button" class="avatar-remove-btn" id="bmFotoRemoveBtn" onclick="bmVraagFotoWeg()" aria-label="Bandfoto verwijderen">✕</button>
         </div>
         <div class="avatar-info">
-          <strong>Upload een foto van de band</strong>
+          <strong><span class="kop-zonder-foto">Upload een foto van de band</span><span class="kop-met-foto">Jullie bandfoto</span></strong>
           <p>JPG of PNG, maximaal 5 MB.</p>
         </div>
       </div>
@@ -2516,16 +2510,16 @@
 </div><!-- /#appRoot -->
 
 <script src="core.js?v=20261101a"></script>
-<script src="utils.js?v=20261101d"></script>
+<script src="utils.js?v=20261101e"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261031a"></script>
 <script src="postcode.js?v=20261027e"></script>
-<script src="wizard.js?v=20261101c"></script>
+<script src="wizard.js?v=20261101d"></script>
 <script src="ouder.js?v=20261023a"></script>
-<script src="search.js?v=20261031a"></script>
-<script src="musicians.js?v=20261101d"></script>
-<script src="bands.js?v=20261101b"></script>
-<script src="messages.js?v=20261028a"></script>
+<script src="search.js?v=20261101a"></script>
+<script src="musicians.js?v=20261101e"></script>
+<script src="bands.js?v=20261101c"></script>
+<script src="messages.js?v=20261101a"></script>
 <script src="push.js?v=20261027b"></script>
 <script src="modals-shared.js?v=20261026c"></script>
 <script>
