@@ -12440,6 +12440,8 @@ def blok_tt517_fase8():
           alles.count("function kaartMaken(") == 1 and "function kaartMaken(" in js["utils.js"]
           and alles.count("function kaartVoorDelen(") == 1 and "function kaartVoorDelen(" in js["musicians.js"]
           and "html2canvas" not in alles and "<script src=\"kaart" not in lees("index.html"))
+    check("geen decode() in de app: een beeld laden gaat met load en error (8D 01-11-2026, de kaart bleef weg)",
+          ".decode()" not in alles, str([f for f, t in js.items() if ".decode()" in t]))
 
     stub_js = open(STUB, encoding="utf-8").read()
     httpd, port = serve()
@@ -12478,6 +12480,9 @@ def blok_tt517_fase8():
             page.goto(f"{basis}/index.html", wait_until="load"); page.wait_for_timeout(500)
             page.evaluate("""(telefoon) => {
               window.__gedeeld = []; window.__klembord = [];
+              // 8D (01-11-2026): decode() kwam in het browservenster van Claude nooit terug, omdat
+              // dat venster niet tekende. Hier net zo: de kaart mag er niet van afhangen.
+              HTMLImageElement.prototype.decode = () => new Promise(() => {});
               if (telefoon) {
                 Object.defineProperty(navigator, 'share', { configurable: true, value: async d => { window.__gedeeld.push(d); } });
                 Object.defineProperty(navigator, 'canShare', { configurable: true, value: d => !!(d && d.files) });
@@ -12500,13 +12505,13 @@ def blok_tt517_fase8():
         # Een kleine wazige versie (16 x 12) van het strepenbeeld, zoals de database die geeft.
         def wazig(page):
             return page.evaluate("""async () => {
-              const i = new Image(); i.src = 'https://beeld.test/ruit.png'; i.crossOrigin = 'anonymous'; await i.decode();
+              const i = new Image(); i.src = 'https://beeld.test/ruit.png'; i.crossOrigin = 'anonymous'; await new Promise(ok => { if (i.complete && i.naturalWidth) ok(); else i.onload = ok; });
               const c = document.createElement('canvas'); c.width = 16; c.height = 12;
               c.getContext('2d').drawImage(i, 0, 0, 16, 12); return c.toDataURL('image/jpeg', 0.7); }""")
         # Meet een kaart (een File of een canvas) in de pagina.
         MEET = """async (bron) => {
           let img = bron;
-          if (bron instanceof Blob) { img = new Image(); img.src = URL.createObjectURL(bron); await img.decode(); }
+          if (bron instanceof Blob) { img = new Image(); await new Promise(ok => { img.onload = ok; img.src = URL.createObjectURL(bron); }); }
           const c = document.createElement('canvas'); c.width = img.width || img.naturalWidth; c.height = img.height || img.naturalHeight;
           const x = c.getContext('2d'); x.drawImage(img, 0, 0);
           const d = x.getImageData(0, 0, c.width, c.height).data, W = c.width;
@@ -12548,7 +12553,7 @@ def blok_tt517_fase8():
         res["anon"] = list(anon)
         # Dezelfde kaart met de echte foto (ter vergelijking: zo scherp mag de kaart van een 15-jarige nooit zijn).
         res["echt"] = page.evaluate("""async (MEET) => { const meet = eval(MEET);
-          const i = new Image(); i.crossOrigin = 'anonymous'; i.src = 'https://beeld.test/ruit.png'; await i.decode();
+          const i = new Image(); i.crossOrigin = 'anonymous'; i.src = 'https://beeld.test/ruit.png'; await new Promise(ok => { if (i.complete && i.naturalWidth) ok(); else i.onload = ok; });
           return meet(await kaartMaken({ naam: 'noorbas', regel: '15 jaar · Den Haag', wat: ['Basgitaar'], onder: ['Funk'] }, { img: i, wazig: false })); }""", MEET)
         # 2. De band: zoekt keyboard en zang, geen foto (de schijnwerper).
         staat.update(antwoord=[{"id": "b2", "avatar_url": None}])
@@ -12581,14 +12586,17 @@ def blok_tt517_fase8():
         ctx, page = nieuw(1280, False)
         staat.update(antwoord=[{"id": "m2", "avatar_url": "https://beeld.test/donker.png"}], status=200)
         page.evaluate("async () => { await openProfielScherm('m2'); await new Promise(z => setTimeout(z, 400)); }")
-        with page.expect_download(timeout=8000) as dl:
-            page.click("#profielSchermContent .deel-knop")
-        dl = dl.value
-        pad = dl.path()
+        dl = None
+        try:
+            with page.expect_download(timeout=8000) as wacht:
+                page.click("#profielSchermContent .deel-knop")
+            dl = wacht.value
+        except Exception:
+            dl = None  # geen download: de controle hieronder zakt, de testset loopt door
         page.wait_for_timeout(200)
         res["computer"] = page.evaluate("() => ({ klembord: window.__klembord.slice(), toast: document.getElementById('appToast').textContent })")
-        res["computer"]["naam"] = dl.suggested_filename
-        res["computer"]["bytes"] = open(pad, "rb").read()[:3].hex()
+        res["computer"]["naam"] = dl.suggested_filename if dl else None
+        res["computer"]["bytes"] = open(dl.path(), "rb").read()[:3].hex() if dl else None
         # 6. Computer, de kaart lukt niet: alleen de link, met de melding van eerst.
         staat.update(status=500)
         page.evaluate("() => { window.__klembord = []; }")
@@ -12597,7 +12605,7 @@ def blok_tt517_fase8():
         staat.update(status=200)
         # 7. De kaart zelf, op de zwaarste beelden: wit, strepen, geen foto, een lange naam en veel genres.
         res["los"] = page.evaluate("""async (MEET) => { const meet = eval(MEET); const uit = {};
-          const laad = async n => { const i = new Image(); i.crossOrigin = 'anonymous'; i.src = 'https://beeld.test/' + n + '.png'; await i.decode(); return { img: i, wazig: false }; };
+          const laad = async n => { const i = new Image(); i.crossOrigin = 'anonymous'; i.src = 'https://beeld.test/' + n + '.png'; await new Promise(ok => { if (i.complete && i.naturalWidth) ok(); else i.onload = ok; }); return { img: i, wazig: false }; };
           const g = { naam: 'fleurcello', regel: '18 jaar · Delft', wat: ['Cello'], onder: ['Klassiek', 'Indie', 'Folk'] };
           uit.wit = await meet(await kaartMaken(g, await laad('wit')));
           uit.strepen = await meet(await kaartMaken(g, await laad('strepen')));
@@ -12615,21 +12623,21 @@ def blok_tt517_fase8():
     check("telefoon: één tik opent het deelmenu met de kaart en de link samen",
           t["aantal"] == 1 and t["url"] and t["url"].endswith("#profiel/m2") and t["bestand"] == {"naam": "talenttent-noorbas.jpg", "type": "image/jpeg"}
           and t["tekst"] == "Bekijk het profiel van noorbas op The Talent Tent." and t["klembord"] == 0, json.dumps({k: t[k] for k in ("aantal", "url", "bestand", "tekst", "klembord")}))
-    check("de kaart is vierkant, 1080 x 1080", t["meting"] and t["meting"]["maat"] == [1080, 1080], json.dumps(t["meting"] and t["meting"]["maat"]))
+    check("de kaart is vierkant, 1080 x 1080", bool(t["meting"]) and t["meting"]["maat"] == [1080, 1080], json.dumps(t["meting"] and t["meting"]["maat"]))
     a = res["anon"]
     check("het beeld komt van de openbare functie, als bezoeker: alleen de sleutel van de app, geen inlogbewijs",
           len(a) == 1 and a[0]["url"].endswith("/rest/v1/rpc/tt_get_musicians_public") and a[0]["methode"] == "POST"
           and "apikey" in a[0]["headers"] and "authorization" not in a[0]["headers"] and json.loads(a[0]["body"]) == {"ids": ["m2"]},
           json.dumps([{k: (v if k != "headers" else sorted(v)) for k, v in x.items()} for x in a])[:400])
     check("onder de 16: ingelogd staat de echte foto in de hoes, op de kaart nooit: het wazige beeld (geen scherpe rand)",
-          t["echteFoto"] and "ruit" in t["echteFoto"] and t["meting"]["sprong"] < 10 and res["echt"]["sprong"] > 60,
-          json.dumps({"wazig": t["meting"]["sprong"], "echt": res["echt"]["sprong"]}))
+          bool(t["echteFoto"] and "ruit" in t["echteFoto"] and t["meting"] and t["meting"]["sprong"] < 10 and res["echt"]["sprong"] > 60),
+          json.dumps({"wazig": t["meting"] and t["meting"]["sprong"], "echt": res["echt"]["sprong"]}))
     b = res["band"]
     check("de band: genres, plaats en wat hij zoekt op de hoes; de link #band/b2 en de kaart talenttent-ypenburg-groove.jpg",
           b["kaart"] == {"id": "b2", "naam": "Ypenburg Groove", "regel": "Den Haag", "wat": ["Funk", "Rock"], "onder": [], "zoekt": ["Keyboard", "Zang"]}
           and b["url"] and b["url"].endswith("#band/b2") and b["bestand"] == "talenttent-ypenburg-groove.jpg", json.dumps(b)[:400])
     check("de band die iemand zoekt: de pil in warmgeel onder de genres; zonder foto de schijnwerper in de hoes",
-          b["meting"] and b["meting"]["geel"] > 150 and b["meting"]["geelHoes"] > 200, json.dumps(b["meting"] and {k: b["meting"][k] for k in ("geel", "geelHoes")}))
+          bool(b["meting"]) and b["meting"]["geel"] > 150 and b["meting"]["geelHoes"] > 200, json.dumps(b["meting"] and {k: b["meting"][k] for k in ("geel", "geelHoes")}))
     check("lukt de kaart niet, dan gaat de link zonder kaart, zoals eerder (geen stille knop)",
           res["fout"]["aantal"] == 1 and res["fout"]["url"].endswith("#profiel/m2") and res["fout"]["files"] == 0, json.dumps(res["fout"]))
     check("duurt de kaart te lang, dan gaat na 3 seconden de link zonder kaart",

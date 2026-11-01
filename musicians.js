@@ -278,9 +278,13 @@ async function kaartBeeldOphalen(kind, id) {
 }
 
 // Het beeld laden zodat het canvas het mag lezen: { img, wazig } of null.
+// Met load en error, niet met decode(): decode() wacht op het tekenen van de
+// pagina en komt in een browser die niet tekent nooit terug (gemeten
+// 01-11-2026: in het browservenster van Claude 0 van 2 kaarten met foto).
 async function kaartBeeldLaden(src) {
   if (!src) return null;
   const img = new Image();
+  const geladen = new Promise((ok, nee) => { img.onload = ok; img.onerror = () => nee(new Error('beeld laadt niet')); });
   const w = wazigBron(src);
   if (w) img.src = w;
   else {
@@ -289,7 +293,7 @@ async function kaartBeeldLaden(src) {
     img.crossOrigin = 'anonymous';
     await fotoBronZetten(img, String(src));
   }
-  await img.decode();
+  await geladen;
   return { img, wazig: !!w };
 }
 
