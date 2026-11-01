@@ -13119,6 +13119,16 @@ def blok_tt517_fase11():
                   // en de knop op het foutscherm (een gewone hoofdknop).
                   const pb = document.createElement('div'); pb.className = 'picker-badge'; pb.textContent = 'Rock';
                   document.getElementById('appRoot').appendChild(pb); u.badge = getComputedStyle(pb).borderTopLeftRadius; pb.remove();
+                  // Besluit Ronald 01-11-2026 ("2"): knoppen in een venster die niet naast elkaar passen,
+                  // staan onder elkaar; de handeling boven, Annuleren eronder. Nooit tekst op twee regels.
+                  u.vensters = [];
+                  for (const id of ['deleteAccountModal', 'uitsnedeModal', 'confirmModal', 'meldModal']) {
+                    const m = document.getElementById(id); m.classList.add('visible'); await w(150);
+                    const kn = [...m.querySelector('.btn-row').children].filter(k => k.offsetParent).map(k => {
+                      const r = k.getBoundingClientRect(); return { t: k.textContent.trim(), rand: k.classList.contains('btn-ghost'),
+                        boven: Math.round(r.top), links: Math.round(r.left), breed: Math.round(r.width), hoog: r.height }; });
+                    u.vensters.push({ id, kn }); m.classList.remove('visible'); await w(50);
+                  }
                   const fk = document.querySelector('.backend-error-box button');
                   u.foutKnop = [fk.className, getComputedStyle(fk).borderTopLeftRadius];
                   showView('search'); await w(300);
@@ -13137,6 +13147,16 @@ def blok_tt517_fase11():
                 check(f"{thema} {breed}px: hoofdknop, knop met rand en rode knop alle drie 44px", u["soorten"] == [44, 44, 44], json.dumps(u["soorten"]))
                 check(f"{thema} {breed}px: een ongelezen gesprek heeft hetzelfde vlak, dezelfde (onzichtbare) rand en dezelfde naamkleur als een gelezen gesprek",
                       u["rij"] == u["ongelezen"] and u["rij"][1] == "rgba(0, 0, 0, 0)", json.dumps([u["rij"], u["ongelezen"]]))
+                fout_v = []
+                for v in u["vensters"]:
+                    kn = v["kn"]
+                    hoog = all(k["hoog"] == 44 for k in kn)
+                    gelijk = max(k["breed"] for k in kn) - min(k["breed"] for k in kn) <= 1
+                    naast = len({k["boven"] for k in kn}) == 1
+                    onder = all(k["links"] == kn[0]["links"] for k in kn) and all(r["boven"] > a["boven"] for r in kn if r["rand"] for a in kn if not a["rand"])
+                    if not (hoog and gelijk and (naast or onder)): fout_v.append(v)
+                check(f"{thema} {breed}px: knoppen in een venster: één regel tekst (44px), even breed, naast elkaar of onder elkaar met Annuleren onderaan",
+                      not fout_v, json.dumps(fout_v, ensure_ascii=False)[:400])
                 check(f"{thema} {breed}px: een gekozen instrument of genre is een pil; de knop op het foutscherm is een gewone hoofdknop (pil)",
                       u["badge"] == "999px" and u["foutKnop"] == ["btn btn-primary", "999px"], json.dumps([u["badge"], u["foutKnop"]]))
                 check(f"{thema} {breed}px: Alles, Muzikanten en Bands passen in hun knop, niets afgekapt",

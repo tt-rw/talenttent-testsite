@@ -1792,3 +1792,40 @@ function tikDoel(doel) {
   document.addEventListener('pointercancel', stop, { passive: true, capture: true });
   window.addEventListener('scroll', () => { if (actief) stop(); }, { passive: true, capture: true });
 })();
+
+// TT-517 fase 11 (besluit Ronald 01-11-2026, "2"): knoppen in een rij staan
+// naast elkaar en zijn even breed (TT-228). Past de tekst van een knop dan
+// niet op één regel, dan staan ze onder elkaar: de handeling boven, de knop
+// met rand (Annuleren) eronder (.btn-rij-stapel in styles.css). Gemeten met
+// de breedte van de tekst, niet met de hoogte van de knop: zo verandert de
+// klasse de meting niet. Ook voor een rij die later in de pagina komt.
+(function initKnoppenRij() {
+  if (!window.ResizeObserver || !window.MutationObserver) return;
+  const doek = document.createElement('canvas').getContext('2d');
+  const rijen = new Set();
+  const meet = rij => {
+    const kn = [...rij.children].filter(k => k.classList.contains('btn') && k.offsetParent);
+    let past = true;
+    if (kn.length > 1) {
+      const gat = parseFloat(getComputedStyle(rij).columnGap) || 0;
+      const deel = (rij.clientWidth - gat * (kn.length - 1)) / kn.length;
+      past = kn.every(k => {
+        const cs = getComputedStyle(k);
+        doek.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const rand = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+        return doek.measureText(k.textContent.trim()).width + rand <= deel;
+      });
+    }
+    rij.classList.toggle('btn-rij-stapel', !past);
+  };
+  const kijker = new ResizeObserver(lijst => lijst.forEach(e => meet(e.target)));
+  const volg = el => {
+    if (el.nodeType !== 1) return;
+    const nieuw = el.classList.contains('btn-row') ? [el] : [...el.getElementsByClassName('btn-row')];
+    nieuw.forEach(r => { if (!rijen.has(r)) { rijen.add(r); kijker.observe(r); } });
+  };
+  volg(document.body);
+  new MutationObserver(m => m.forEach(x => x.addedNodes.forEach(volg))).observe(document.body, { childList: true, subtree: true });
+  // Inter laadt na de eerste meting; daarna opnieuw meten met de echte letter.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => rijen.forEach(meet));
+})();
