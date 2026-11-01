@@ -325,9 +325,9 @@ async function loadMyProfile(opties) {
   // verwijderd als dode code; terug te vinden in commit 05f8ddd.
   el.innerHTML = buildMusicianDetailHTML(m, true) + renderCompletenessMeter(m);
   el.dataset.klaar = currentUser.id;
-  // TT-265: zie de toelichting in laadProfielScherm() — pas starten als de
-  // balk in de pagina staat.
-  profielBannerStarten(el);
+  // TT-517 fase 4: zie de toelichting in laadProfielScherm() — pas starten
+  // als de hoes in de pagina staat.
+  hoesStarten(el);
   mediaTitelsBijwerken(el);
   // TT-249: naam passend maken zodra hij in de pagina staat. Mijn Profiel is
   // het krapste scherm. Sinds TT-380 staat het ⋯-menu onder de naam.

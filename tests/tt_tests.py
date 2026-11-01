@@ -1073,7 +1073,12 @@ def blok_browser():
         # doorschuiven na vijf seconden, pauze zodra hij zelf iets doet,
         # geen autoplay, en geen balk als er niets gekozen is.
         # ─────────────────────────────────────────────────────────────
-        print("\nBlok 15 — de bannerbalk op het profiel")
+        # TT-517 fase 4 (01-11-2026): de banner zit in de hoes (huisstijl §21).
+        # Eerst de profielfoto (of het lege podium), dan de gekozen media.
+        # Vegen, stippen als aanwijzing (geen knop, TT-541), de hoes staat
+        # stil (vervangt het doorschuiven na vijf seconden en de nakijkstap
+        # van TT-267), 4:3 (vervangt 2:1). Zie ook blok 111.
+        print("\nBlok 15 — de banner in de hoes")
         page_errors.clear()
 
         banner = page.evaluate("""async () => {
@@ -1092,11 +1097,11 @@ def blok_browser():
           vak.style.cssText = 'width:375px;position:absolute;left:0;top:0;';
           document.body.appendChild(vak);
 
-          // 1. Niets gekozen: geen balk.
+          // 1. Niets gekozen: alleen het eerste beeld, geen stippen.
           vak.innerHTML = buildMusicianDetailHTML(basis([
             { media_type: 'foto', url: 'https://x/a.jpg', platform: null, in_banner: false }
           ]), true);
-          const zonder = !vak.querySelector('.profiel-banner');
+          const zonder = vak.querySelectorAll('.hoes-vlak').length === 1 && !vak.querySelector('.hoes-stip');
 
           // 2. Vier gekozen items, elk van een ander soort.
           vak.innerHTML = buildMusicianDetailHTML(basis([
@@ -1106,58 +1111,53 @@ def blok_browser():
             { media_type: 'link',  url: 'https://open.spotify.com/track/abc', platform: 'Spotify', in_banner: true },
             { media_type: 'foto',  url: 'https://x/b.jpg', platform: null, in_banner: false }
           ]), true);
-          profielBannerStarten(vak);
+          hoesStarten(vak);
           await new Promise(r => setTimeout(r, 60));
 
-          const spoor = vak.querySelector('.pb-spoor');
-          const items = vak.querySelectorAll('.pb-item');
-          const stippen = vak.querySelectorAll('.pb-stip');
+          const spoor = vak.querySelector('.hoes-spoor');
+          const items = vak.querySelectorAll('.hoes-vlak');
+          const stippen = vak.querySelectorAll('.hoes-stip');
           const sSpoor = getComputedStyle(spoor);
-          const sItem = getComputedStyle(items[0]);
-          const sStip = getComputedStyle(stippen[0]);
-          const tikvlak = getComputedStyle(stippen[0], '::after');
-          const video = vak.querySelector('.pb-item video');
-          const kaart = vak.querySelector('.pb-kaart');
+          const video = vak.querySelector('.hoes-vlak video');
+          const kaart = vak.querySelector('.hoes-vlak .pb-kaart');
 
           const uit = {
-            zonderKeuzeGeenBalk: zonder,
+            zonderKeuzeAlleenFoto: zonder,
             aantalItems: items.length,
             aantalStippen: stippen.length,
+            stipIsKnop: vak.querySelectorAll('.hoes-stippen button').length,
             eersteStipAan: stippen[0].classList.contains('aan'),
             tweedeStipUit: !stippen[1].classList.contains('aan'),
             snapX: sSpoor.scrollSnapType.indexOf('x') === 0,
             overscroll: sSpoor.overscrollBehaviorX,
             itemVolleBreedte: Math.round(items[0].getBoundingClientRect().width) === Math.round(spoor.clientWidth),
             spoorBreedte: Math.round(spoor.clientWidth),
-            verhouding: sItem.aspectRatio.replace(/\s/g, ''),
+            verhouding: getComputedStyle(vak.querySelector('.hoes-beeld')).aspectRatio.replace(/\s/g, ''),
+            eersteIsPodium: items[0].classList.contains('hoes-leeg'),
             videoGeenAutoplay: video ? (!video.autoplay && !video.hasAttribute('autoplay')) : null,
             videoStaatStil: video ? video.paused : null,
-            videoLabel: video ? video.parentElement.querySelector('.pb-label').textContent : null,
-            youtubeMiniatuur: !!vak.querySelector('.pb-item img[src*="img.youtube.com"]'),
+            videoSpeelteken: video ? !!video.parentElement.querySelector('.pb-speel') : null,
+            youtubeMiniatuur: !!vak.querySelector('.hoes-vlak img[src*="img.youtube.com"]'),
             kaartVoorSpotify: !!kaart,
             kaartPlatform: kaart ? kaart.querySelector('.pb-kaart-platform').textContent : '',
-            stipTikvlakBreed: tikvlak.width,
-            stipTikvlakHoog: tikvlak.height,
-            stipGoud: sStip.backgroundColor,
-            stipGrijs: getComputedStyle(stippen[1]).backgroundColor,
           };
 
-          // 3. De stippen volgen het swipen.
+          // 3. De stippen volgen het vegen.
           spoor.scrollLeft = spoor.clientWidth * 2;
           spoor.dispatchEvent(new Event('scroll'));
           await new Promise(r => setTimeout(r, 30));
           uit.stipVolgtSwipe = stippen[2].classList.contains('aan') && !stippen[0].classList.contains('aan');
 
-          // 4. Zodra de gebruiker zelf iets doet, stopt het doorschuiven.
-          uit.liepEerst = profielBannerTijden.has(spoor.id);
-          spoor.dispatchEvent(new Event('pointerdown'));
-          uit.staatDaarnaStil = !profielBannerTijden.has(spoor.id);
+          // 4. De hoes staat stil: na 5,5 seconden is hij niet verschoven.
+          spoor.scrollLeft = 0;
+          await new Promise(r => setTimeout(r, 5500));
+          uit.staatStil = spoor.scrollLeft === 0;
 
-          // 5. Boven de zes gekozen items telt alleen de eerste zes.
+          // 5. Boven de zes gekozen items telt alleen de eerste zes, na de profielfoto.
           const zeven = [];
           for (let i = 0; i < 7; i++) zeven.push({ media_type: 'foto', url: 'https://x/' + i + '.jpg', platform: null, in_banner: true });
           vak.innerHTML = buildMusicianDetailHTML(basis(zeven), true);
-          uit.grensZes = vak.querySelectorAll('.pb-item').length;
+          uit.grensZes = vak.querySelectorAll('.hoes-vlak').length;
 
           // 6. Foto's en video's staan in één raster, links eronder.
           vak.innerHTML = buildMusicianDetailHTML(basis([
@@ -1170,6 +1170,8 @@ def blok_browser():
           uit.fotoEnVideoSamen = vak.querySelectorAll('.profile-media')[0].querySelectorAll('.profile-media-tegel').length;
           uit.videoOpentMediascherm = (vak.querySelector('.profile-media-tegel[onclick*="openMediaSpeler"]') !== null);
           uit.geenLosseControls = vak.querySelectorAll('.profile-media video[controls]').length;
+          const label = vak.querySelector('.profile-media-tegel .pb-label');
+          uit.labelWrap = label ? getComputedStyle(label).whiteSpace + ' ' + getComputedStyle(label).textOverflow : null;
 
           // 7. Laatst actief (25-09-2026, Ronald): de regel "Deze week
           //    bijgewerkt" staat niet meer op het profiel, ook geen groene balk.
@@ -1180,99 +1182,43 @@ def blok_browser():
           return uit;
         }""")
 
-        check("zonder gekozen items staat er geen balk", banner["zonderKeuzeGeenBalk"], "")
-        check("elk gekozen item krijgt een vlak", banner["aantalItems"] == 4, str(banner["aantalItems"]))
-        check("en elk vlak een stip", banner["aantalStippen"] == 4, str(banner["aantalStippen"]))
+        check("zonder gekozen items staat alleen het eerste beeld in de hoes, zonder stippen", banner["zonderKeuzeAlleenFoto"], "")
+        check("na de profielfoto krijgt elk gekozen item een vlak (zonder foto: het podium eerst)",
+              banner["aantalItems"] == 5 and banner["eersteIsPodium"], str(banner["aantalItems"]))
+        check("en elk vlak een stip; de stippen zijn geen knop (TT-541)",
+              banner["aantalStippen"] == 5 and banner["stipIsKnop"] == 0, str(banner["aantalStippen"]))
         check("de eerste stip staat aan, de rest uit",
               banner["eersteStipAan"] and banner["tweedeStipUit"], "")
-        check("de actieve stip is goud", banner["stipGoud"] == "rgb(255, 184, 28)", banner["stipGoud"])
-        check("de andere stippen zijn grijs", banner["stipGrijs"] == "rgb(85, 85, 85)", banner["stipGrijs"])
-        check("een stip heeft een tikvlak van 44px",
-              banner["stipTikvlakBreed"] == "44px" and banner["stipTikvlakHoog"] == "44px",
-              banner["stipTikvlakBreed"] + " x " + banner["stipTikvlakHoog"])
-        check("swipen gaat via scroll-snap, niet via een eigen touchmove", banner["snapX"], "")
+        check("vegen gaat via scroll-snap, niet via een eigen touchmove", banner["snapX"], "")
         check("het spoor houdt het scrollen binnen (huisstijl §16)",
               banner["overscroll"] == "contain", banner["overscroll"])
         check("een vlak vult de hele breedte",
               banner["itemVolleBreedte"] and banner["spoorBreedte"] == 375,
               "spoor " + str(banner["spoorBreedte"]) + "px")
-        check("de balk is 2:1 (TT-384, was 5:2), niet 16:9", banner["verhouding"] == "2/1", banner["verhouding"])
-        check("een video in de banner speelt niet vanzelf",
+        check("de hoes is 4:3 (huisstijl §21; was een balk van 2:1)", banner["verhouding"] == "4/3", banner["verhouding"])
+        check("een video in de hoes speelt niet vanzelf",
               banner["videoGeenAutoplay"] and banner["videoStaatStil"], json.dumps(banner)[:200])
-        check("en is als video herkenbaar zonder icoon", banner["videoLabel"] == "Video", str(banner["videoLabel"]))
+        check("en is als video herkenbaar aan het speelteken", banner["videoSpeelteken"], str(banner["videoSpeelteken"]))
         check("een YouTube-link toont zijn miniatuur", banner["youtubeMiniatuur"], "")
         check("een link zonder miniatuur krijgt een kaart met de platformnaam",
               banner["kaartVoorSpotify"] and banner["kaartPlatform"] == "Spotify", banner["kaartPlatform"])
-        check("de stippen volgen het swipen", banner["stipVolgtSwipe"], "")
-        check("de balk schuift uit zichzelf door", banner["liepEerst"], "")
-        check("en stopt zodra de gebruiker zelf iets doet", banner["staatDaarnaStil"], "")
-        check("boven zes gekozen items telt alleen de eerste zes",
-              banner["grensZes"] == 6, str(banner["grensZes"]))
+        check("de stippen volgen het vegen", banner["stipVolgtSwipe"], "")
+        check("de hoes schuift niet uit zichzelf door (besluit Ronald 30-10-2026)", banner["staatStil"], "")
+        check("boven zes gekozen items telt alleen de eerste zes, na de profielfoto",
+              banner["grensZes"] == 7, str(banner["grensZes"]))
         check("foto's en video's staan in één raster",
               banner["mediaTitels"] == ["Foto's en video's", "Links"], json.dumps(banner["mediaTitels"]))
         check("met een tegel per foto en per video", banner["fotoEnVideoSamen"] == 2, str(banner["fotoEnVideoSamen"]))
         check("een video in het raster opent het mediascherm", banner["videoOpentMediascherm"], "")
         check("en speelt niet meer los in de pagina", banner["geenLosseControls"] == 0, str(banner["geenLosseControls"]))
+        check("de naam van een video op een tegel staat op één regel en kapt af met …",
+              banner["labelWrap"] == "nowrap ellipsis", str(banner["labelWrap"]))
         check("het profiel toont geen 'bijgewerkt'-regel meer", banner["geenBijgewerkt"], "")
         check("de groene balk met kloppende stip is weg", banner["geenGroeneBalk"], "")
         check("relativeUpdatedLabel() is weg (dode code)",
               page.evaluate("typeof relativeUpdatedLabel") == "undefined", "")
-        # TT-267 (15-09-2026, Ronald): "hij blijft zo staan." De balk bleef
-        # halverwege twee vlakken hangen, waardoor het eerste beeld nog maar
-        # een streepje breed was. De nakijkstap zet dat binnen een cyclus
-        # recht, ongeacht de oorzaak.
-        rechtzet = page.evaluate("""async () => {
-          const basis = {
-            id: 'm9', fname: 'Sanne', username: 'sannedrums', city: 'Den Haag',
-            bio: 'Test', profile_color: '#FFB81C', avatar_url: null, age: 17,
-            updated_at: new Date().toISOString(),
-            musician_instruments: [], musician_genres: [], musician_songs: [],
-            musician_media: [1,2,3].map(n => ({ media_type: 'foto', url: 'https://x/' + n + '.jpg', platform: null, in_banner: true }))
-          };
-          const vak = document.createElement('div');
-          vak.style.cssText = 'width:375px;position:absolute;left:0;top:0;';
-          document.body.appendChild(vak);
-          vak.innerHTML = buildMusicianDetailHTML(basis, true);
-          profielBannerStarten(vak);
-          const spoor = vak.querySelector('.pb-spoor');
-          // Halverwege twee vlakken zetten, zoals op Ronalds telefoon. Het
-          // vastzetten van scroll-snap is nodig om dat na te bootsen: deze
-          // browser snapt zelf meteen terug, de zijne deed dat niet. Zo toetst
-          // dit blok de nakijkstap van de app en niet die van de browser.
-          spoor.style.scrollSnapType = 'none';
-          spoor.scrollLeft = Math.round(spoor.clientWidth * 0.5);
-          const scheefVoor = Math.round(spoor.scrollLeft % spoor.clientWidth);
-          await new Promise(r => setTimeout(r, 6200));
-          const breedte = spoor.clientWidth;
-          const rest = Math.round(spoor.scrollLeft % breedte);
-          vak.remove();
-          return { scheefVoor, restNa: rest, breedte };
-        }""")
-        check("een balk die halverwege staat, zet zichzelf recht",
-              rechtzet["scheefVoor"] > 2 and rechtzet["restNa"] <= 2, json.dumps(rechtzet))
-
-        vorm = page.evaluate("""() => {
-          const basis = {
-            id: 'm9', fname: 'S', username: 's', city: 'Den Haag', bio: '',
-            profile_color: '#FFB81C', avatar_url: null, age: 17,
-            updated_at: new Date().toISOString(),
-            musician_instruments: [], musician_genres: [], musician_songs: [],
-            musician_media: [{ media_type: 'video', url: 'https://x/c.mp4', platform: null, in_banner: true }]
-          };
-          const vak = document.createElement('div');
-          vak.style.cssText = 'width:375px;position:absolute;left:0;top:0;';
-          document.body.appendChild(vak);
-          vak.innerHTML = buildMusicianDetailHTML(basis, true);
-          const st = getComputedStyle(vak.querySelector('.pb-label'));
-          const item = getComputedStyle(vak.querySelector('.pb-item'));
-          const uit = { wrap: st.whiteSpace, afkap: st.textOverflow, snapStop: item.scrollSnapStop };
-          vak.remove();
-          return uit;
-        }""")
-        check("de titel staat op één regel en kapt af met …",
-              vorm["wrap"] == "nowrap" and vorm["afkap"] == "ellipsis", json.dumps(vorm))
-        check("geen scroll-snap-stop die een lopende sprong afbreekt",
-              vorm["snapStop"] == "normal", vorm["snapStop"])
+        check("de oude bannerbalk is weg (dode code: profielBannerStarten, profielBannerTijden)",
+              page.evaluate("typeof profielBannerStarten + typeof profielBannerTijden + typeof profielBannerHTML") == "undefinedundefinedundefined", "")
 
         # TT-408 (06-10-2026): het muzikant- en bandvenster hadden geen kruisje meer;
         # de pijl links in de koprij was de uitgang. TT-410b: het muzikantprofiel
@@ -1344,8 +1290,8 @@ def blok_browser():
           };
         }""")
         check("de gouden balk bovenaan het profiel is weg", not profielkop["goudenBalk"], "")
-        check("de hero is nu het eerste element van het profiel",
-              profielkop["eersteElement"] == "profiel-banner", profielkop["eersteElement"])
+        check("de hoes is het eerste element van het profiel (TT-517 fase 4)",
+              profielkop["eersteElement"] == "hoes", profielkop["eersteElement"])
         check("het profiel van iemand anders is een eigen scherm met de kop van de app, geen venster meer (TT-410b)",
               profielkop["schermBestaat"] and not profielkop["oudVenster"], json.dumps(profielkop))
 
@@ -3929,7 +3875,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             const kL = hm.a * (hb.x - 1) + hm.e, kR = hm.a * (hb.x + hb.width + 1) + hm.e;
             return {
               inKoprij: !!(plek && plek.closest('.modal-kop')),
-              onderNaam: !!(plek && naam && plek.closest('.profiel-knoppen') && naam.parentElement.contains(plek)),
+              // TT-517 fase 4: delen en ⋯ staan rechtsonder in de hoes, bij de naam.
+              onderNaam: !!(plek && naam && plek.closest('.profiel-knoppen') && naam.closest('.hoes') && naam.closest('.hoes').contains(plek)),
               naamVol: !!(naam && naam.clientWidth === naam.parentElement.clientWidth),
               menuMidden: kb ? (kb.left + kb.right) / 2 : null,
               kruisMidden: (kL + kR) / 2,
@@ -3948,7 +3895,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         }""")
         for soort in ("muzikant", "band"):
             v = venster[soort]
-            check(f"{soort}: het ⋯-menu staat in de profielkop, naast het deelicoon, niet in de koprij (TT-380, TT-384)",
+            check(f"{soort}: het ⋯-menu staat in de hoes, naast het deelicoon, niet in de koprij (TT-380; TT-517 fase 4)",
                   v["onderNaam"] and not v["inKoprij"], json.dumps(v))
             check(f"{soort}: het ⋯-menu staat recht onder de hamburger (de plek van het oude kruisje)",
                   v["menuMidden"] is not None and abs(v["menuMidden"] - v["kruisMidden"]) <= 2, json.dumps(v))
@@ -4091,14 +4038,14 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             const t = [...vak.querySelectorAll('.media-afgeschermd')];
             const r = {
               tegels: vak.querySelectorAll('.profile-media-tegel.media-afgeschermd').length,
-              banner: vak.querySelectorAll('.pb-item.media-afgeschermd').length,
-              balk: vak.querySelectorAll('.profiel-banner').length,
-              opBanner: !!vak.querySelector('.profiel-kop.op-banner'),
+              banner: vak.querySelectorAll('.hoes-vlak.media-afgeschermd, .hoes .media-afgeschermd').length,
+              balk: vak.querySelectorAll('.hoes-vlak').length - 1, // TT-517 fase 4: de banner zit in de hoes
+              opBanner: vak.querySelectorAll('.hoes-stip').length > 0,
               knoppen: t.filter(e => e.tagName === 'BUTTON' || e.closest('button') || e.hasAttribute('onclick')).length,
               tekst: t.map(e => e.textContent.trim()),
-              beeld: vak.querySelectorAll('.profile-media img, .profile-media video, .profiel-banner img, .profiel-banner video').length,
-              fotoAvatar: vak.querySelectorAll('.profile-avatar-photo').length,
-              tAvatar: vak.querySelectorAll('.profile-avatar-initials').length,
+              beeld: vak.querySelectorAll('.profile-media img, .profile-media video, .hoes img, .hoes video').length,
+              fotoAvatar: vak.querySelectorAll('.hoes-vlak img.hoes-img').length,
+              tAvatar: vak.querySelectorAll('.hoes-vlak.hoes-leeg').length,
               gewoneTegels: vak.querySelectorAll('button.profile-media-tegel').length,
             };
             if (t[0]) { const cs = getComputedStyle(t[0]); r.kleur = cs.color; r.cursor = cs.cursor; }
@@ -4126,7 +4073,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               af["tegels"] == 3 and all(t == "T" for t in af["tekst"]), json.dumps(af))
         # TT-385 (02-10-2026, besluit Ronald: "dan banner weglaten bij publieke
         # profielen onder 16 jaar"): geen bannerbalk, ook geen T-vlak.
-        check("afgeschermd: geen bannerbalk, ook geen T-vlak (TT-385)",
+        check("afgeschermd: geen banner in de hoes, ook geen T-vlak (TT-385; TT-517 fase 4)",
               af["banner"] == 0 and af["balk"] == 0 and not af["opBanner"], json.dumps(af))
         check("afgeschermd: geen enkel beeld of video in de pagina", af["beeld"] == 0, json.dumps(af))
         check("afgeschermd: de T is geen knop (er valt niets te openen)",
@@ -4134,7 +4081,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         # TT-341 stap 2: het afgeschermde vlak is het profielvlak — geel met een zwarte T.
         check("afgeschermd: de T is zwart op geel, zoals het profielvlak",
               af.get("kleur") == "rgb(0, 0, 0)", json.dumps(af))
-        check("afgeschermd: profielfoto wordt de T", af["tAvatar"] == 1 and af["fotoAvatar"] == 0, json.dumps(af))
+        # TT-517 fase 4: zonder foto staat in de hoes het lege podium; de T vervalt (huisstijl §21).
+        check("afgeschermd zonder profielfoto: het lege podium in de hoes", af["tAvatar"] == 1 and af["fotoAvatar"] == 0, json.dumps(af))
         # TT-517 fase 2: de link-tegel is dezelfde .profile-media-tegel als foto en video (was een gelijke inline stijl).
         check("16+: foto, video en link blijven gewone knoppen (drie tegels)",
               op["gewoneTegels"] == 3 and op["tegels"] == 0 and op["fotoAvatar"] == 1, json.dumps(op))
@@ -5283,7 +5231,6 @@ window.TT_STUB.fnAntwoord = {};
           const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
           plek.innerHTML = '<div class="result-row-avatar">' + AVATAR_T_FALLBACK + '</div>'
             + '<div class="messages-conv-avatar">' + AVATAR_T_FALLBACK + '</div>'
-            + '<div class="profile-avatar-initials">' + AVATAR_T_FALLBACK + '</div>'
             + '<div class="band-avatar">' + AVATAR_T_FALLBACK + '</div>'
             + mediaAfgeschermdHTML('tegel') + mediaAfgeschermdHTML('banner');
           const r = [...plek.children].map(v => { const t = v.querySelector('span');
@@ -5552,9 +5499,8 @@ window.TT_STUB.fnAntwoord = {};
             const menu = knop && knop.parentElement.querySelector('.profile-actions-menu-wrap .nav-menu-btn, .profiel-menu-plek .nav-menu-btn');
             const regels = vak.querySelector('.profiel-regels');
             const k = rect(knop), m = rect(menu), r = rect(regels), n = rect(naam);
-            // TT-384: bij een muzikant staan de knoppen naast de foto, op het
-            // midden van de onderste helft. Bij een band (nog) op de regels.
-            const f = rect(vak.querySelector('.profiel-kop-rij .profile-avatar-photo, .profiel-kop-rij .profile-avatar-initials, .profiel-kop-rij .bandfoto'));
+            // TT-517 fase 4: de knoppen staan rechtsonder op de hoes, op de regel onder de naam.
+            const f = rect(vak.querySelector('.hoes-beeld'));
             // De inkt: de meest rechtse cirkel van het deelteken en de stippen van het menu.
             const inktR = knop ? Math.max(...[...knop.querySelectorAll('circle')].map(c => rect(c).right)) : null;
             const stipL = menu ? Math.min(...[...menu.querySelectorAll('circle')].map(c => rect(c).left)) : null;
@@ -5569,7 +5515,7 @@ window.TT_STUB.fnAntwoord = {};
               overlap: (k && m) ? +(k.right - m.left).toFixed(1) : null,
               inktGat: (inktR != null && stipL != null) ? +(stipL - inktR).toFixed(1) : null,
               hoogte: (k && r) ? +(((k.top + k.bottom) - (r.top + r.bottom)) / 2).toFixed(1) : null,
-              naastFoto: (k && f) ? +((k.top + k.bottom) / 2 - (f.top + f.height * 0.75)).toFixed(1) : null,
+              opFoto: (k && f) ? k.left >= f.left && k.right <= f.right && k.bottom <= f.bottom : null,
               naamVol: !!(naam && naam.clientWidth === naam.parentElement.clientWidth),
               naamRegels: (n && r) ? +(r.top - n.bottom).toFixed(1) : null,
               alleenOnderKruis: (k && !m && x) ? +(((k.left + k.right) - (x.left + x.right)) / 2).toFixed(1) : null,
@@ -5621,9 +5567,10 @@ window.TT_STUB.fnAntwoord = {};
                           ("je eigen profiel in het venster", d50["eigenInVenster"]), ("bandvenster", d50["band"])):
             check(f"{naam50}: precies één deelicoon, geen brede deelknop meer",
                   v["aantal"] == 1 and v["breed"] == 0, json.dumps(v))
-            # TT-385 (02-10-2026): de bandpagina heeft dezelfde kop als het muzikantprofiel.
-            check(f"{naam50}: het deelicoon is 44×44 en staat naast de foto, op het midden van de onderste helft (TT-384, TT-385)",
-                  v["maat"] == [44, 44] and v["naastFoto"] is not None and abs(v["naastFoto"]) <= 3, json.dumps(v))
+            # TT-517 fase 4 (besluit Ronald 31-10-2026, positie 2): rechtsonder op de hoes,
+            # op de regel onder de naam. Muzikant en band gelijk. Was naast de ronde foto (TT-384).
+            check(f"{naam50}: het deelicoon is 44×44 en staat rechtsonder op de hoes, op de regel onder de naam",
+                  v["maat"] == [44, 44] and v["opFoto"] and v["hoogte"] is not None and abs(v["hoogte"]) <= 1, json.dumps(v))
             check(f"{naam50}: de naam heeft de volle breedte, de regels staan er direct onder",
                   v["naamVol"] and v["naamRegels"] is not None and 0 <= v["naamRegels"] <= 8, json.dumps(v))
         for naam50, v in (("Mijn Profiel", d50["mijnProfiel"]), ("muzikantvenster", d50["ander"]), ("bandvenster", d50["band"])):
@@ -5784,7 +5731,11 @@ window.TT_STUB.fnAntwoord = {};
         check("de tikregel staat één keer, op html",
               css53.count("-webkit-tap-highlight-color") == 1 and "html { -webkit-tap-highlight-color: transparent; }" in css53, "")
 
-        print("\nBlok 54 — de profielkop onder elkaar, de foto half over de banner (TT-384, besluiten Ronald 30-09-2026)")
+        # TT-517 fase 4 (01-11-2026): de kop van TT-384 (ronde foto half over de
+        # banner, knoppen ernaast, naam eronder) is vervangen door de hoes
+        # (huisstijl §21). Dit blok toetst nu de opbouw van de hoes op Mijn
+        # Profiel en de bandpagina; maten en kleuren staan in blok 111.
+        print("\nBlok 54 — de kop van een profiel is de hoes (TT-517 fase 4; was TT-384)")
         page_errors.clear()
         page.set_viewport_size({"width": 375, "height": 812})
         page.wait_for_timeout(80)
@@ -5798,79 +5749,56 @@ window.TT_STUB.fnAntwoord = {};
           document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
           document.getElementById('view-myprofile').classList.add('active');
           const el = document.getElementById('myProfileContent');
-          const meet = () => {
-            const kop = el.querySelector('.profiel-kop'), rij = el.querySelector('.profiel-kop-rij');
-            const foto = r(rij && rij.querySelector('.profile-avatar-photo, .profile-avatar-initials'));
-            const knoppen = r(rij && rij.querySelector('.profiel-knoppen'));
-            const naam = r(el.querySelector('.profiel-kop > .profile-name'));
-            const spoor = r(el.querySelector('.pb-spoor'));
-            const inhoud = r(el);
-            return { kop: !!kop, rij: !!rij, oudeOpbouw: !!el.querySelector('.profiel-onder'),
-              foto: foto && [Math.round(foto.width), Math.round(foto.height)],
-              fotoLinks: foto ? Math.round(foto.left - inhoud.left) : null,
-              fotoMiddenOpRand: (foto && spoor) ? +((foto.top + foto.bottom) / 2 - spoor.bottom).toFixed(1) : null,
-              fotoBovenaan: foto ? +(foto.top - inhoud.top).toFixed(1) : null,
-              knoppenRechts: (knoppen && foto) ? knoppen.left > foto.right && Math.abs(knoppen.right - inhoud.right) <= 1 : null,
-              naamOnderFoto: (naam && foto) ? +(naam.top - foto.bottom).toFixed(1) : null,
-              naamVol: naam ? Math.round(naam.width) === Math.round(inhoud.width) : null };
+          const opbouw = (vak) => {
+            const h = vak.querySelector('.hoes');
+            return { eerste: vak.firstElementChild && vak.firstElementChild.className,
+              naamInHoes: !!(h && h.querySelector('.hoes-tekst > .profile-name + .profiel-regels')),
+              knoppenInHoes: !!(h && h.querySelector(':scope > .profiel-knoppen .deel-knop')),
+              eenHoes: vak.querySelectorAll('.hoes').length, rondeFoto: vak.querySelectorAll('.profile-avatar-photo, .profile-avatar-initials, .bandfoto').length };
           };
           const uit = {};
           el.innerHTML = buildMusicianDetailHTML(profiel([
             { media_type: 'foto', url: 'https://x/a.jpg', platform: null, in_banner: true },
             { media_type: 'foto', url: 'https://x/b.jpg', platform: null, in_banner: true }]), true, false);
-          profielBannerStarten(el); fitProfileName(el);
+          hoesStarten(el); fitProfileName(el);
           await new Promise(z => setTimeout(z, 40));
-          uit.met = meet();
-          // De stippen blijven aantikbaar, ook al ligt de rij van de kop eroverheen.
-          const stip = el.querySelectorAll('.pb-stip')[1], sr = r(stip);
+          uit.met = opbouw(el);
+          // Een tik op de plek van een stip gaat naar het beeld eronder, niet naar een stip (TT-541).
+          const stip = el.querySelectorAll('.hoes-stip')[1], sr = r(stip);
           const raak = sr && document.elementFromPoint((sr.left + sr.right) / 2, (sr.top + sr.bottom) / 2);
-          uit.stipRaakbaar = raak === stip;
-          // De stippen duwen de kop niet omlaag: ze hangen los onder de balk.
-          uit.stippenLos = getComputedStyle(el.querySelector('.pb-stippen')).position === 'absolute';
+          uit.stipGeenDoel = !!raak && raak !== stip && !!raak.closest('.hoes-vlak');
           // Het ⋯-menu: de donkere laag ligt nog over de onderbalk (huisstijl §8.2).
           toggleProfileMoreMenu({ stopPropagation() {}, currentTarget: document.getElementById('profileMoreBtn') });
           await new Promise(z => setTimeout(z, 30));
           const ob = r(document.querySelector('.app-bottom-nav'));
           const opBalk = document.elementFromPoint(ob.left + 20, (ob.top + ob.bottom) / 2);
           uit.laagOverOnderbalk = !!(opBalk && opBalk.classList.contains('menu-laag'));
+          const dd = r(document.getElementById('profileMoreDropdown'));
+          const opMenu = dd && document.elementFromPoint(dd.left + 20, dd.top + 20);
+          uit.menuBovenop = !!(opMenu && opMenu.closest('#profileMoreDropdown'));
           sluitAlleMenus();
           el.innerHTML = buildMusicianDetailHTML(profiel([]), true, false);
           fitProfileName(el);
-          uit.zonder = meet();
-          uit.zonderOpBanner = !!el.querySelector('.profiel-kop.op-banner');
+          uit.zonder = opbouw(el);
           el.innerHTML = ''; showView('about');
-          // TT-385 (02-10-2026): de bandpagina heeft dezelfde kop, met een vierkante bandfoto.
+          // De bandpagina heeft dezelfde hoes (muzikant en band gelijk).
           const S = window.TT_STUB;
           S.rpcResults.tt_get_bands_public = () => [{ id: 'b2', name: 'Testband', city: 'Den Haag', description: '',
             status: 'zoekend', profile_color: '#3ecfff', updated_at: new Date().toISOString(), avatar_url: null,
             genres: ['Rock'], niveau: 3, members: [{ username: 'dylan', profile_color: '#FFB81C' }], wanted: [] }];
           hasOwnProfile = false;
           await openBandScherm('b2');
-          uit.bandOud = !!document.querySelector('#profielSchermContent .profiel-onder');
-          uit.bandNieuw = !!document.querySelector('#profielSchermContent .profiel-kop .profiel-kop-rij .bandfoto + .profiel-knoppen');
-                    delete S.rpcResults.tt_get_bands_public;
+          uit.band = opbouw(document.getElementById('profielSchermContent'));
+          delete S.rpcResults.tt_get_bands_public;
           hasOwnProfile = was.hasOwnProfile; myMusicianId = was.myMusicianId;
           return uit;
         }""")
-        m54, z54 = d54["met"], d54["zonder"]
-        check("met banner: de kop staat onder elkaar (foto en knoppen in een rij, naam eronder), niet meer .profiel-onder",
-              m54["kop"] and m54["rij"] and not m54["oudeOpbouw"], json.dumps(m54))
-        check("met banner: het midden van de foto ligt op de onderrand van de balk (50% overlap)",
-              m54["fotoMiddenOpRand"] is not None and abs(m54["fotoMiddenOpRand"]) <= 1, json.dumps(m54))
-        check("de foto is 80×80 en staat links tegen de inhoud",
-              m54["foto"] == [80, 80] and m54["fotoLinks"] == 0 and z54["foto"] == [80, 80], json.dumps([m54, z54]))
-        check("het deelicoon en het ⋯-menu staan rechts naast de foto, tegen de rechterrand",
-              m54["knoppenRechts"] and z54["knoppenRechts"], json.dumps([m54, z54]))
-        check("de naam staat 12px onder de foto en heeft de volle breedte",
-              m54["naamOnderFoto"] is not None and 11 <= m54["naamOnderFoto"] <= 13 and m54["naamVol"]
-              and z54["naamOnderFoto"] is not None and 11 <= z54["naamOnderFoto"] <= 13 and z54["naamVol"], json.dumps([m54, z54]))
-        check("de stippen hangen los onder de balk en blijven aantikbaar door de kop heen",
-              d54["stippenLos"] and d54["stipRaakbaar"], json.dumps(d54))
-        check("een open ⋯-menu legt zijn donkere laag nog over de onderbalk (§8.2)", d54["laagOverOnderbalk"], json.dumps(d54))
-        check("zonder banner: dezelfde opbouw, de foto bovenaan zonder overlap",
-              z54["kop"] and z54["rij"] and not d54["zonderOpBanner"] and z54["fotoBovenaan"] == 0, json.dumps(z54))
-        check("de bandpagina heeft dezelfde kop: bandfoto en knoppen in een rij, geen .profiel-onder meer (TT-385)",
-              d54["bandNieuw"] and not d54["bandOud"], json.dumps(d54))
+        for naam54, v in (("met banner", d54["met"]), ("zonder banner", d54["zonder"]), ("bandpagina", d54["band"])):
+            check(f"{naam54}: de hoes is het eerste element, met naam, regel, delen en ⋯ erin; geen ronde foto meer",
+                  v["eerste"] == "hoes" and v["eenHoes"] == 1 and v["naamInHoes"] and v["knoppenInHoes"] and v["rondeFoto"] == 0, json.dumps(v))
+        check("een tik op een stip gaat naar het beeld eronder: de stip is geen doel (TT-541)", d54["stipGeenDoel"], json.dumps(d54))
+        check("een open ⋯-menu legt zijn donkere laag nog over de onderbalk (§8.2), en ligt zelf bovenop",
+              d54["laagOverOnderbalk"] and d54["menuBovenop"], json.dumps(d54))
         check("geen paginafouten in blok 54", not page_errors, "; ".join(page_errors)[:300])
         page.set_viewport_size({"width": 390, "height": 844})
         page.wait_for_timeout(80)
@@ -6036,7 +5964,7 @@ window.TT_STUB.fnAntwoord = {};
             invallers: [{ instrument: 'Drums', datum: straks }] }];
           await openBandScherm('b7');
           uit.gast = { titels: titels(), tags: tags(),
-            balk: vak().querySelectorAll('.profiel-banner').length,
+            balk: vak().querySelectorAll('.hoes-vlak').length - 1, // TT-517 fase 4: de banner zit in de hoes
             tegelT: vak().querySelectorAll('.profile-media-tegel.media-afgeschermd').length,
             nummerKnop: vak().querySelectorAll('button.band-nummer').length,
             nummerDicht: vak().querySelectorAll('div.band-nummer .media-afgeschermd').length,
@@ -6048,7 +5976,7 @@ window.TT_STUB.fnAntwoord = {};
             ledenKnop: vak().querySelectorAll('button.bezetting-lid:not(.bezetting-open)').length,
             namen: [...vak().querySelectorAll('.bezetting-lid:not(.bezetting-open) .bb-naam')].map(e => e.textContent),
             rijen: [...vak().querySelectorAll('.bezetting > .bb-rij')].map(e => getComputedStyle(e).flexDirection + '/' + (e.querySelector('.bb-foto').getBoundingClientRect().left < e.querySelector('.bb-tekst').getBoundingClientRect().left)),
-            fotoVierkant: getComputedStyle(vak().querySelector('.bandfoto')).borderRadius,
+            fotoVierkant: getComputedStyle(vak().querySelector('.hoes-beeld')).borderRadius,
             voet: voet().textContent.trim() };
                     // 2. Met een eigen profiel: de tabellen zelf (nagebootst, de stub kent geen ingesloten tabellen).
           const rij = { id: 'b8', name: 'Zoutwater', city: 'Rijswijk', description: '', niveau: 4, avatar_url: null,
@@ -6071,7 +5999,7 @@ window.TT_STUB.fnAntwoord = {};
             const r = { titels: titels(), tags: tags(),
               namen: [...vak().querySelectorAll('.bezetting-lid:not(.bezetting-open) .bb-naam')].map(e => e.textContent),
               open: [...vak().querySelectorAll('.bezetting-open')].map(e => [...e.querySelectorAll('.bb-foto, .bb-naam, .bb-sub')].map(c => c.textContent.trim()).join(' ')),
-              balk: vak().querySelectorAll('.profiel-banner').length,
+              balk: vak().querySelectorAll('.hoes-vlak').length - 1, // TT-517 fase 4: de banner zit in de hoes
               links: [...vak().querySelectorAll('a.social-knop')].map(a => a.getAttribute('href')),
               nummer: vak().querySelectorAll('button.band-nummer img').length,
               menu: [...vak().querySelectorAll('.profiel-knoppen .nav-menu-item')].map(b => b.textContent.trim()),
@@ -6116,8 +6044,9 @@ window.TT_STUB.fnAntwoord = {};
               g57["ledenKnop"] == len(g57["namen"]) and g57["ledenKnop"] > 0, json.dumps(g57))
         check("gast: de bezetting is een lijst van rijen, foto links van de tekst, zoals Onze bezetting (TT-450)",
               len(g57["rijen"]) >= 4 and all(r == "row/true" for r in g57["rijen"]), json.dumps(g57["rijen"]))
-        check("gast: de bandfoto is vierkant met hoeken van 12px, de knop vraagt om een profiel",
-              g57["fotoVierkant"] == "12px" and g57["voet"] == "Maak een profiel aan om contact te leggen", json.dumps(g57))
+        # TT-517 fase 4: de bandfoto staat in de hoes, zoals bij een muzikant (was een vierkant van 12px).
+        check("gast: de bandfoto staat in de hoes met hoeken van 16px, de knop vraagt om een profiel",
+              g57["fotoVierkant"] == "16px" and g57["voet"] == "Maak een profiel aan om contact te leggen", json.dumps(g57))
         check("met profiel: alleen bevestigde leden, op volgorde van binnenkomst, met voornaam",
               bz57["namen"] == ["Ronald", "Sanne"], json.dumps(bz57))
         check("met profiel: een invaller van gisteren staat er niet meer, die van straks wel",
@@ -6193,7 +6122,7 @@ window.TT_STUB.fnAntwoord = {};
             pct: vak().querySelector('.completeness-pct')?.textContent,
             balkLaatst: vak().lastElementChild?.classList.contains('completeness-wrap'),
             menu: [...vak().querySelectorAll('.profiel-knoppen .nav-menu-item')].map(b => b.textContent),
-            fotoKnop: !!vak().querySelector('button.bandfoto-leeg'),
+            fotoKnop: !!vak().querySelector('button.hoes-leeg[onclick^="openBandTegels("]'), // TT-517 fase 4: het lege podium in de hoes
             tags: [...vak().querySelectorAll('.profile-badges .tag-solid')].map(t => t.textContent.trim()).filter(t => /^(Zoekend|Compleet)/.test(t)) };
           // Het ⋯-menu sluit bij een tik op de donkere laag (was alleen op Mijn Bands).
           vak().querySelector('.profiel-knoppen .profile-actions-menu-wrap .nav-menu-btn').click(); await w(50);
@@ -8476,7 +8405,10 @@ window.TT_STUB.fnAntwoord = {};
             const src = h => { const d = document.createElement('div'); d.innerHTML = h; const i = d.querySelector('img'); return i ? { src: (i.getAttribute('src') || i.dataset.ttFoto || '').split('?')[0], groot: i.dataset.groot || null, klik: i.getAttribute('onclick') } : null; };
             u.zoekRij = src(musicianRowHTML(m));
             u.zoekKaart = src(musicianCardHTML(m));
-            u.kop = src(buildMusicianDetailHTML(m, false, false));
+            // TT-517 fase 4: de kop is de hoes (358 × 268px): die toont de grote foto, zoals de bannerbalk;
+            // een tik op het beeld opent hem groot.
+            u.kop = (h => { const d = document.createElement('div'); d.innerHTML = h; const i = d.querySelector('.hoes-img');
+              return i ? { src: (i.getAttribute('src') || i.dataset.ttFoto || '').split('?')[0], klik: i.closest('.hoes-vlak').getAttribute('onclick') } : null; })(buildMusicianDetailHTML(m, false, false));
             u.zonderFoto = src(musicianRowHTML(Object.assign({}, m, { avatar_url: null })));
             // 6. Opruimen na opslaan.
             for (const k of Object.keys(bak)) delete bak[k];
@@ -8534,8 +8466,9 @@ window.TT_STUB.fnAntwoord = {};
               and "data-groot" not in a103["blob"] + a103["alKlein"], j103)
         check("fotootje: ontbreekt het fotootje, dan laadt de grote foto",
               d103["terugval"]["geladen"] and d103["terugval"]["src"].endswith("123_ab.jpg") and not d103["terugval"]["groot"], j103)
-        check("fotootje: Zoeken (rij en kaart) en de kop van een profiel tonen het fotootje",
-              all(x and x["src"].endswith("_klein.jpg") for x in (d103["zoekRij"], d103["zoekKaart"], d103["kop"])), j103)
+        check("fotootje: Zoeken (rij en kaart) tonen het fotootje; de hoes van een profiel de grote foto (TT-517 fase 4)",
+              all(x and x["src"].endswith("_klein.jpg") for x in (d103["zoekRij"], d103["zoekKaart"]))
+              and d103["kop"] and d103["kop"]["src"].endswith("123_ab.jpg"), j103)
         check("fotootje: een tik op de profielfoto opent de grote foto",
               "123_ab.jpg'" in (d103["kop"] or {}).get("klik", "") and "_klein" not in (d103["kop"] or {}).get("klik", ""), j103)
         check("fotootje: geen foto (of afgeschermd), dan ook geen fotootje", d103["zonderFoto"] is None, j103)
@@ -8596,11 +8529,12 @@ window.TT_STUB.fnAntwoord = {};
           const groot = O + 'avatars/u1/1_a.jpg';
           const m = { id: 'm2', soort: 'muzikant', weergavenaam: 'Sanne', username: 'sanne', city: 'Delft', age: 17, avatar_url: groot,
             musician_instruments: [], musician_genres: [], musician_songs: [], musician_media: [] };
-          // 1. Eén scherm met profielfoto's, een mediategel, de bannerbalk (foto en video) en een videotegel.
+          // 1. Eén scherm met profielfoto's, een mediategel, de hoes met banner (foto en video) en een videotegel.
           const vak = document.createElement('div'); document.body.appendChild(vak);
           vak.innerHTML = musicianRowHTML(m) + musicianCardHTML(m)
             + `<div>${mediaTegelHTML({ type: 'foto', url: O + 'media/u1/2_b.jpg', name: 'b' }, 0, 'mh')}</div>`
-            + profielBannerHTML([{ media_type: 'foto', url: O + 'media/u1/3_c.jpg', in_banner: true }, { media_type: 'video', url: O + 'media/u1/4_d.mp4', in_banner: true }])
+            // TT-517 fase 4: de banner zit in de hoes (zonder profielfoto: eerst het podium).
+            + profielHoesHTML({ foto: null, naam: 'x', regels: '', knoppen: '', media: [{ media_type: 'foto', url: O + 'media/u1/3_c.jpg', in_banner: true }, { media_type: 'video', url: O + 'media/u1/4_d.mp4', in_banner: true }] })
             + `<img ${kleinFotoAttr('https://img.youtube.com/vi/abc/hqdefault.jpg')} alt=""><img ${fotoBronAttr('blob:http://x/1')} alt="">`;
           u.direct = [...vak.querySelectorAll('img,video')].map(e => e.getAttribute('src') || 'data:' + e.dataset.ttFoto);
           for (let i = 0; i < 20 && vak.querySelector('[data-tt-foto]'); i++) await w(50);
@@ -8650,7 +8584,7 @@ window.TT_STUB.fnAntwoord = {};
         teken105 = lambda s: isinstance(s, str) and "/storage/v1/object/sign/" in s and "token=" in s
         check("afgeschermd: geen enkele foto of video laadt via de openbare link", not _openbaar105, str(_openbaar105)[:300])
         prot105 = [x for x in d105["na"] if x and not x.startswith("https://img.youtube.com/") and not x.startswith("blob:")]
-        check("afgeschermd: profielfoto's, mediategel, bannerbalk (foto en video) krijgen een tijdelijke link",
+        check("afgeschermd: profielfoto's, mediategel, banner in de hoes (foto en video) krijgen een tijdelijke link",
               d105["over"] == 0 and len(prot105) == 5 and all(teken105(x) for x in prot105) and None not in d105["na"], j105)
         check("afgeschermd: YouTube en een voorbeeld (blob) blijven ongewijzigd",
               "https://img.youtube.com/vi/abc/hqdefault.jpg" in d105["na"] and "blob:http://x/1" in d105["na"], j105)
@@ -8675,6 +8609,10 @@ window.TT_STUB.fnAntwoord = {};
         bron105 = {x: open(os.path.join(ROOT, x), encoding="utf-8").read() for x in ["utils.js", "musicians.js", "bands.js", "search.js", "messages.js", "wizard.js", "auth.js"]}
         _kaal105 = re.findall(r'<(?:img|video)[^>]*\ssrc="\$\{(?!URL\.createObjectURL|blobUrl)[^}]*\}', "".join(bron105.values()))
         _kaal105 = [x for x in _kaal105 if "youtube" not in x]
+        # TT-517 fase 4: het matglas gebruikt een kopie op het toestel (canvas) van
+        # een beeld dat al via fotoBronAttr() geladen is; geen link naar de opslag.
+        _waas105 = "const waasBeeld = c.toDataURL('image/jpeg', 0.8);" in bron105["utils.js"]
+        _kaal105 = [x for x in _kaal105 if not (_waas105 and x.endswith("${waasBeeld}"))]
         check("afgeschermd: geen <img> of <video> met een eigen bron buiten fotoBronAttr", not _kaal105, str(_kaal105)[:300])
         check("afgeschermd: signOut wist de links vóór het uitloggen",
               re.search(r"async function signOut\(\) \{[^}]*fotoLinksWissen\(\);", bron105["auth.js"]) is not None, "auth.js")
@@ -9463,12 +9401,14 @@ window.TT_STUB.fnAntwoord = {};
           const sub = document.querySelector('.mijn-bands-sub').getBoundingClientRect(), knop = document.querySelector('#mijnBandsKop .btn').getBoundingClientRect();
           u.sub = { rechtsVoorKnop: sub.right <= knop.left, links: Math.round(sub.left), knopLinks: Math.round(knop.left),
                     middenSub: Math.round((sub.top + sub.bottom) / 2), middenKnop: Math.round((knop.top + knop.bottom) / 2) };
-          showView('myprofile'); await w(800); u.profiel = top('#myProfileContent .profile-avatar-initials');
+          showView('myprofile'); await w(800); u.profiel = top('#myProfileContent .hoes-beeld');
           currentUser = keep.currentUser; myMusicianId = keep.myMusicianId; hasOwnProfile = keep.hasOwnProfile; S.data.musicians = keep.musicians;
           return u;
         }""")
-        check("het eerste blok staat op Zoeken, Berichten, Bands en Mijn Profiel (zonder bannerbalk) 20px onder de kop (titel in de kop, TT-517 fase 3)",
-              d83["zoeken"] == d83["berichten"] == d83["bands"] == d83["profiel"] == 20, json.dumps(d83))
+        check("het eerste blok staat op Zoeken, Berichten en Bands 20px onder de kop (titel in de kop, TT-517 fase 3)",
+              d83["zoeken"] == d83["berichten"] == d83["bands"] == 20, json.dumps(d83))
+        # TT-517 fase 4, besluit Ronald (d) 01-11-2026: tekst 20px onder de kop, een foto 8px.
+        check("Mijn Profiel begint met de hoes, 8px onder de kop (besluit Ronald (d))", d83["profiel"] == 8, json.dumps(d83))
         # TT-517 fase 3: "Mijn bands" staat in de kop; de ondertitel neemt de
         # plek van de titel in, naast de knop, op één middellijn (was: onder de titel).
         check("Mijn bands: de ondertitel staat naast de knop en stopt ervoor; ondertitel en knop op één middellijn",
@@ -11600,8 +11540,9 @@ def blok_tt517_fase3():
     WOORDMERK = {"landing", "ouderpagina"}
     # Schermen die hun eigen bovenkant houden: de foto op de landingspagina, de
     # goedkeuringspagina, een open gesprek (de rij met de naam staat vast onder
-    # de kop) en een profiel (de hoes sluit aan op de kop, fase 4).
-    EIGEN_BOVENKANT = {"landing", "ouderpagina", "gesprek", "profiel", "band", "bandlang"}
+    # de kop) en elk profiel: de hoes staat 8px onder de kop (fase 4, besluit
+    # Ronald (d); gemeten in blok 111).
+    EIGEN_BOVENKANT = {"landing", "ouderpagina", "gesprek", "profiel", "mijnprofiel", "band", "bandlang"}
     MEET = r"""() => {
       const h = document.querySelector('header'), hb = h.getBoundingClientRect();
       const k = document.getElementById('kopTitel'), kb = k.getBoundingClientRect(), ks = getComputedStyle(k);
@@ -11689,6 +11630,214 @@ window.TT_STUB.data.messages = ['Hoi!', 'Hoi, zin om te jammen?', 'Zaterdag?'].m
     check("op een korte naam blijft de titel op één regel van 17px", not res[(360, "band")]["tweeRegels"] and res[(360, "band")]["maat"] == "17px", json.dumps(res[(360, "band")]))
     check("geen paginafouten in blok 110", not fouten, "; ".join(fouten)[:400])
 
+def _testpng(soort, w=160, h=120):
+    # Een eenvoudig testbeeld zonder extra bibliotheek: donker, licht, wit, of
+    # onderin smalle zwarte en witte strepen (het zwaarste geval voor tekst).
+    import struct, zlib
+    rijen = []
+    for y in range(h):
+        rij = bytearray([0])
+        for x in range(w):
+            if soort == "donker": c = (24, 22, 36)
+            elif soort == "licht": c = (236, 233, 226)
+            elif soort == "wit": c = (255, 255, 255)
+            else: c = (255, 255, 255) if (y < h * 0.55 or (x // 6) % 2) else (0, 0, 0)
+            rij += bytes(c)
+        rijen.append(bytes(rij))
+    def stuk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + stuk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + stuk(b"IDAT", zlib.compress(b"".join(rijen))) + stuk(b"IEND", b""))
+
+
+def blok_tt517_fase4():
+    # TT-517 fase 4 (01-11-2026, besluiten Ronald 30 en 31-10-2026, (d)
+    # 01-11-2026): het profiel als hoes (huisstijl §21). Muzikant en band
+    # gelijk. Vervangt de metingen van de bannerbalk (TT-265, TT-267, TT-384)
+    # en van de ronde profielfoto naast de knoppen (TT-384, TT-385).
+    print("\nBlok 111 — TT-517 fase 4: het profiel als hoes")
+    utils = open(os.path.join(ROOT, "utils.js"), encoding="utf-8").read()
+    css = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
+    alles = utils + css + "".join(open(os.path.join(ROOT, f), encoding="utf-8").read() for f in ("musicians.js", "bands.js", "wizard.js"))
+    oud = [w for w in ("profielBannerHTML", "profielBannerStarten", "profielBannerNaar", "profielBannerStop", "profielBannerTijden",
+                       ".pb-stip", ".pb-spoor", ".pb-item", ".profiel-banner", "profiel-kop-rij", "op-banner", ".profile-avatar-photo",
+                       ".profile-avatar-initials", ".bandfoto") if w in alles]
+    check("de oude bannerbalk en de ronde profielfoto in de kop zijn weg, ook hun code (dode code)", not oud, str(oud))
+    check("de hoes staat stil: geen tijd die hem laat doorschuiven", "setInterval" not in utils[utils.index("// TT-517 fase 4 (01-11-2026): het profiel als hoes"):utils.index("function hoesStarten") + 2500])
+    check("--op-foto-donker is antraciet #52575F en --podium #101114 (huisstijl §21)",
+          "--op-foto-donker: #52575F;" in css and "--podium: #101114;" in css)
+
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    basis = f"http://127.0.0.1:{port}"
+    beelden = {s: _testpng(s) for s in ("donker", "licht", "wit", "strepen")}
+    ingelogd = stub_js + """
+window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
+window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instruments: m.musician_instruments || [],
+  musician_genres: m.musician_genres || [], musician_songs: m.musician_songs || [], musician_media: m.musician_media || [] }));
+"""
+    # Ingelogd met een eigen profiel leest de app de tabel zelf; een bezoeker
+    # zonder account krijgt tt_get_musicians_public (zie "afgeschermd").
+    def profiel(foto, media="[]", naam="dylan"):
+        return ("Object.assign(window.TT_STUB.data.musicians[1], {username:'" + naam + "',weergavenaam:'" + naam + "',"
+                "avatar_url:" + foto + ",musician_media:" + media + "})")
+    def publiek(foto, media):
+        return ("window.TT_STUB.rpcResults.tt_get_musicians_public=()=>[{id:'m2',username:'kim',age:14,city:'Delft',bio:'',goal:null,"
+                "avatar_url:" + foto + ",instrument_levels:[],genres:[],songs:[],media:" + media + "}]")
+    F = lambda s: f"'{basis}/testfoto/{s}.png'"
+    MEET = r"""() => {
+      const h = document.querySelector('header').getBoundingClientRect();
+      const v = document.querySelector('.app-view.active'); const ho = v.querySelector('.hoes');
+      if (!ho) return { geen: true };
+      const be = ho.querySelector('.hoes-beeld'), b = be.getBoundingClientRect(), cs = getComputedStyle(be);
+      const n = ho.querySelector('.profile-name'), nb = n.getBoundingClientRect(), meta = ho.querySelector('.profile-meta');
+      const kn = [...ho.querySelectorAll('.profiel-knoppen .nav-menu-btn')].map(x => x.getBoundingClientRect());
+      const ham = document.getElementById('navMenuBtn').getBoundingClientRect(), mb = meta.getBoundingClientRect();
+      const vlak = ho.querySelector('.hoes-vlak'); const stip = ho.querySelector('.hoes-stip');
+      const binnen = r => r.left >= b.left && r.right <= b.right && r.top >= b.top && r.bottom <= b.bottom;
+      const wrap = v.querySelector('.my-profile-wrap'), ws = getComputedStyle(wrap), wr = wrap.getBoundingClientRect();
+      return { gat: Math.round(b.top - h.bottom), links: Math.round(b.left - wr.left - parseFloat(ws.paddingLeft)),
+        breed: b.width, hoog: b.height, verhouding: Math.round(b.width / b.height * 1000) / 1000,
+        rechts: Math.round(wr.right - parseFloat(ws.paddingRight) - b.right), marge: ws.paddingLeft,
+        hoek: cs.borderTopLeftRadius + ' ' + cs.borderBottomRightRadius, rand: cs.borderTopWidth, schaduw: cs.boxShadow,
+        naamOpFoto: binnen(nb), metaOpFoto: binnen(mb), knoppenOpFoto: kn.every(binnen),
+        naamKleur: getComputedStyle(n).color, metaKleur: getComputedStyle(meta).color, knopKleur: getComputedStyle(ho.querySelector('.profiel-knoppen .nav-menu-btn')).color,
+        naamPx: getComputedStyle(n).fontSize, naamBreed: n.clientWidth, afgekapt: n.scrollWidth > n.clientWidth,
+        naamRaaktKnop: kn.length ? nb.right > kn[0].left + 17 && nb.bottom > kn[0].top + 10 : false,
+        menuOnderHamburger: kn.length ? Math.round((kn[kn.length - 1].left + kn[kn.length - 1].right) / 2 - (ham.left + ham.right) / 2) : null,
+        knopOpRegel: kn.length ? Math.round((kn[kn.length - 1].top + kn[kn.length - 1].bottom) / 2 - (mb.top + mb.bottom) / 2) : null,
+        donker: ho.classList.contains('tekst-donker'), vlakken: [...ho.querySelectorAll('.hoes-vlak')].map(x => (x.dataset.tekst || '-') + (x.querySelector('.hoes-waas') ? '+waas' : '') + (x.classList.contains('hoes-veilig') ? '+veilig' : '')),
+        lagen: vlak.querySelectorAll('.hoes-waas img').length,
+        podium: getComputedStyle(vlak).backgroundColor, eersteIsFoto: !!vlak.querySelector('img.hoes-img'),
+        aantal: ho.querySelectorAll('.hoes-vlak').length, stippen: ho.querySelectorAll('.hoes-stip').length,
+        stipKnop: ho.querySelectorAll('.hoes-stippen button, .hoes-stip[onclick], .hoes-stip[role]').length,
+        stippenTik: stip ? getComputedStyle(stip.parentElement).pointerEvents : null, stippenVerborgen: stip ? stip.parentElement.getAttribute('aria-hidden') : null,
+        pijlen: [...ho.querySelectorAll('.hoes-pijl')].map(x => getComputedStyle(x).display + (x.hidden ? '/verborgen' : '')),
+        balk: document.querySelectorAll('.profiel-banner, .pb-spoor').length, speel: ho.querySelectorAll('.pb-speel').length,
+        leegKnop: ho.querySelector('.hoes-leeg') ? ho.querySelector('.hoes-leeg').tagName + ':' + (ho.querySelector('.hoes-leeg').getAttribute('onclick') || '') : null };
+    }"""
+    SC = [
+        ("mijn", 1, ["window.TT_STUB.data.musicians[0].avatar_url=" + F("donker"), "showView('myprofile')"]),
+        ("ander", 1, [profiel(F("donker")), "openProfielScherm('m2')"]),
+        ("band", 1, ["window.TT_STUB.data.bands[0].avatar_url=" + F("donker"), "openBandScherm('b1')"]),
+        ("licht", 1, [profiel(F("licht")), "openProfielScherm('m2')"]),
+        ("wit", 1, [profiel(F("wit")), "openProfielScherm('m2')"]),
+        ("strepen", 1, [profiel(F("strepen")), "openProfielScherm('m2')"]),
+        ("geen", 1, [profiel("null"), "openProfielScherm('m2')"]),
+        ("bandleeg", 1, ["window.TT_STUB.data.bands[0].founder_id='m1'", "openBandScherm('b1')"]),
+        ("banner", 1, [profiel(F("donker"), "[{media_type:'foto',url:" + F("wit") + ",in_banner:true},{media_type:'foto',url:" + F("strepen") + ",in_banner:true},{media_type:'link',url:'https://open.spotify.com/track/x',platform:'Spotify',in_banner:true},{media_type:'foto',url:" + F("licht") + ",in_banner:false}]"), "openProfielScherm('m2')"]),
+        ("afgeschermd", 0, [publiek(F("donker"), "[{media_type:'foto',url:null,afgeschermd:true,in_banner:true}]"), "openProfielScherm('m2')"]),
+        ("lang", 1, [profiel(F("donker"), "[]", "Sanne van der Heijden-B"), "openProfielScherm('m2')"]),
+        ("opslag", 1, [profiel("location.origin+'/storage/v1/object/public/avatars/a/foto.png'"), "openProfielScherm('m2')"]),
+        # De opslag geeft een link naar een ander webadres dat geen toestemming geeft om te meten.
+        ("vreemd", 1, [profiel("location.origin+'/storage/v1/object/public/avatars/a/vreemd.png'"),
+                       "db.storage.from = () => ({ createSignedUrls: async paden => ({ data: paden.map(p => ({ path: p, signedUrl: location.origin.replace('127.0.0.1', 'localhost') + '/icon-192.png', error: null })), error: null }) })",
+                       "openProfielScherm('m2')"]),
+    ]
+    res, fouten = {}, []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        for breed, thema in ((390, "light"), (360, "dark")):
+            for naam, inl, stappen in SC:
+                if breed == 360 and naam not in ("mijn", "ander", "band", "licht", "strepen"): continue
+                ctx = browser.new_context(viewport={"width": breed, "height": 844}, color_scheme=thema, has_touch=True, is_mobile=True)
+                page = ctx.new_page()
+                page.on("pageerror", lambda e, n=naam: fouten.append(f"{n}: {e}"))
+                page.route("**/supabase.js*", (lambda bd: (lambda r: r.fulfill(status=200, content_type="application/javascript", body=bd)))(ingelogd if inl else stub_js))
+                for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**", "**/open.spotify.com/**", "**/img.youtube.com/**"):
+                    page.route(pat, lambda r: r.abort())
+                page.route("**/testfoto/*.png", lambda r: r.fulfill(status=200, content_type="image/png", body=beelden[r.request.url.rsplit("/", 1)[1][:-4]]))
+                # De opslag: een foto op hetzelfde webadres, dus met toestemming om te meten.
+                page.route("**/storage/v1/object/sign/**", lambda r: r.fulfill(status=200, content_type="image/png", body=beelden["licht"]))
+                page.goto(f"{basis}/index.html", wait_until="load")
+                page.wait_for_timeout(500)
+                for st in stappen:
+                    page.evaluate(st)
+                    page.wait_for_timeout(300)
+                page.wait_for_timeout(900)
+                page.evaluate("window.scrollTo(0, 0)")
+                page.wait_for_timeout(100)
+                res[(breed, naam)] = page.evaluate(MEET)
+                if breed == 390 and naam == "banner":
+                    # Vegen: het spoor schuift naar het tweede beeld; de stip en de tekstkleur volgen.
+                    page.evaluate("document.querySelector('.app-view.active .hoes-spoor').scrollTo({left: 358})")
+                    page.wait_for_timeout(500)
+                    res[(390, "geveegd")] = page.evaluate(MEET)
+                    res[(390, "aan")] = page.evaluate("[...document.querySelectorAll('.app-view.active .hoes-stip')].findIndex(s => s.classList.contains('aan'))")
+                if breed == 390 and naam == "ander":
+                    page.wait_for_timeout(5200)
+                    res[(390, "stil")] = page.evaluate("document.querySelector('.app-view.active .hoes-spoor').scrollLeft")
+                ctx.close()
+        # Met een muis: pijltjes bij het aanwijzen, niet op het eerste en het laatste beeld.
+        ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+        page = ctx.new_page()
+        page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=ingelogd))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/open.spotify.com/**"):
+            page.route(pat, lambda r: r.abort())
+        page.route("**/testfoto/*.png", lambda r: r.fulfill(status=200, content_type="image/png", body=beelden[r.request.url.rsplit("/", 1)[1][:-4]]))
+        page.goto(f"{basis}/index.html", wait_until="load"); page.wait_for_timeout(500)
+        page.evaluate(SC[8][2][0]); page.evaluate("openProfielScherm('m2')"); page.wait_for_timeout(1200)
+        pijl = "[...document.querySelectorAll('.app-view.active .hoes-pijl')].map(x => getComputedStyle(x).display + (x.hidden ? '/verborgen' : ''))"
+        muis = {"rust": page.evaluate(pijl)}
+        hb = page.locator(".app-view.active .hoes").bounding_box()
+        page.mouse.move(hb["x"] + hb["width"] / 2, hb["y"] + 40); page.wait_for_timeout(200)
+        muis["eerste"] = page.evaluate(pijl)
+        page.click(".app-view.active .hoes-pijl.volgende"); page.wait_for_timeout(800)
+        muis["tweede"] = page.evaluate(pijl)
+        page.click(".app-view.active .hoes-pijl.volgende"); page.wait_for_timeout(800)
+        page.click(".app-view.active .hoes-pijl.volgende"); page.wait_for_timeout(800)
+        muis["laatste"] = page.evaluate(pijl)
+        muis["maat"] = page.evaluate("(() => { const b = document.querySelector('.app-view.active .hoes-pijl.vorige').getBoundingClientRect(), be = document.querySelector('.app-view.active .hoes-beeld').getBoundingClientRect(), s = document.querySelector('.app-view.active .hoes-pijl svg').getBoundingClientRect(); return [b.width, b.height, Math.round(b.left - be.left), Math.round((b.top + b.bottom) / 2 - (be.top + be.bottom) / 2), s.width]; })()")
+        ctx.close()
+        browser.close()
+    httpd.shutdown()
+    r = res
+    hoes3 = [(b, n) for b in (390, 360) for n in ("mijn", "ander", "band")]
+    f = {f"{b}:{n}": r[(b, n)]["gat"] for b, n in hoes3 if r[(b, n)].get("gat") != 8}
+    check("de hoes staat 8px onder de kop, op Mijn profiel, een ander profiel en een band (besluit Ronald (d))", not f, json.dumps(f))
+    f = {f"{b}:{n}": [r[(b, n)][k] for k in ("links", "rechts", "verhouding", "hoek", "rand", "schaduw")] for b, n in hoes3
+         if not (r[(b, n)]["links"] == 0 and r[(b, n)]["rechts"] == 0 and abs(r[(b, n)]["verhouding"] - 4 / 3) < 0.01
+                 and r[(b, n)]["hoek"] == "16px 16px" and r[(b, n)]["rand"] == "0px" and r[(b, n)]["schaduw"] == "none")}
+    check("4:3, binnen de marge van 16px, hoeken 16px, zonder lijst of lijn (op 390px 358 × 268,5px)", not f and r[(390, "mijn")]["breed"] == 358 and abs(r[(390, "mijn")]["hoog"] - 268.5) < 0.6
+          and all(r[k]["marge"] == "16px" for k in hoes3), json.dumps(f) + str((r[(390, "mijn")]["breed"], r[(390, "mijn")]["hoog"])))
+    f = {f"{b}:{n}": 1 for b, n in hoes3 if not (r[(b, n)]["naamOpFoto"] and r[(b, n)]["metaOpFoto"] and r[(b, n)]["knoppenOpFoto"])}
+    check("naam, regel, delen en ⋯ staan op de foto, muzikant en band gelijk", not f, json.dumps(f))
+    f = {f"{b}:{n}": [r[(b, n)]["menuOnderHamburger"], r[(b, n)]["knopOpRegel"]] for b, n in hoes3 if abs(r[(b, n)]["menuOnderHamburger"]) > 1 or abs(r[(b, n)]["knopOpRegel"]) > 1}
+    check("delen en ⋯ rechtsonder op de regel onder de naam, het ⋯ recht onder de hamburger (positie 2)", not f, json.dumps(f))
+    check("de naam is op 390px 264px breed naast de twee knoppen, nooit afgekapt", r[(390, "mijn")]["naamBreed"] == 264 and not any(r[k]["afgekapt"] for k in r if isinstance(r[k], dict) and "afgekapt" in r[k]),
+          str(r[(390, "mijn")]["naamBreed"]))
+    check("een lange naam wordt kleiner en past (§2.1), en raakt de knoppen niet", not r[(390, "lang")]["afgekapt"] and r[(390, "lang")]["naamPx"] != "32px" and not r[(390, "lang")]["naamRaaktKnop"], json.dumps(r[(390, "lang")]))
+    WIT, ANT = "rgb(255, 255, 255)", "rgb(82, 87, 95)"
+    zelfde = lambda m: m["naamKleur"] == m["metaKleur"] == m["knopKleur"]
+    check("donkere foto: wit, zonder matglas; naam, regel en tekens in dezelfde kleur", all(r[(b, n)]["naamKleur"] == WIT and zelfde(r[(b, n)]) and r[(b, n)]["vlakken"][0] == "licht" for b, n in hoes3),
+          json.dumps({f"{b}:{n}": r[(b, n)]["vlakken"] for b, n in hoes3}))
+    check("lichte en witte foto: antraciet #52575F, geen zwart, zonder matglas; ook in donker", all(r[k]["naamKleur"] == ANT and zelfde(r[k]) and r[k]["vlakken"][0] == "donker" for k in ((390, "licht"), (390, "wit"), (360, "licht"))),
+          json.dumps([r[k]["vlakken"] for k in ((390, "licht"), (390, "wit"), (360, "licht"))]))
+    check("onrustige onderkant: matglas in vijf lagen, alleen dan", all(r[k]["vlakken"][0].endswith("+waas") and r[k]["lagen"] == 5 for k in ((390, "strepen"), (360, "strepen"))) and r[(390, "licht")]["lagen"] == 0,
+          json.dumps([r[k]["vlakken"] for k in ((390, "strepen"), (360, "strepen"))]))
+    g = r[(390, "geen")]
+    check("zonder foto: het lege podium (#101114) met witte naam; een bezoeker kan er niet op tikken", g["podium"] == "rgb(16, 17, 20)" and g["naamKleur"] == WIT and g["leegKnop"] == "DIV:", json.dumps(g))
+    check("band zonder foto: de beheerder tikt op het podium en kiest een foto (TT-385 punt 2)", (r[(390, "bandleeg")]["leegKnop"] or "").startswith("BUTTON:openBandTegels("), str(r[(390, "bandleeg")]["leegKnop"]))
+    bn = r[(390, "banner")]
+    check("de banner zit in de hoes: eerst de profielfoto, dan de gekozen media (drie van vier), geen bannerbalk meer",
+          bn["aantal"] == 4 and bn["eersteIsFoto"] and bn["balk"] == 0 and r[(390, "mijn")]["balk"] == 0, json.dumps(bn))
+    check("de stippen zijn alleen een aanwijzing: geen knop, geen tikvlak, verborgen voor een schermlezer (TT-541)",
+          bn["stippen"] == 4 and bn["stipKnop"] == 0 and bn["stippenTik"] == "none" and bn["stippenVerborgen"] == "true" and r[(390, "ander")]["stippen"] == 0, json.dumps(bn))
+    gv = r[(390, "geveegd")]
+    check("vegen: de stip en de tekstkleur volgen het beeld in beeld (wit beeld: antraciet)", r[(390, "aan")] == 1 and gv["donker"] and gv["naamKleur"] == ANT, json.dumps([r[(390, "aan")], gv["naamKleur"], gv["vlakken"]]))
+    check("een link zonder miniatuur staat als kaart op het podium, met witte naam", bn["vlakken"][3] == "licht", json.dumps(bn["vlakken"]))
+    check("een afgeschermde banner staat er niet: alleen het eerste beeld (TT-385)", r[(390, "afgeschermd")]["aantal"] == 1, str(r[(390, "afgeschermd")]["aantal"]))
+    check("de hoes staat stil: na 5 seconden niet verschoven", r[(390, "stil")] == 0, str(r[(390, "stil")]))
+    check("op een telefoon nooit pijltjes", all(x.startswith("none") for x in bn["pijlen"]), json.dumps(bn["pijlen"]))
+    check("met een muis: pijltjes bij het aanwijzen, niet links op het eerste en niet rechts op het laatste beeld",
+          muis["rust"] == ["none/verborgen", "none"] and muis["eerste"] == ["none/verborgen", "grid"] and muis["tweede"] == ["grid", "grid"] and muis["laatste"] == ["grid", "none/verborgen"], json.dumps(muis))
+    check("de pijltjes: teken 30px zonder vlak, tikvlak 44 × 44px, 8px van de rand, verticaal in het midden", muis["maat"] == [44, 44, 8, 0, 30], json.dumps(muis["maat"]))
+    check("een foto uit de opslag wordt gemeten (crossorigin, licht beeld: antraciet)", r[(390, "opslag")]["vlakken"][0] == "donker", json.dumps(r[(390, "opslag")]["vlakken"]))
+    check("mag een beeld niet gemeten worden, dan staat het er toch, met de veilige vorm (wit op een waas)",
+          r[(390, "vreemd")]["vlakken"][0] == "licht+veilig" and r[(390, "vreemd")]["naamKleur"] == WIT, json.dumps(r[(390, "vreemd")]["vlakken"]))
+    check("geen paginafouten in blok 111", not fouten, "; ".join(fouten)[:400])
+
+
 def blok_jwt_herhaling():
     print("\nBlok 108 — herhaling bij 'JWT issued at future' (TT-306)")
     core = open(os.path.join(ROOT, "core.js"), encoding="utf-8").read()
@@ -11758,6 +11907,7 @@ def main():
     blok_tt517_fase1()
     blok_tt517_fase2()
     blok_tt517_fase3()
+    blok_tt517_fase4()
     blok_0_rijen()
     blok_browser()
     blok_xss()

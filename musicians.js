@@ -12,12 +12,8 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
   // de gebruiker koos (displayNameOf() leest weergavenaam).
   const displayName = displayNameOf(m);
   const avatarSrc = safeUrl(m.avatar_url);
-  // TT-217 (06-09-2026): klik op de profielfoto vergroot 'm, zelfde bestaande
-  // lightbox als bij de foto's onder "Foto's" (openMediaLightbox()) — geen
-  // nieuwe component, hergebruik van het bestaande patroon.
-  const avatarHTML = avatarSrc
-    ? `<img class="profile-avatar-photo" ${kleinFotoAttr(avatarSrc)} alt="${escHtml(displayName)}" style="margin-bottom:0;flex-shrink:0;cursor:pointer;" onclick="openMediaLightbox('${jsAttr(avatarSrc)}')">`
-    : `<div class="profile-avatar-initials" style="margin-bottom:0;flex-shrink:0;">${AVATAR_T_FALLBACK}</div>`;
+  // TT-217 (06-09-2026): klik op de profielfoto vergroot 'm (openMediaLightbox()).
+  // TT-517 fase 4: de foto staat groot in de hoes (profielHoesHTML() in utils.js).
 
   const songRows = [...m.musician_songs].sort((a, b) =>
     compareArtistTitle(a.song_artist, a.song_title, b.song_artist, b.song_title)
@@ -64,26 +60,16 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
       </div>
     </div>` : '';
 
-  // TT-384 (30-09-2026, besluiten Ronald): de kop staat onder elkaar. Eerst
-  // een rij met links de profielfoto en rechts het deelicoon en het ⋯-menu;
-  // daaronder de naam en de regels, over de volle breedte. Staat er een
-  // banner, dan valt de foto voor de helft over de onderrand daarvan
-  // (.profiel-kop.op-banner). Zonder banner blijft dezelfde opbouw staan,
-  // alleen zonder overlap. Het bandvenster volgt in een eigen sessie.
-  const bannerHTML = profielBannerHTML(m.musician_media);
+  // TT-517 fase 4 (01-11-2026): de kop is de hoes (huisstijl §21). Foto,
+  // banner, naam, de regel eronder, delen en ⋯ staan erin. Vervangt de ronde
+  // profielfoto naast de knoppen (TT-384) en de bannerbalk (TT-265).
   return `
-    ${bannerHTML}
-    <div class="profiel-kop${bannerHTML ? ' op-banner' : ''}">
-      <div class="profiel-kop-rij">
-        ${avatarHTML}
-        ${profielKnoppenHTML('profiel', m.id, displayName, ownerMenuHTML + veiligheidPlekHTML, null, isOwn || m.delen_aan !== false)}
-      </div>
-      <div class="profile-name">${escHtml(displayName)}</div>
-      <div class="profiel-regels">
-        <!-- TT-420 (09-10-2026, Ronald): geen tweede naam op het profiel. Er staat één naam: de gekozen. -->
-        <div class="profile-meta" style="margin-bottom:0;">${age} jaar · ${escHtml(m.city)}${m.distance_km != null ? ` · ${m.distance_km.toFixed(1)} km` : ''}</div>
-      </div>
-    </div>
+    ${profielHoesHTML({
+      foto: avatarSrc, naam: displayName, media: m.musician_media,
+      // TT-420 (09-10-2026, Ronald): geen tweede naam op het profiel. Er staat één naam: de gekozen.
+      regels: `<div class="profile-meta" style="margin-bottom:0;">${age} jaar · ${escHtml(m.city)}${m.distance_km != null ? ` · ${m.distance_km.toFixed(1)} km` : ''}</div>`,
+      knoppen: profielKnoppenHTML('profiel', m.id, displayName, ownerMenuHTML + veiligheidPlekHTML, null, isOwn || m.delen_aan !== false)
+    })}
     <div class="profile-badges">
       ${m.musician_instruments.map(x => `<span class="tag-solid">${escHtml(x.instrument)}${starDisplayHTML(x.niveau) ? ' ' + starDisplayHTML(x.niveau) : ''}</span>`).join('')}
       ${m.musician_genres.map(x => `<span class="tag-solid">${escHtml(x.genre)}</span>`).join('')}
@@ -397,10 +383,10 @@ async function laadProfielScherm(id, linkToegang) {
 
   content.innerHTML = buildMusicianDetailHTML(m, isOwn, true);
   overneemKnoppenBijwerken(content); // TT-528: vinkje bij wat al in je repertoire staat
-  // TT-265: de bannerbalk kan pas gaan schuiven als hij in de pagina staat —
-  // een verborgen element heeft geen breedte, dus een gezette scrollpositie
-  // komt niet aan (zelfde valkuil als bij het wiel, huisstijl §7.1).
-  profielBannerStarten(content);
+  // TT-517 fase 4: de hoes pas starten als hij in de pagina staat — een
+  // verborgen element heeft geen breedte (zelfde valkuil als bij het wiel,
+  // huisstijl §7.1).
+  hoesStarten(content);
   mediaTitelsBijwerken(content);
   // TT-249: de naam kan pas passend gemaakt worden als hij in de pagina staat
   // — een element dat er nog niet is, heeft geen breedte om tegen te meten.

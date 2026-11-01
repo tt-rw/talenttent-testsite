@@ -760,9 +760,9 @@ function safeUrl(u) {
 /* Fotootje (28-10-2026, TT-537, besluit Ronald: optie b). Naast elke foto in
    `avatars` (profiel- en bandfoto) en `media` (de mediahoek) staat een
    vierkante versie van FOTO_KLEIN_PX pixels, met dezelfde naam plus
-   `_klein.jpg` (uploadToStorage() in wizard.js). Lijsten, de kop van een
-   profiel en de mediategels tonen het fotootje; een tik op de foto en de
-   bannerbalk tonen de grote. De grootste plek is 80 pixels; 240 dekt een
+   `_klein.jpg` (uploadToStorage() in wizard.js). Lijsten en de mediategels
+   tonen het fotootje; de hoes van een profiel (TT-517 fase 4) en een tik op
+   de foto tonen de grote. De grootste plek is 80 pixels; 240 dekt een
    scherm met drie beeldpunten per pixel. Een GIF heeft geen fotootje.
    Ontbreekt het fotootje (een foto van vóór deze wijziging, een half gelukte
    upload, een oude versie van de app), dan krijgt het de tijdelijke link van
@@ -2329,25 +2329,22 @@ function bannerTellerBijwerken(elId, bestanden, links) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// TT-265 (15-09-2026, Ronald): de bannerbalk op het muzikantenprofiel.
-// De keuze wélke media erin komen bestond al (TT-263, het bannerteken in de
-// wizard en in Je mediahoek). Dit is de plek waar die keuze te zien is.
-//
-// Vastgelegde besluiten van Ronald, 15-09-2026:
-// - Maximaal zes items, over foto's, video's en links samen.
-// - Geen gekozen items: de balk verschijnt helemaal niet.
-// - Swipen, met stippen eronder. Actieve stip goud, de rest grijs.
-// - Doorschuiven na vijf seconden, pauze zodra de gebruiker zelf iets doet.
-// - **Geen autoplay.** Een video toont zijn eerste beeld en staat stil;
-//   geluid en beweging komen pas na een tik, in het mediascherm van TT-263.
-//   Reden (huisstijl §16): een spelend vlak moet bij elk scrollframe opnieuw
-//   getekend worden, en dat laat het scrollen schokken op een goedkoop
-//   toestel.
-
-// Elk profiel dat getekend wordt, krijgt zijn eigen nummer. Mijn Profiel en
-// de profielmodal kunnen tegelijk in de pagina staan — twee keer hetzelfde
-// id zou de verkeerde balk laten bewegen.
-let profielBannerVolgnr = 0;
+// TT-517 fase 4 (01-11-2026): het profiel als hoes (huisstijl §21, besluiten
+// Ronald 30 en 31-10-2026, (d) 01-11-2026). Vervangt de bannerbalk van TT-265
+// en de kop met de ronde profielfoto van TT-384. Muzikant en band gelijk.
+// - De foto groot bovenaan, 4:3, binnen de marge, hoeken 16px, 8px onder de
+//   kop. De naam groot op de foto, de regel eronder in dezelfde kleur.
+// - De banner zit in de hoes: eerst de profielfoto (of bandfoto), daarna de
+//   media die de muzikant of band voor de banner koos (maximaal zes).
+// - Vegen om te bladeren. De stippen zijn alleen een aanwijzing, geen knop
+//   (TT-541). Met een muis twee pijltjes, niet op het eerste en het laatste
+//   beeld, nooit op een telefoon.
+// - De hoes staat stil: geen doorschuiven, geen video die vanzelf speelt.
+// - Delen en ⋯ rechtsonder op de foto, in de tekstkleur van de hoes.
+// - Tekstkleur en matglas komen uit het beeld zelf (hoesBeeldOordeel()): wit
+//   of antraciet, en matglas alleen als de foto erom vraagt.
+// Zonder foto staat er een leeg, donker podium (de schijnwerper komt in
+// fase 6).
 
 function profielBannerItems(mediaLijst) {
   return (mediaLijst || [])
@@ -2364,153 +2361,214 @@ function profielBannerItems(mediaLijst) {
 // The Talent Tent: een zwarte T op geel, als het profielvlak (TT-341). Geen knop — er valt
 // niets te openen, en een knop die niets doet is een fout (onderhoudsronde).
 // TT-385 (02-10-2026, besluit Ronald): alleen nog voor de tegel op het
-// profiel. Een afgeschermd profiel heeft geen bannerbalk meer, zie
-// profielBannerHTML() hieronder.
+// profiel. Een afgeschermd profiel heeft geen banner in de hoes, zie
+// profielHoesHTML() hieronder.
 function mediaAfgeschermdHTML() {
   return `<div class="profile-media-tegel media-afgeschermd" role="img" aria-label="Alleen zichtbaar met een account"><span class="avatar-t">T</span></div>`;
 }
 
 // Het speelteken: een driehoek in een ronde schijf, midden op elk beeld dat een
-// video is (de banner en de videotegel op het profiel). Alleen een teken, geen
+// video is (de hoes en de videotegel op het profiel). Alleen een teken, geen
 // knop: de tik gaat naar het vlak eronder. Besluit Ronald, 08-10-2026: "niet
 // zichtbaar in de banner dat het een video is. voeg een play teken toe."
 const SPEELTEKEN_HTML = '<span class="pb-speel" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></span>';
 
-function profielBannerHTML(mediaLijst) {
-  const items = profielBannerItems(mediaLijst);
-  if (!items.length) return '';
-  // TT-385 (02-10-2026, besluit Ronald: "dan banner weglaten bij publieke
-  // profielen onder 16 jaar"; "een grote T als banner is niet fraai"). Is
-  // de bannerbalk afgeschermd, dan staat hij er niet. De database schermt
-  // een profiel in zijn geheel af, dus één afgeschermd item is genoeg. Geldt
-  // voor muzikant en band: beide gebruiken deze functie.
-  if (items.some(it => it.afgeschermd)) return '';
-  const nr = ++profielBannerVolgnr;
-  const spoorId = `pbSpoor${nr}`;
-  const stippenId = `pbStippen${nr}`;
+// De bron-attributen voor een beeld in de hoes. Een foto of video uit de
+// eigen opslag laadt met crossorigin, zodat de app het beeld kan meten. Een
+// beeld van elders (YouTube) niet: dat zou zonder toestemming van die site
+// niet laden. Dan meet de app niets en kiest de veilige vorm.
+function hoesBronAttr(src) {
+  return (fotoLinkSleutel(src) ? 'crossorigin="anonymous" ' : '') + fotoBronAttr(src);
+}
 
-  const vlakken = items.map((it, i) => {
+const HOES_PIJL = r => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="${r ? '9 5 16 12 9 19' : '15 5 8 12 15 19'}"/></svg>`;
+
+// o.foto: de profiel- of bandfoto (uit safeUrl) of null; o.naam: de naam als
+// tekst; o.regels: HTML van de regel onder de naam; o.knoppen: HTML van
+// profielKnoppenHTML(); o.media: de media voor de banner; o.leegTik: JavaScript
+// voor een tik op een leeg podium (de beheerder van een band kiest zo een foto).
+function profielHoesHTML(o) {
+  const items = profielBannerItems(o.media);
+  // TT-385 (02-10-2026, besluit Ronald): een afgeschermde banner staat er
+  // niet. De database schermt een profiel in zijn geheel af, dus één
+  // afgeschermd item is genoeg. Dan blijft alleen het eerste beeld.
+  const banner = items.some(it => it.afgeschermd) ? [] : items;
+  const n = banner.length + 1;
+  const naam = escHtml(o.naam);
+
+  const eerste = o.foto
+    ? `<button type="button" class="hoes-vlak" onclick="openMediaLightbox('${jsAttr(o.foto)}')" aria-label="Foto van ${naam} groot bekijken">` +
+      `<img class="hoes-img" ${hoesBronAttr(o.foto)} alt="${naam}"></button>`
+    : o.leegTik
+      ? `<button type="button" class="hoes-vlak hoes-leeg" onclick="${o.leegTik}" aria-label="Kies een foto"></button>`
+      : `<div class="hoes-vlak hoes-leeg" role="img" aria-label="Nog geen foto"></div>`;
+
+  const vlakken = banner.map((it, i) => {
     const url = it.veilig;
     const platform = it.platform || detectPlatform(url);
+    const wat = `Beeld ${i + 2} van ${n}`;
     let binnen, tik;
-
     if (it.media_type === 'foto') {
-      binnen = `<img class="pb-beeld" ${fotoBronAttr(url)} alt="Foto ${i + 1} van ${items.length}" loading="lazy">`;
+      binnen = `<img class="hoes-img" ${hoesBronAttr(url)} alt="${wat}" loading="lazy">`;
       tik = `openMediaLightbox('${jsAttr(url)}')`;
     } else if (it.media_type === 'video') {
       // #t=0.1 dwingt het eerste beeld af; zonder dat laat Safari op de
       // iPhone een zwart vlak zien tot er getikt wordt. muted + playsinline
       // staan erbij omdat de browser het element anders niet mag uitlezen.
-      binnen = `<video class="pb-beeld" ${fotoBronAttr(url + '#t=0.1')} muted playsinline preload="metadata" tabindex="-1" aria-hidden="true"></video>` +
-               `<span class="pb-label">Video</span>` + SPEELTEKEN_HTML;
+      binnen = `<video class="hoes-img" ${hoesBronAttr(url + '#t=0.1')} muted playsinline preload="metadata" tabindex="-1" aria-hidden="true"></video>` + SPEELTEKEN_HTML;
       tik = `openMediaSpeler('${jsAttr(url)}', 'video')`;
     } else {
       const ytId = extractYouTubeId(url);
       binnen = ytId
-        ? `<img class="pb-beeld" src="https://img.youtube.com/vi/${escHtml(ytId)}/hqdefault.jpg" alt="" loading="lazy">` +
-          `<span class="pb-label" data-media-url="${url}">${escHtml(platform)}</span>` + SPEELTEKEN_HTML
-        : `<span class="pb-kaart">` +
-          `<span class="pb-kaart-platform">${escHtml(platform)}</span>` +
-          `<span class="pb-kaart-titel" data-media-url="${url}">Tik om te openen</span>` +
-          `</span>`;
+        ? `<img class="hoes-img" src="https://img.youtube.com/vi/${escHtml(ytId)}/hqdefault.jpg" alt="${wat}" loading="lazy">` + SPEELTEKEN_HTML
+        : `<span class="pb-kaart"><span class="pb-kaart-platform">${escHtml(platform)}</span>` +
+          `<span class="pb-kaart-titel" data-media-url="${url}">Tik om te openen</span></span>`;
       tik = `openMediaSpeler('${jsAttr(url)}', 'link', null, '${jsAttr(platform)}')`;
     }
-
-    return `<button type="button" class="pb-item" role="group" aria-label="Uitgelicht ${i + 1} van ${items.length}" onclick="${tik}">${binnen}</button>`;
+    return `<button type="button" class="hoes-vlak" onclick="${tik}" aria-label="${wat}">${binnen}</button>`;
   }).join('');
 
-  const stippen = items.length > 1
-    ? `<div class="pb-stippen" id="${stippenId}" role="tablist" aria-label="Uitgelichte media">` +
-      items.map((_, i) =>
-        `<button type="button" class="pb-stip${i === 0 ? ' aan' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-label="Toon item ${i + 1} van ${items.length}" onclick="profielBannerNaar('${spoorId}', ${i})"></button>`
-      ).join('') + `</div>`
+  const meer = n > 1
+    ? `<button type="button" class="hoes-pijl vorige" aria-label="Vorig beeld" hidden>${HOES_PIJL(false)}</button>` +
+      `<button type="button" class="hoes-pijl volgende" aria-label="Volgend beeld">${HOES_PIJL(true)}</button>` +
+      `<div class="hoes-stippen" aria-hidden="true">${Array.from({ length: n }, (_, i) => `<span class="hoes-stip${i ? '' : ' aan'}"></span>`).join('')}</div>`
     : '';
 
-  return `<div class="profiel-banner">
-    <div class="pb-spoor" id="${spoorId}" data-stippen="${stippenId}">${vlakken}</div>
-    ${stippen}
+  return `<div class="hoes">
+    <div class="hoes-beeld"><div class="hoes-spoor">${eerste}${vlakken}</div>${meer}</div>
+    <div class="hoes-tekst"><div class="profile-name">${naam}</div><div class="profiel-regels">${o.regels}</div></div>
+    ${o.knoppen}
   </div>`;
 }
 
-// Eén lopende balk per pagina-opbouw. Bij elke nieuwe opbouw stoppen we de
-// oude tijd; het element eronder bestaat dan niet meer.
-const profielBannerTijden = new Map();
-
-function profielBannerRustig() {
+function hoesRustig() {
   return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function profielBannerNaar(spoorId, i) {
-  const spoor = document.getElementById(spoorId);
-  if (!spoor) return;
-  profielBannerStop(spoorId); // de gebruiker neemt het over
-  spoor.scrollTo({ left: i * spoor.clientWidth, behavior: profielBannerRustig() ? 'auto' : 'smooth' });
+// De tekstkleur van de hoes: wit (--op-foto) of antraciet (--op-foto-donker).
+// Leesbaar is: op de 5% slechtste plekken 4,5:1 en op de slechtste plek 3:1
+// (huisstijl §21, drempel voorstel Claude).
+const HOES_ANTRACIET = [82, 87, 95];
+function hoesLum(r, g, b) {
+  const a = [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
 }
 
-function profielBannerStop(spoorId) {
-  const t = profielBannerTijden.get(spoorId);
-  if (t) { clearInterval(t); profielBannerTijden.delete(spoorId); }
+// Tekent het beeld zoals het in de hoes staat (4:3, midden uitgesneden) en
+// beoordeelt het stuk waar de naam, de regel en de tekens staan: de onderste
+// 40%, over de volle breedte. Geeft null als het beeld niet te lezen is (een
+// beeld van een andere site zonder toestemming): dan geldt de veilige vorm.
+function hoesBeeldOordeel(m) {
+  const iw = m.naturalWidth || m.videoWidth, ih = m.naturalHeight || m.videoHeight;
+  if (!iw || !ih) return null;
+  let sw = iw, sh = iw * 3 / 4;
+  if (sh > ih) { sh = ih; sw = ih * 4 / 3; }
+  const c = document.createElement('canvas');
+  c.width = 96; c.height = 72;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(m, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, 96, 72);
+  const d = x.getImageData(0, 43, 96, 28).data; // gooit een fout als het beeld niet te lezen is
+  const La = hoesLum(...HOES_ANTRACIET), wit = [], ant = [];
+  let som = 0, mn = 1, mx = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const l = hoesLum(d[i], d[i + 1], d[i + 2]);
+    wit.push(1.05 / (l + 0.05));
+    ant.push((Math.max(l, La) + 0.05) / (Math.min(l, La) + 0.05));
+    som += l; mn = Math.min(mn, l); mx = Math.max(mx, l);
+  }
+  const maat = a => { const s = a.slice().sort((p, q) => p - q); return { p5: s[Math.floor(s.length * 0.05)], min: s[0] }; };
+  const w = maat(wit), z = maat(ant);
+  const best = w.p5 >= z.p5 ? w : z;
+  const waas = best.p5 < 4.5 || best.min < 3;
+  return {
+    // Met matglas: antraciet op een lichte plek, wit op een donkere.
+    donker: waas ? som / (d.length / 4) > 0.42 : w.p5 < z.p5,
+    waas,
+    // Hoe groter het verschil tussen licht en donker achter de naam, hoe dichter het matglas.
+    sterk: 0.4 + 0.45 * Math.min(1, (mx - mn) / 0.8),
+    canvas: c, beeld: m, sx: (iw - sw) / 2, sy: (ih - sh) / 2, sw, sh
+  };
 }
 
-function profielBannerStippenBijwerken(spoor) {
-  const houder = document.getElementById(spoor.dataset.stippen || '');
-  if (!houder || !spoor.clientWidth) return;
-  const nu = Math.round(spoor.scrollLeft / spoor.clientWidth);
-  houder.querySelectorAll('.pb-stip').forEach((s, i) => {
-    s.classList.toggle('aan', i === nu);
-    s.setAttribute('aria-selected', i === nu ? 'true' : 'false');
+// Het matglas: dezelfde foto, steeds waziger, vanaf 54% van de hoogte en
+// volledig op 80%, in vijf lagen (vervaging 1,5 · 4 · 8 · 14 · 24px), met een
+// waas die even geleidelijk oploopt (huisstijl §21). De lagen gebruiken een
+// kleine kopie van het beeld zoals het in de hoes staat: vervaagd zie je het
+// verschil niet, en een video krijgt zo ook matglas.
+function hoesWaasMaken(vlak, o) {
+  const c = document.createElement('canvas');
+  c.width = 240; c.height = 180;
+  c.getContext('2d').drawImage(o.beeld, o.sx, o.sy, o.sw, o.sh, 0, 0, 240, 180);
+  // Een kopie op het toestel zelf (canvas), geen link naar de opslag: het
+  // beeld is al geladen via fotoBronAttr().
+  const waasBeeld = c.toDataURL('image/jpeg', 0.8);
+  const lagen = [[1.5, 54, 64], [4, 58, 68], [8, 62, 72], [14, 66, 76], [24, 70, 80]].map(([px, van, tot]) =>
+    `<img alt="" src="${waasBeeld}" style="filter:blur(${px}px);-webkit-mask-image:linear-gradient(transparent ${van}%,#000 ${tot}%);mask-image:linear-gradient(transparent ${van}%,#000 ${tot}%)">`).join('');
+  const waas = document.createElement('span');
+  waas.className = 'hoes-waas';
+  waas.setAttribute('aria-hidden', 'true');
+  waas.innerHTML = lagen + '<span class="hoes-waas-tint"></span>';
+  vlak.style.setProperty('--waas', o.sterk.toFixed(2));
+  vlak.appendChild(waas);
+}
+
+// Meet één beeld zodra het geladen is en zet de uitkomst op het vlak.
+function hoesVlakMeten(vlak, klaar) {
+  const m = vlak.querySelector('.hoes-img');
+  // Een leeg podium of een linkkaart is donker: witte tekst.
+  if (!m) { vlak.dataset.tekst = 'licht'; return; }
+  const meet = () => {
+    let o = null;
+    try { o = hoesBeeldOordeel(m); } catch (e) { o = null; }
+    vlak.querySelector('.hoes-waas')?.remove();
+    vlak.classList.toggle('hoes-veilig', !o);
+    vlak.dataset.tekst = o && o.donker ? 'donker' : 'licht';
+    if (o && o.waas) { try { hoesWaasMaken(vlak, o); } catch (e) { vlak.classList.add('hoes-veilig'); } }
+    klaar();
+  };
+  const isVideo = m.tagName === 'VIDEO';
+  m.addEventListener(isVideo ? 'loadeddata' : 'load', meet);
+  // Weigert de opslag het meten (geen toestemming), dan laadt het beeld niet.
+  // Dan opnieuw zonder crossorigin: het beeld staat er, de veilige vorm geldt.
+  m.addEventListener('error', () => {
+    if (!m.hasAttribute('crossorigin')) return;
+    m.removeAttribute('crossorigin');
+    const src = m.getAttribute('src');
+    if (src) { m.removeAttribute('src'); m.setAttribute('src', src); if (isVideo) m.load(); }
   });
+  if (isVideo ? m.readyState >= 2 : (m.complete && m.naturalWidth)) meet();
 }
 
-// Wordt aangeroepen nadat een profiel in de pagina staat. Zonder element is
-// er niets te starten — net als bij het wiel (huisstijl §7.1): een verborgen
-// element heeft geen breedte, dus een gezette scrollpositie komt niet aan.
-function profielBannerStarten(root) {
-  const scope = root || document;
-  scope.querySelectorAll('.pb-spoor').forEach(spoor => {
-    const id = spoor.id;
-    profielBannerStop(id);
-
-    // Passief: een scroll-luisteraar die de browser niet mag ophouden.
-    // Huisstijl §16 verbiedt een niet-passieve luisteraar op een bewegend
-    // vlak; dit is dezelfde regel.
-    spoor.addEventListener('scroll', () => profielBannerStippenBijwerken(spoor), { passive: true });
-    // Zodra de gebruiker zelf swipet of tikt, stopt het doorschuiven. Het
-    // blijft daarna stil: iets dat wegdraait terwijl je kijkt, is erger dan
-    // iets dat stilstaat.
-    spoor.addEventListener('pointerdown', () => profielBannerStop(id), { passive: true });
-
-    if (spoor.children.length < 2 || profielBannerRustig()) return;
-
-    // TT-267 (15-09-2026, gemeld door Ronald): de balk bleef halverwege twee
-    // vlakken staan, en bleef daar staan. Gevolg: het eerste beeld was nog
-    // maar een streepje breed en de titel liep door de rechterrand. Vandaar
-    // deze nakijkstap: een halve seconde na elke sprong wordt gemeten of de
-    // balk precies op een vlak staat, en zo niet, dan wordt het zonder
-    // animatie rechtgezet. Dat werkt ongeacht de oorzaak — of de sprong nu
-    // onderweg werd afgebroken of de breedte intussen wijzigde.
-    const rechtzetten = () => {
-      const breedte = spoor.clientWidth;
-      if (!breedte || !spoor.isConnected) return;
-      const doel = Math.round(spoor.scrollLeft / breedte) * breedte;
-      if (Math.abs(spoor.scrollLeft - doel) > 2) spoor.scrollLeft = doel;
+// Na het plaatsen in de pagina: vegen volgen, de stippen en de pijltjes
+// bijwerken, elk beeld meten. Een verborgen element heeft geen breedte, dus
+// pas aanroepen als de hoes in de pagina staat (zoals bij het wiel, §7.1).
+function hoesStarten(root) {
+  (root || document).querySelectorAll('.hoes').forEach(hoes => {
+    const spoor = hoes.querySelector('.hoes-spoor');
+    const vlakken = [...spoor.children];
+    const stippen = [...hoes.querySelectorAll('.hoes-stip')];
+    const vorige = hoes.querySelector('.hoes-pijl.vorige');
+    const volgende = hoes.querySelector('.hoes-pijl.volgende');
+    // De naam en de regel houden rechts ruimte vrij voor delen en ⋯, tot 7px
+    // van het eerste teken: met twee knoppen 78px, de naam is dan op 390px
+    // 264px breed (huisstijl §21). Geteld, niet gemeten: het meldmenu wordt
+    // pas na het starten gevuld.
+    const knoppen = hoes.querySelector('.profiel-knoppen');
+    const n = knoppen ? knoppen.children.length : 0;
+    hoes.style.setProperty('--hoes-tekst-rechts', (n ? 36 * n + 6 : 16) + 'px');
+    const zet = () => {
+      const i = spoor.clientWidth ? Math.round(spoor.scrollLeft / spoor.clientWidth) : 0;
+      stippen.forEach((s, j) => s.classList.toggle('aan', j === i));
+      if (vorige) { vorige.hidden = i <= 0; volgende.hidden = i >= vlakken.length - 1; }
+      // Alles op de foto volgt het beeld dat in beeld is (huisstijl §21).
+      hoes.classList.toggle('tekst-donker', !!vlakken[i] && vlakken[i].dataset.tekst === 'donker');
     };
-    // Wijzigt de breedte — schermdraai, of de adresbalk van Android die
-    // verdwijnt — dan klopt de oude scrollstand niet meer.
-    if (window.ResizeObserver) {
-      const ro = new ResizeObserver(() => rechtzetten());
-      ro.observe(spoor);
-    }
-
-    profielBannerTijden.set(id, setInterval(() => {
-      if (!spoor.isConnected || !spoor.offsetParent) { profielBannerStop(id); return; }
-      const breedte = spoor.clientWidth;
-      if (!breedte) return;
-      const nu = Math.round(spoor.scrollLeft / breedte);
-      const volgend = (nu + 1) % spoor.children.length;
-      spoor.scrollTo({ left: volgend * breedte, behavior: 'smooth' });
-      setTimeout(rechtzetten, 600);
-    }, 5000));
+    // Passief: een scroll-luisteraar die de browser niet mag ophouden (§16).
+    spoor.addEventListener('scroll', zet, { passive: true });
+    const naar = r => spoor.scrollBy({ left: r * spoor.clientWidth, behavior: hoesRustig() ? 'auto' : 'smooth' });
+    if (vorige) { vorige.onclick = () => naar(-1); volgende.onclick = () => naar(1); }
+    vlakken.forEach(v => hoesVlakMeten(v, zet));
+    zet();
   });
 }
 

@@ -1118,11 +1118,9 @@ function bandPaginaHTML(b, kijker) {
   const beheer = kijker === 'beheerder';
   const foto = safeUrl(b.avatar_url);
   // De beheerder tikt op een lege bandfoto om er een te kiezen (TT-385 punt 2).
-  const fotoHTML = foto
-    ? `<img class="bandfoto" ${kleinFotoAttr(foto)} alt="${escHtml(b.name)}" onclick="openMediaLightbox('${jsAttr(foto)}')">`
-    : beheer
-      ? `<button type="button" class="bandfoto bandfoto-leeg bandfoto-kies" onclick="openBandTegels('${jsAttr(b.id)}')" aria-label="Kies een bandfoto">${AVATAR_T_FALLBACK}</button>`
-      : `<div class="bandfoto bandfoto-leeg">${AVATAR_T_FALLBACK}</div>`;
+  // TT-517 fase 4: de foto staat groot in de hoes; zonder foto tikt de
+  // beheerder op het lege podium.
+  const leegTik = !foto && beheer ? `openBandTegels('${jsAttr(b.id)}')` : null;
 
   // Het ⋯-menu: een lid kan de band verlaten (TT-385 punt 13); een bezoeker
   // meldt de band (TT-06, de inhoud zet zetVeiligheidMenu() erin). De
@@ -1168,17 +1166,13 @@ function bandPaginaHTML(b, kijker) {
   // één zin over wat er mist (besluit Ronald, g).
   const voortgang = beheer ? bandVoortgang(b) : null;
   const deelActie = voortgang && voortgang.pct < 100 ? `openBandDeelBlad('${jsAttr(b.id)}')` : null;
-  const bannerHTML = profielBannerHTML(b.media);
+  // TT-517 fase 4 (01-11-2026): de kop is de hoes, zoals bij de muzikant (huisstijl §21).
   let h = `
-    ${bannerHTML}
-    <div class="profiel-kop${bannerHTML ? ' op-banner' : ''}">
-      <div class="profiel-kop-rij">
-        ${fotoHTML}
-        ${profielKnoppenHTML('band', b.id, b.name, menuHTML, deelActie, beheer || b.delen_aan !== false)}
-      </div>
-      <div class="profile-name">${escHtml(b.name)}</div>
-      <div class="profiel-regels"><div class="profile-meta" style="margin-bottom:0;">${escHtml(b.city || '')}</div></div>
-    </div>
+    ${profielHoesHTML({
+      foto, naam: b.name, media: b.media, leegTik,
+      regels: `<div class="profile-meta" style="margin-bottom:0;">${escHtml(b.city || '')}</div>`,
+      knoppen: profielKnoppenHTML('band', b.id, b.name, menuHTML, deelActie, beheer || b.delen_aan !== false)
+    })}
     <div class="profile-badges">${tags}</div>
     ${b.pauze ? nietBeschikbaarMeldingHTML() : ''}`;
 
@@ -1387,9 +1381,9 @@ async function laadBandScherm(id, linkToegang) {
   vak.innerHTML = bandPaginaHTML(b, kijker);
   overneemKnoppenBijwerken(vak); // TT-528: vinkje bij covers die al in je repertoire staan
   voet.innerHTML = bandVoetHTML(b, kijker);
-  // Zelfde volgorde als bij het muzikantprofiel: pas na het plaatsen meten
-  // en laten schuiven (TT-265, TT-249, TT-293).
-  profielBannerStarten(vak);
+  // Zelfde volgorde als bij het muzikantprofiel: pas na het plaatsen starten
+  // en meten (TT-517 fase 4, TT-249, TT-293).
+  hoesStarten(vak);
   mediaTitelsBijwerken(vak);
   fitProfileName(vak);
   // TT-06: melden. Een band is te melden, niet te blokkeren.
