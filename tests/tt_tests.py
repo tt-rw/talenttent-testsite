@@ -13027,6 +13027,36 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
     check("geen paginafouten in blok 116", not fouten, "; ".join(fouten)[:300])
 
 
+# --------------------------------------------------------------------------
+# Blok 117 — TT-517 fase 10: het woordmerk in de mails in warmgeel
+# --------------------------------------------------------------------------
+def blok_tt517_fase10():
+    # TT-517 fase 10 (01-11-2026, huisstijl §1): TENT in mail-woordmerk.png is
+    # warmgeel #FFB81C; TALENT #f0f0f0 en de ondergrond #0d0d0d blijven; 440×46
+    # met 18px lucht links en rechts (systeem-naslag §7). De mailfuncties zelf
+    # staan buiten de repo (_niet-uploaden/edge-functions); die meet Claude
+    # tegen het register.
+    print("\nBlok 117 — TT-517 fase 10: het woordmerk in de mails")
+    try:
+        from PIL import Image
+    except ImportError:
+        check("mail-woordmerk.png meten (PIL nodig)", False, "PIL ontbreekt")
+        return
+    im = Image.open(os.path.join(ROOT, "mail-woordmerk.png")).convert("RGB")
+    kl = sorted(im.getcolors(10 ** 6), reverse=True)
+    check("mail-woordmerk.png is 440×46", im.size == (440, 46), str(im.size))
+    kleuren = [c[1] for c in kl[:3]]
+    check("ondergrond #0d0d0d, TALENT #f0f0f0, TENT warmgeel #FFB81C",
+          kleuren == [(13, 13, 13), (240, 240, 240), (255, 184, 28)], json.dumps(kleuren))
+    check("het oude geel staat niet meer in het woordmerk van de mails",
+          not any(c[1] == (245, 197, 24) for c in kl))
+    W, H = im.size
+    px = im.load()
+    inkt = [x for x in range(W) if any(max(px[x, y]) > 60 for y in range(H))]
+    check("18px lucht links en rechts van het woordmerk", inkt[0] == 18 and W - 1 - inkt[-1] == 18,
+          f"{inkt[0]} / {W - 1 - inkt[-1]}")
+
+
 def main():
     print("The Talent Tent — vaste testset, laag 1 (TT-231)")
     blok1_statisch()
@@ -13039,6 +13069,7 @@ def main():
     blok_tt517_fase7()
     blok_tt517_fase8()
     blok_tt517_fase9()
+    blok_tt517_fase10()
     blok_0_rijen()
     blok_browser()
     blok_xss()
