@@ -2548,7 +2548,9 @@ function profielHoesHTML(o) {
       `<div class="hoes-stippen" aria-hidden="true">${Array.from({ length: n }, (_, i) => `<span class="hoes-stip${i ? '' : ' aan'}"></span>`).join('')}</div>`
     : '';
 
-  return `<div class="hoes">
+  // TT-517 fase 8: de tekst voor het visitekaartje (kaartVoorDelen() in musicians.js).
+  const kaart = o.kaart ? ` data-kaart="${escHtml(JSON.stringify(o.kaart))}"` : '';
+  return `<div class="hoes"${kaart}>
     <div class="hoes-beeld"><div class="hoes-spoor">${eerste}${vlakken}</div>${meer}${knop}</div>
     <div class="hoes-tekst"><div class="profile-name">${naam}</div><div class="profiel-regels">${o.regels}</div></div>
     ${o.knoppen}
@@ -2731,6 +2733,202 @@ function hoesBundelZetten(hoes) {
     `<radialGradient id="${id}e"><stop offset="0" ${geel} stop-opacity=".5"/><stop offset="1" ${geel} stop-opacity="0"/></radialGradient></defs>` +
     `<g filter="url(#${id}z)" fill="url(#${id}l)">${bundel(Math.round(W * 0.06))}${bundel(Math.round(W * 0.94))}</g>` +
     `<ellipse cx="${Math.round(x)}" cy="${y}" rx="${Math.round((x1 - x0) * 0.62)}" ry="${Math.round(H * 0.11)}" fill="url(#${id}e)"/></svg>`;
+}
+
+// ─── TT-517 fase 8: het visitekaartje (huisstijl §22, besluit Ronald 31-10-2026) ─
+// Wie deelt, stuurt een vierkant beeld mee: 1080 x 1080, gemaakt op het toestel
+// zelf, zonder server en zonder iets in de database. Bovenaan de hoes zoals op
+// het profiel (4:3, 1080 x 810): het eerste beeld met de naam en de regel, in
+// dezelfde tekstkleur en met hetzelfde matglas; zonder delen, ⋯ en stippen.
+// Daaronder, op het podium, links wat iemand speelt en rechts het woordmerk.
+// Het beeld is wat een bezoeker zonder account ziet (kaartBeeldOphalen()):
+// onder de 16 nooit de foto maar het wazige beeld (§18.7), zonder foto de
+// schijnwerper (§21). Een kaart kan overal terechtkomen.
+const KAART_PX = 1080, KAART_HOES = 810, KAART_MARGE = 48;
+// De schaal van de hoes op het profiel (358px breed op 390px) naar de kaart.
+const KAART_S = KAART_PX / 358;
+// Lettermaten in pixels van de kaart. In een chat staat de kaart circa 250px
+// breed: daar is elke maat 0,23 keer zo groot. Besluit Ronald (01-11-2026,
+// (h) "B"): de kleinste tekst in een chat 11px, de kleinste letter van de app.
+// In een chat: naam 22, regel 11, instrumenten 15, genres 11, woordmerk 15px.
+const KAART_MATEN = { naam: 95, regel: 48, wat: 65, onder: 48, merk: 65 };
+
+function kaartDoek(w, h) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
+  const x = c.getContext('2d');
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  return [c, x];
+}
+
+// Vervagen zonder het filter van het canvas (dat kent niet elke browser):
+// telkens halveren, dan in stappen terug naar de volle maat.
+function kaartVaag(bron, px) {
+  const w = bron.width, h = bron.height;
+  const n = Math.max(1, Math.round(Math.log2(px * 1.6)));
+  let c = bron;
+  for (let i = 0; i < n; i++) { const [d, y] = kaartDoek(c.width / 2, c.height / 2); y.drawImage(c, 0, 0, d.width, d.height); c = d; }
+  for (let i = n - 1; i >= 0; i--) { const [d, y] = kaartDoek(w / 2 ** i, h / 2 ** i); y.drawImage(c, 0, 0, d.width, d.height); c = d; }
+  return c;
+}
+
+// Een lijst op één regel met " · ", zoveel als er past. Past het eerste niet,
+// dan wordt de letter kleiner.
+function kaartRegel(x, lijst, gewicht, maat, breed) {
+  let tekst = '', f = maat;
+  x.font = `${gewicht} ${f}px Inter`;
+  for (const it of lijst) {
+    const nieuw = tekst ? tekst + ' · ' + it : it;
+    if (x.measureText(nieuw).width > breed) break;
+    tekst = nieuw;
+  }
+  if (!tekst && lijst.length) {
+    tekst = lijst[0];
+    f = Math.floor(f * breed / x.measureText(tekst).width);
+    x.font = `${gewicht} ${f}px Inter`;
+  }
+  return { tekst, f };
+}
+
+// De basislijn van een regel tekst van maat f in een regel van f x lh hoog
+// (Inter: boven 0,97 em, onder 0,24 em), zoals de browser hem zet.
+const kaartBasis = (boven, f, lh) => boven + (lh * f - 1.21 * f) / 2 + 0.97 * f;
+
+// g: { naam, regel, wat: [], onder: [], zoekt: [] }; beeld: { img, wazig } of null.
+async function kaartMaken(g, beeld) {
+  if (document.fonts) {
+    await Promise.all(['900 40px Inter', '700 40px Inter', '400 40px Inter', '40px "TT Woordmerk"'].map(f => document.fonts.load(f)));
+  }
+  const M = KAART_MATEN, W = KAART_PX, H = KAART_HOES, S = KAART_S;
+  const [c, x] = kaartDoek(W, W);
+  x.fillStyle = '#101114';
+  x.fillRect(0, 0, W, W);
+
+  // De naam op één regel; een lange naam wordt kleiner (zoals fitProfileName()).
+  let n = M.naam;
+  x.font = `900 ${n}px Inter`;
+  const ruimte = W - 2 * KAART_MARGE;
+  if (x.measureText(g.naam).width > ruimte) { n = Math.floor(n * ruimte / x.measureText(g.naam).width); x.font = `900 ${n}px Inter`; }
+  const naamBreed = x.measureText(g.naam).width;
+  // Van onder naar boven, zoals .hoes-tekst: 24px van de onderkant, de regel
+  // (lijnhoogte 1,5) met 4px erboven, de naam (lijnhoogte 1,1).
+  const r = M.regel;
+  const regelBoven = H - 24 * S - 1.5 * r;
+  const naamBoven = regelBoven - 4 * S * r / 36 - 1.1 * n;
+  const naamBasis = kaartBasis(naamBoven, n, 1.1);
+
+  let kleur = '#FFFFFF';
+  if (beeld) {
+    const img = beeld.img;
+    let o = null;
+    try { o = hoesBeeldOordeel(img); } catch (e) { o = null; }
+    const [h, hx] = kaartDoek(W, H);
+    if (beeld.wazig) {
+      // Zoals .hoes-wazig: het hele beeld, 1,2 keer zo groot, 24px vervaagd.
+      const sc = Math.max(W / img.naturalWidth, H / img.naturalHeight) * 1.2;
+      const iw = img.naturalWidth * sc, ih = img.naturalHeight * sc;
+      hx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih);
+      hx.drawImage(kaartVaag(h, 24 * S), 0, 0);
+    } else if (o) {
+      hx.drawImage(img, o.sx, o.sy, o.sw, o.sh, 0, 0, W, H);
+    } else {
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      let sw = iw, sh = iw * 3 / 4;
+      if (sh > ih) { sh = ih; sw = ih * 4 / 3; }
+      hx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, W, H);
+    }
+    x.drawImage(h, 0, 0);
+    if (o && o.waas) {
+      // Het matglas van hoesWaasMaken(): vijf lagen, steeds waziger.
+      for (const [px, van, tot] of [[1.5, 54, 64], [4, 58, 68], [8, 62, 72], [14, 66, 76], [24, 70, 80]]) {
+        const laag = kaartVaag(h, px * S), lx = laag.getContext('2d');
+        const m = lx.createLinearGradient(0, H * van / 100, 0, H * tot / 100);
+        m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(1, '#000');
+        lx.globalCompositeOperation = 'destination-in';
+        lx.fillStyle = m; lx.fillRect(0, 0, W, H);
+        x.drawImage(laag, 0, 0);
+      }
+    }
+    // De waas van .hoes-waas-tint, of de veilige vorm als het beeld niet te meten is.
+    const sterk = !o ? null : o.waas ? (o.donker ? o.sterk + 0.2 : o.sterk) : 0;
+    const tint = !o ? [0, 0, 0] : o.donker ? [255, 255, 255] : [0, 0, 0];
+    const stops = !o ? [[54, 0], [61, 0.1], [67, 0.3], [73, 0.6], [80, 0.85]]
+      : [[54, 0], [61, 0.12 * sterk], [67, 0.35 * sterk], [73, 0.7 * sterk], [80, sterk]];
+    if (!o || sterk) {
+      const t = x.createLinearGradient(0, 0, 0, H);
+      stops.forEach(([p, a]) => t.addColorStop(p / 100, `rgba(${tint.join(',')},${a})`));
+      x.fillStyle = t; x.fillRect(0, 0, W, H);
+    }
+    if (o && o.donker) kleur = '#52575F';
+  } else {
+    // De schijnwerper van hoesBundelZetten(): twee bundels uit de bovenhoeken
+    // die samen op de naam vallen, en een lichtvlek op de naam.
+    const x0 = KAART_MARGE - 8 * S, x1 = KAART_MARGE + naamBreed + 8 * S;
+    const ym = naamBasis - 0.365 * n, xm = (x0 + x1) / 2;
+    const bron = W * 0.07;
+    const [b, bx] = kaartDoek(W, H);
+    for (const lx of [W * 0.06, W * 0.94]) {
+      const v = bx.createLinearGradient(0, -8, 0, ym);
+      v.addColorStop(0, 'rgba(255,184,28,.36)'); v.addColorStop(1, 'rgba(255,184,28,.12)');
+      bx.fillStyle = v;
+      bx.beginPath(); bx.moveTo(lx - bron, -8); bx.lineTo(lx + bron, -8); bx.lineTo(x1, ym); bx.lineTo(x0, ym); bx.closePath(); bx.fill();
+    }
+    x.drawImage(kaartVaag(b, Math.max(4, W / 60)), 0, 0);
+    const rx = (x1 - x0) * 0.62, ry = H * 0.11;
+    x.save(); x.translate(xm, ym); x.scale(1, ry / rx);
+    const e = x.createRadialGradient(0, 0, 0, 0, 0, rx);
+    e.addColorStop(0, 'rgba(255,184,28,.5)'); e.addColorStop(1, 'rgba(255,184,28,0)');
+    x.fillStyle = e; x.beginPath(); x.arc(0, 0, rx, 0, 2 * Math.PI); x.fill(); x.restore();
+  }
+
+  x.fillStyle = kleur;
+  x.font = `900 ${n}px Inter`;
+  x.fillText(g.naam, KAART_MARGE, naamBasis);
+  x.font = `400 ${r}px Inter`;
+  x.fillText(g.regel, KAART_MARGE, kaartBasis(regelBoven, r, 1.5));
+
+  // Onder de hoes: het woordmerk rechts, in het midden van het vlak.
+  const vlakMidden = (H + W) / 2;
+  x.font = `${M.merk}px "TT Woordmerk"`;
+  const tussen = M.merk * 2 / 28;
+  const wT = x.measureText('TALENT').width, wN = x.measureText('TENT').width;
+  const mm = x.measureText('TALENTTENT');
+  const merkBasis = vlakMidden + (mm.actualBoundingBoxAscent - mm.actualBoundingBoxDescent) / 2;
+  const merkX = W - KAART_MARGE - wT - tussen - wN;
+  x.fillStyle = '#FFFFFF'; x.fillText('TALENT', merkX, merkBasis);
+  x.fillStyle = '#FFB81C'; x.fillText('TENT', merkX + wT + tussen, merkBasis);
+
+  // Links wat iemand speelt (vet), daaronder de genres (grijs) of wat een
+  // band zoekt (een pil in warmgeel).
+  const breed = merkX - 40 - KAART_MARGE;
+  const wat = kaartRegel(x, g.wat || [], 700, M.wat, breed);
+  const zoekt = (g.zoekt || []).length;
+  const padX = M.onder * 0.6, padY = M.onder * 0.3;
+  const onder = zoekt
+    ? kaartRegel(x, g.zoekt.map((z, i) => (i ? '' : 'Zoekt ') + String(z).toLocaleLowerCase('nl')), 700, M.onder, breed - 2 * padX)
+    : kaartRegel(x, g.onder || [], 400, M.onder, breed);
+  const hWat = wat.tekst ? wat.f * 1.25 : 0;
+  const hOnder = !onder.tekst ? 0 : zoekt ? onder.f * 1.25 + 2 * padY : onder.f * 1.3;
+  const tussenRegels = hWat && hOnder ? M.onder * (zoekt ? 0.35 : 0.15) : 0;
+  let boven = vlakMidden - (hWat + tussenRegels + hOnder) / 2;
+  if (wat.tekst) {
+    x.font = `700 ${wat.f}px Inter`; x.fillStyle = '#FFFFFF';
+    x.fillText(wat.tekst, KAART_MARGE, kaartBasis(boven, wat.f, 1.25));
+    boven += hWat + tussenRegels;
+  }
+  if (onder.tekst && zoekt) {
+    x.font = `700 ${onder.f}px Inter`;
+    const pw = x.measureText(onder.tekst).width + 2 * padX;
+    x.fillStyle = '#FFB81C';
+    const rr = hOnder / 2;
+    x.beginPath(); x.arc(KAART_MARGE + rr, boven + rr, rr, Math.PI / 2, Math.PI * 1.5); x.arc(KAART_MARGE + pw - rr, boven + rr, rr, -Math.PI / 2, Math.PI / 2); x.closePath(); x.fill();
+    x.fillStyle = '#000000';
+    x.fillText(onder.tekst, KAART_MARGE + padX, kaartBasis(boven + padY, onder.f, 1.25));
+  } else if (onder.tekst) {
+    x.font = `400 ${onder.f}px Inter`; x.fillStyle = '#B9B9B9';
+    x.fillText(onder.tekst, KAART_MARGE, kaartBasis(boven, onder.f, 1.3));
+  }
+  return c;
 }
 
 // TT-457 (10-10-2026, besluit Ronald): de zin "niet beschikbaar" op een

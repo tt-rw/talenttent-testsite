@@ -68,6 +68,9 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
       foto: avatarSrc, wazig: wazigBron(m.avatar_url), naam: displayName, media: m.musician_media,
       // TT-517 fase 6: zonder foto ziet alleen de eigenaar "Voeg een foto toe".
       fotoToevoegen: isOwn ? 'voegFotoToe()' : null,
+      // TT-517 fase 8: de tekst van het visitekaartje (kaartMaken() in utils.js).
+      kaart: { id: m.id, naam: displayName, regel: `${age} jaar · ${m.city || ''}`,
+               wat: m.musician_instruments.map(x => x.instrument), onder: m.musician_genres.map(x => x.genre) },
       // TT-420 (09-10-2026, Ronald): geen tweede naam op het profiel. Er staat één naam: de gekozen.
       regels: `<div class="profile-meta" style="margin-bottom:0;">${age} jaar · ${escHtml(m.city)}${m.distance_km != null ? ` · ${m.distance_km.toFixed(1)} km` : ''}</div>`,
       knoppen: profielKnoppenHTML('profiel', m.id, displayName, ownerMenuHTML + veiligheidPlekHTML, null, isOwn || m.delen_aan !== false)
@@ -198,17 +201,96 @@ async function shareProfile(kind, id, name) {
     text: `Bekijk het ${label} van ${name} op The Talent Tent.`,
     url
   };
-  if (navigator.share) {
+  // TT-517 fase 8 (huisstijl §22): het visitekaartje gaat mee. Neemt het
+  // deelmenu een beeld aan (telefoon), dan de kaart en de link samen. Zo niet
+  // (meestal een computer), dan de link naar het klembord en de kaart bij de
+  // downloads. Lukt de kaart niet, dan gaat alleen de link, zoals eerder.
+  const kanBeeld = !!(navigator.share && navigator.canShare &&
+    navigator.canShare({ files: [new File([''], 'kaart.jpg', { type: 'image/jpeg' })] }));
+  if (kanBeeld) {
+    const kaart = await kaartVoorDelen(kind, id);
+    if (kaart) {
+      try { await navigator.share({ ...shareData, files: [kaart] }); return; } catch (e) {
+        if (e && e.name === 'AbortError') return; // eigen annulering, geen foutmelding nodig
+        logCaught('shareProfile kaart', e);
+      }
+    }
+  }
+  if (navigator.share && (kanBeeld || !navigator.clipboard)) {
     try { await navigator.share(shareData); } catch (e) { /* eigen annulering, geen foutmelding nodig */ }
     return;
   }
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Link gekopieerd naar klembord');
   } catch (e) {
     logCaught('shareProfile', e);
     showToast('Kopiëren lukt niet op dit apparaat. Kopieer de link zelf: ' + url);
+    return;
   }
+  const kaart = await kaartVoorDelen(kind, id);
+  if (kaart) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(kaart);
+    a.download = kaart.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+  showToast(kaart ? 'Link gekopieerd. Je kaart staat bij je downloads.' : 'Link gekopieerd naar klembord');
+}
+
+// TT-517 fase 8: de kaart als bestand, of null. Het beeld is wat een bezoeker
+// zonder account ziet: de app vraagt het op zonder inlogbewijs, met de
+// openbare functie van de database (dezelfde regel als TT-45: de database
+// beslist wat afgeschermd is). De tekst komt van de hoes op het scherm
+// (data-kaart). Duurt het langer dan 3 seconden, dan geen kaart: het deelmenu
+// mag niet lang op zich laten wachten.
+async function kaartVoorDelen(kind, id) {
+  const hoes = [...document.querySelectorAll('.hoes[data-kaart]')]
+    .find(h => { try { return JSON.parse(h.dataset.kaart).id === id; } catch (e) { return false; } });
+  if (!hoes) return null;
+  const maken = (async () => {
+    const g = JSON.parse(hoes.dataset.kaart);
+    const src = await kaartBeeldOphalen(kind, id);
+    const beeld = await kaartBeeldLaden(src);
+    const c = await kaartMaken(g, beeld);
+    const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.9));
+    if (!blob) return null;
+    const naam = String(g.naam).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'kaart';
+    return new File([blob], `talenttent-${naam}.jpg`, { type: 'image/jpeg' });
+  })().catch(e => { logCaught('kaartVoorDelen', e); return null; });
+  return Promise.race([maken, new Promise(ok => setTimeout(() => ok(null), 3000))]);
+}
+
+// De profielfoto of bandfoto zoals een bezoeker zonder account hem krijgt: de
+// foto, de wazige versie ('data:…' of 'afgeschermd'), of null (geen foto).
+// Alleen de sleutel van de app gaat mee, geen inlogbewijs.
+async function kaartBeeldOphalen(kind, id) {
+  const fn = kind === 'band' ? 'tt_get_bands_public' : 'tt_get_musicians_public';
+  const r = await ttFetchMetHerhaling(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids: [id] })
+  });
+  if (!r.ok) throw new Error(`${fn}: ${r.status}`);
+  const rij = (await r.json())[0];
+  if (!rij) throw new Error(`${fn}: geen rij`);
+  return rij.avatar_url || null;
+}
+
+// Het beeld laden zodat het canvas het mag lezen: { img, wazig } of null.
+async function kaartBeeldLaden(src) {
+  if (!src) return null;
+  const img = new Image();
+  const w = wazigBron(src);
+  if (w) img.src = w;
+  else {
+    // Een webadres, geen HTML: daarom niet door safeUrl() (die zet & om).
+    if (!/^https:\/\//i.test(String(src))) return null;
+    img.crossOrigin = 'anonymous';
+    await fotoBronZetten(img, String(src));
+  }
+  await img.decode();
+  return { img, wazig: !!w };
 }
 
 // TT-380 (30-09-2026, besluiten Ronald): delen is een icoon bij de naam, op

@@ -1169,6 +1169,8 @@ function bandPaginaHTML(b, kijker) {
   let h = `
     ${profielHoesHTML({
       foto, wazig: wazigBron(b.avatar_url), naam: b.name, media: b.media, fotoToevoegen,
+      // TT-517 fase 8: het visitekaartje; een band die iemand zoekt, toont dat in een pil.
+      kaart: { id: b.id, naam: b.name, regel: b.city || '', wat: b.genres, onder: [], zoekt: b.wanted },
       regels: `<div class="profile-meta" style="margin-bottom:0;">${escHtml(b.city || '')}</div>`,
       knoppen: profielKnoppenHTML('band', b.id, b.name, menuHTML, deelActie, beheer || b.delen_aan !== false)
     })}
