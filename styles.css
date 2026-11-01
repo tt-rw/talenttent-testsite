@@ -1392,10 +1392,15 @@
   .btn-row .btn { min-width: 0; }
   /* TT-517 fase 11 (besluit Ronald 01-11-2026, "2"): past de tekst van een
      knop niet naast de andere, dan onder elkaar, over de volle breedte; de
-     handeling boven, de knop met rand eronder. initKnoppenRij() in core.js
-     zet de klasse. */
+     handeling boven, de knop met rand (die in de HTML altijd eerst staat)
+     eronder. initKnoppenRij() in core.js zet de klasse. Een raster blijft
+     (TT-228). Bewust een vaste regel per knop en niet `order`: .btn heeft
+     `transition: all`, en dan schuift `order` mee; een browser die niet
+     tekent, laat hem halverwege staan (gemeten in het browservenster, zelfde
+     soort als fase 8 en 9). Een regel (grid-row) schuift niet. */
   .btn-row.btn-rij-stapel { grid-auto-flow: row; }
-  .btn-row.btn-rij-stapel > .btn-ghost { order: 1; }
+  .btn-row.btn-rij-stapel > .btn { grid-row: 1; }
+  .btn-row.btn-rij-stapel > .btn-ghost { grid-row: 2; }
   /* TT-316 (24-09-2026): in een rij is een knop op 390px zo'n 175px breed.
      Met 28px opvulling links en rechts liep de tekst over twee regels (58px
      hoog, op de zoekpagina 62px). 12px houdt hem op één regel en op 44px. */

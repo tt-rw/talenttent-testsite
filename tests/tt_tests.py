@@ -13077,6 +13077,13 @@ def blok_tt517_fase11():
     print("\nBlok 118 — TT-517 fase 11: eindcontrole")
     css = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
     check("de dode .result-card is weg uit styles.css", ".result-card" not in css)
+    # 8D (01-11-2026): de volgorde onder elkaar stond eerst met `order` op de knop. .btn heeft
+    # `transition: all`, dus `order` schoof mee; in het browservenster (dat niet tekent) bleef
+    # Annuleren boven staan (gemeten). De volgorde staat met een vaste regel (grid-row), nooit `order`.
+    stapel = [r for r in re.findall(r"([^{}]+)\{([^{}]*)\}", css) if "btn-rij-stapel" in r[0]]
+    check("knoppen onder elkaar: een vaste regel per knop (grid-row), geen `order` op een knop",
+          stapel and any("grid-row: 2" in r[1] and "btn-ghost" in r[0] for r in stapel)
+          and not any(re.search(r"(?<![\w-])order\s*:", r[1]) for r in stapel), json.dumps(stapel)[:300])
     stub_js = open(STUB, encoding="utf-8").read()
     httpd, port = serve()
     with sync_playwright() as p:
