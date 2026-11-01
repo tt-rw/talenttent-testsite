@@ -12937,6 +12937,15 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
         res["o_donker"] = overgang(thema="dark")
         res["o_computer"] = overgang(breed=1280)
         res["o_rustig"] = overgang(rustig=True)
+        # 8D (01-11-2026): een browser die niet tekent. De beweging staat stil, dus
+        # "klaar" komt nooit; de vorige view mag dan toch niet blijven staan.
+        ctx, page, raak, schuif, los = telefoon()
+        page.evaluate("showView('instellingen')"); page.wait_for_timeout(400)
+        page.evaluate("(() => { const o = Element.prototype.animate; Element.prototype.animate = function () { const a = o.apply(this, arguments); a.pause(); return a; }; })()")
+        page.evaluate("openProfielScherm('m2')"); page.wait_for_timeout(600)
+        res["stil"] = page.evaluate("""() => ({ zichtbaar: [...document.querySelectorAll('.app-view')].filter(v => getComputedStyle(v).display !== 'none').map(v => v.id),
+          klassen: document.querySelectorAll('.view-weg, .view-erin, .view-profiel-schuift').length })""")
+        ctx.close()
 
         # Minder beweging: geen indrukken en geen vliegend bericht.
         ctx, page, raak, schuif, los = telefoon(rustig=True)
@@ -13005,6 +13014,10 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
         check(f"[{naam}] snel heen en terug: de eerste overgang wordt afgemaakt, één scherm in beeld",
               o["snel"]["zichtbaar"] == ["view-instellingen"] and o["snel"]["klassen"] == 0, json.dumps(o["snel"]))
         check(f"[{naam}] een omleiding (een link) wisselt in één keer", o["omleiding"] == 0, str(o["omleiding"]))
+    check("tekent de browser niet (beweging staat stil), dan ruimt de overgang toch op: één scherm in beeld (8D)",
+          res["stil"]["zichtbaar"] == ["view-profiel"] and res["stil"]["klassen"] == 0, json.dumps(res["stil"]))
+    check("de overgang wacht niet alleen op het einde van de beweging: er is een vangnet-timer (8D)",
+          "vangnet = setTimeout(klaar, SCHUIF_MS + 80);" in core)
     r = res["o_rustig"]
     check("minder beweging: het profiel staat er in één keer, heen en terug",
           r["midden"]["profielX"] == 0 and not r["midden"]["lijstWeg"] and not r["terug_midden"]["profielWeg"]

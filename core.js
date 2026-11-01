@@ -1336,9 +1336,11 @@ function schuifProfiel(vorigeView, view, mode, oudEl, oudVak, oudKind) {
     profiel.animate(heen ? profielIn : [...profielIn].reverse(), opties),
     lijst.animate(heen ? lijstUit : [...lijstUit].reverse(), opties)
   ];
+  let vangnet = 0;
   const klaar = () => {
     if (schuifKlaar !== klaar) return;
     schuifKlaar = null;
+    clearTimeout(vangnet);
     animaties.forEach(a => a.cancel());
     oudEl.classList.remove('view-weg');
     oudEl.style.top = oudEl.style.left = oudEl.style.width = '';
@@ -1347,6 +1349,11 @@ function schuifProfiel(vorigeView, view, mode, oudEl, oudVak, oudKind) {
   };
   schuifKlaar = klaar;
   animaties[0].finished.then(klaar, klaar);
+  // 8D (01-11-2026): tekent de browser niet (een venster dat niet in beeld is),
+  // dan loopt de beweging niet en komt "klaar" nooit; de vorige view bleef dan
+  // staan. Zelfde soort fout als decode() bij de kaart (fase 8). Een timer ruimt
+  // daarom altijd op, ruim na het einde van de beweging (zoals het keuzemenu).
+  vangnet = setTimeout(klaar, SCHUIF_MS + 80);
 }
 
 // ─── De landingspagina (TT-61, 30-09-2026, besluiten Ronald) ────────────────
