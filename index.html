@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261101g">
+<link rel="stylesheet" href="styles.css?v=20261101h">
 </head>
 <body>
 
@@ -2498,7 +2498,7 @@
     <div class="backend-error-title">De app kan nu niet starten</div>
     <p>Een onderdeel van The Talent Tent is niet geladen. Daardoor werkt inloggen en zoeken op dit moment niet.</p>
     <p class="sub">Dit komt meestal door een tijdelijke storing of door je internetverbinding. Probeer het opnieuw. Blijft de melding staan? Mail dan naar contact@talenttent.org.</p>
-    <button type="button" onclick="location.reload()">Opnieuw proberen</button>
+    <button type="button" class="btn btn-primary" onclick="location.reload()">Opnieuw proberen</button>
   </div>
 </div>
 <script>

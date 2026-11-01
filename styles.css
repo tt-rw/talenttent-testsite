@@ -83,11 +83,13 @@
     --merk: #FFB81C;
     --merk-tekst: #000;
     --merk-hover: #FFC444;
-    /* De gekozen stand van elke keuzeknop (huisstijl §5.1). */
-    --gekozen-vlak: rgba(255,255,255,0.05);
+    /* De gekozen stand van elke keuzeknop (huisstijl §5.1). TT-517 fase 11
+       (besluit Ronald 01-11-2026, B): in donker ook een geel vlak met donkere
+       tekst, zoals in licht. Was een gouden rand met gouden tekst op wit 5%. */
+    --gekozen-vlak: #FFB81C;
     --gekozen-rand: #FFB81C;
-    --gekozen-tekst: #FFB81C;
-    --gekozen-bijschrift: var(--muted);     /* toelichting op een gekozen doelkaart */
+    --gekozen-tekst: #1E1E1E;
+    --gekozen-bijschrift: rgba(30,30,30,0.8); /* toelichting op een gekozen doelkaart */
     --keuze-vlak: var(--surface2);          /* een keuzeknop die niet gekozen is */
     --keuze-rand: var(--border);            /* rand van een keuzeknop */
     /* Een zweem over de ondergrond: aanwijzen, ongelezen, uitgelicht. */
@@ -172,7 +174,7 @@
     --merk: #FFB81C;
     --merk-tekst: #1E1E1E;
     --merk-hover: #FFC444;
-    --gekozen-vlak: #FFB81C;       /* licht: geel vlak; donker: gouden rand (Ronald) */
+    --gekozen-vlak: #FFB81C;       /* licht en donker: geel vlak (TT-517 fase 11, B) */
     --gekozen-rand: #FFB81C;
     --gekozen-tekst: #1E1E1E;
     --gekozen-bijschrift: rgba(30,30,30,0.8);
@@ -539,6 +541,9 @@
     letter-spacing: 2px;
     text-transform: uppercase;
     font-weight: 500;
+    /* TT-517 fase 11: op 360px brak "STAP 1 VAN 5" over twee regels. Nu
+       altijd één regel; de streepjes ervoor geven de ruimte (flex). */
+    white-space: nowrap;
   }
 
   /* Wizard-stappen (2025-08-25, punt A uit het mobiel-first-voorstel):
@@ -1003,10 +1008,13 @@
      gouden rand, gouden vette tekst. Maat, opvulling en letter staan per
      soort; kleur, rand en hoek staan alleen hier. Een eigen kleur of rand
      bij één soort is een fout (projectinstructies §2, regel 11). */
+  /* TT-517 fase 11 (besluit Ronald 01-11-2026, B: "alles rond"): elke
+     keuzeknop is een pil, zoals elke actieknop. Elke knop rond, elk veld
+     hoekig. Was 8px (fase 2). */
   .tag, .level-btn, .segmented-btn, .search-mode-tab, .media-tab, .goal-card, .level-choice {
     background: var(--keuze-vlak);
     border: var(--line) solid var(--keuze-rand);
-    border-radius: 8px;
+    border-radius: 999px;
     color: var(--text);
     font-weight: 400;
     font-style: normal;
@@ -1045,7 +1053,7 @@
   .add-link-btn {
     background: transparent;
     border: var(--line) dashed var(--border);
-    border-radius: 8px;
+    border-radius: 999px; /* TT-517 fase 11, B: ook de gestippelde knop een pil */
     /* TT-U23 (12-08-2026): tikdoel minimaal 44px hoog, randen meegerekend. */
     box-sizing: border-box;
     display: inline-flex;
@@ -1291,6 +1299,9 @@
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
+    /* TT-517 fase 11 (besluit Ronald 01-11-2026, 2): een doelkaart van drie
+       regels is een kaart, geen pil: hoek 16px zoals een tegel. */
+    border-radius: var(--radius);
   }
 
   /* Gekozen: zie het TT-316-blok bij .tag. :hover staat in de guard. */
@@ -1346,6 +1357,10 @@
        groter zodat het meer vullend wordt"): gewone letters, 16px, in beide
        thema's. Was 14px in hoofdletters met 1px letterafstand. */
     font-size: 15px;
+    /* TT-517 fase 11: vaste regelhoogte. Met de standaardregelhoogte van Inter
+       (circa 18,2px) werd elke knop 45px in plaats van 44px (huisstijl §6),
+       zoals eerder het invulveld (26-10-2026). 13 + 18 + 13 = 44. */
+    line-height: 18px;
     font-weight: 700;
     letter-spacing: 0;
     text-transform: none;
@@ -1412,6 +1427,12 @@
     background: transparent;
     color: var(--text);
     border: var(--line) solid var(--rand-knop);
+  }
+  /* TT-517 fase 11: een knop met rand is even hoog als een knop zonder rand
+     (44px); de rand gaat van de opvulling af, niet erbij. */
+  .btn-ghost, .btn-danger {
+    padding-top: calc(13px - var(--line));
+    padding-bottom: calc(13px - var(--line));
   }
 
   @media (hover: hover) { .btn-ghost:hover { color: var(--text); border-color: var(--text); } } /* TT-517 fase 9: alleen met een muis */
@@ -2082,10 +2103,11 @@
      20px onder het laatste veld. */
   #view-search .search-filters { margin-bottom: 20px; }
 
-  /* De tegels: het tegelpatroon van Instellingen (.tile), met een icoon links
-     op een grijs vlak (--surface2; besluit Ronald 26-10-2026, sessie 18:
-     "het is erg geel nu"). Donker een gouden, licht een zwart icoon
-     (--accent). Geen pijl (Laag 2). Een <button>: breed, tekst links. */
+  /* De tegels: het tegelpatroon van Instellingen (.tile), met een icoon links.
+     Donker een gouden, licht een zwart icoon (--accent). Geen pijl (Laag 2).
+     Een <button>: breed, tekst links. TT-517 fase 11 (besluit Ronald
+     01-11-2026, C, licht en donker): geen vlak achter het icoon; het vak van
+     44px blijft, zodat de tekst op dezelfde plek staat. */
   .zoek-tegel {
     width: 100%;
     text-align: left;
@@ -2096,8 +2118,6 @@
     flex: 0 0 44px;
     width: 44px;
     height: 44px;
-    border-radius: var(--radius-field);
-    background: var(--surface2);
     color: var(--accent);
     display: flex;
     align-items: center;
@@ -2125,6 +2145,11 @@
     cursor: pointer;
     font-family: 'Inter', sans-serif;
     transition: all 0.2s;
+  }
+  /* TT-517 fase 11: onder 360px breed paste "Muzikanten" niet meer in zijn
+     knop en werd afgekapt. Dan 12px, de volgende maat uit de huisstijl. */
+  @media (max-width: 359px) {
+    .search-mode-tab { font-size: 12px; }
   }
 
   /* Filters, rechts op de labelregel van Naam, met een pijltje dat omdraait
@@ -2961,14 +2986,12 @@
     align-items: center;
     gap: 14px;
     padding: 12px 16px;
-    border: 1px solid var(--border);
     border-radius: 14px;
     margin-bottom: 8px;
     cursor: pointer;
     transition: border-color 0.15s, transform 0.15s;
   }
   @media (hover: hover) { .messages-conv-row:hover { border-color: var(--accent); transform: translateY(-1px); } } /* TT-517 fase 9: alleen met een muis */
-  .messages-conv-row.unread { background: var(--tint); border-color: var(--accent); } /* §1.1 */
   .messages-conv-avatar {
     width: 48px; height: 48px;
     border-radius: 50%;
@@ -2983,7 +3006,8 @@
   .messages-conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .messages-conv-main { flex: 1; min-width: 0; }
   .messages-conv-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
-  .messages-conv-row.unread .messages-conv-name { color: var(--accent); }
+  /* TT-517 fase 11 (besluit Ronald 01-11-2026): een ongelezen gesprek ziet eruit
+     als elk ander gesprek; het rode getal is het teken ("opvallend genoeg"). */
   .messages-conv-preview { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .messages-conv-time { font-size: 12px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 
@@ -3379,68 +3403,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .result-card {
-    position: relative;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-    animation: slideIn 0.2s ease;
-    /* TT-206 (04-09-2026, gemeld door Ronald met screenshot, met pixels
-       nagemeten: 475px vs 417px breed). Oorzaak: een grid-item krijgt
-       standaard min-width:auto, wat het item nooit smaller laat worden dan
-       de eigen inhoud (bijv. een langere naam of badge-tekst). Bij twee
-       kaarten met verschillende inhoud in dezelfde rij van een "1fr 1fr"-
-       grid geeft dat een ongelijke kolomverdeling, ook al staat er nergens
-       een vaste breedte. min-width:0 zet dat uit — de kaart mag altijd
-       precies de halve breedte innemen, tekst wrapt dan i.p.v. de kolom te
-       verbreden. Geldt voor zowel muzikant- als bandkaarten (zelfde klasse). */
-    min-width: 0;
-  }
-  .result-card:hover { border-color: var(--accent); }
-  /* TT-33 (07-08-2026): profielformaat (verticaal) i.p.v. een korte liggende
-     banner — het is immers een profielfoto (Ronald, 07-08-2026). */
-  .result-card-photo {
-    width: 100%;
-    aspect-ratio: 3 / 4;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* TT-341 stap 2: het profielvlak is overal geel met een zwarte T (Ronald,
-       26-09-2026). Er is geen profielkleur per persoon meer. */
-    font-size: 48px;
-    font-weight: 700;
-    background: var(--merk);
-    color: var(--merk-tekst);
-    overflow: hidden;
-    margin-bottom: 10px;
-  }
-  .result-card-photo img { width: 100%; height: 100%; object-fit: cover; }
-  /* TT-153 (25-08-2026): alleen de naam is vet — de rest van de kaart
-     (plaats/afstand, badges) is normaal lettergewicht, consistent met de
-     rijweergave (Ronald: "alleen de naam vet lettertype, de rest niet"). */
-  .result-card-top-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .result-card-name { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; }
-  .result-card-meta { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
-  /* TT-153: een badge-regel op de kaart, niet-wrappend. Sinds TT-520 deel 2
-     alleen nog in de kaart van Mix & Match (de match); die kaart volgt in
-     bouwsessie b. */
-  .result-card-badges-line {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow: hidden;
-    gap: 5px;
-    margin-bottom: 4px;
-  }
-  .result-card-badges-line:last-child { margin-bottom: 0; }
   /* TT-30: envelop-icoon op rijen zit nu in een klein afgerond knopvlak
      i.p.v. los aan het eind van de rij te zweven. TT-316 (24-09-2026,
      besluit Ronald K11): ook de kaart gebruikt deze knop. Die had een goud
@@ -3473,7 +3435,6 @@
      foto, een muzikant een ronde (rij) of staande (kaart). Zo is het verschil
      in de lijst meteen te zien. Hoeken als de bandkaart in Mijn Bands. */
   .result-row-avatar.result-vierkant { border-radius: 10px; }
-  .result-card-photo.result-vierkant { aspect-ratio: 1 / 1; }
 
   .result-row-main { flex: 1; min-width: 0; }
 
@@ -4364,11 +4325,13 @@
   /* TT-168-overgang (02-09-2026, TT-181-vervolg3): definitieve rand-alleen-
      stijl — geen vlak, tekst wit (was goud). Sterren blijven apart goud,
      zie .picker-badge-stars hieronder. */
+  /* TT-517 fase 11 (besluit Ronald B, elke knop rond): ook een gekozen
+     instrument of genre is een pil. Was 8px. */
   .picker-badge {
     position: relative; width: auto; min-height: 44px; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
     background: var(--surface2); color: var(--text); border: var(--line) solid var(--accent);
-    border-radius: 8px; padding: 6px 26px 6px 10px; font-size: 12px; font-weight: 400;
+    border-radius: 999px; padding: 6px 26px 6px 10px; font-size: 12px; font-weight: 400;
     line-height: 1.25; text-align: center;
   }
   .picker-badge.has-level {
@@ -4725,18 +4688,10 @@
     color: var(--muted);
     margin-bottom: 20px;
   }
-  .backend-error-box button {
-    width: 100%;
-    padding: 12px 20px;
-    background: var(--merk);
-    color: var(--merk-tekst);
-    border: none;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-  }
+  /* TT-517 fase 11 (besluit Ronald B, elke knop rond): de knop is een gewone
+     .btn .btn-primary (pil, 44px); hier alleen de volle breedte. Was een
+     eigen vorm met hoek 8px. */
+  .backend-error-box .btn { width: 100%; }
 
   /* ── Bewegingsreductie (TT-83, externe review 4.3) ───────────────────────
      Sommige mensen zetten in hun besturingssysteem "verminder beweging" aan.
@@ -4779,8 +4734,11 @@
      rollen --vlak en --schaduw-vlak. De rand blijft 1px, maar doorzichtig: zo
      verschuift de inhoud niet, en een open rij in Mix & Match (§7.6) kleurt
      zijn eigen rand. Een eigen vlak of rand per soort is een fout. */
+  /* TT-517 fase 11: ook de rij van een gesprek in Berichten; die stond nog met
+     een zichtbare rand en zonder vlak (gemist in fase 2). */
   .result-row, .zoek-kaart, .mm-nummer-rij, .gedeeld-rij, .band-card, .tile,
-  .setlist-rij, .media-rij, .media-thumb, .band-nummer, .completeness-wrap, .ouder-kaart {
+  .setlist-rij, .media-rij, .media-thumb, .band-nummer, .completeness-wrap, .ouder-kaart,
+  .messages-conv-row {
     background: var(--vlak);
     border: 1px solid transparent;
     box-shadow: var(--schaduw-vlak);

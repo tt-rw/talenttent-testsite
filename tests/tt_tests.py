@@ -3523,7 +3523,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               "; ".join(m.group(0) for m in goud.finditer(css + html_src))[:200])
         tab = page.evaluate("""() => { const t = document.querySelector('.search-mode-tab.active');
             return t ? getComputedStyle(t).backgroundColor : null; }""")
-        check("het actieve zoektabblad heeft wit op 5% (TT-290)", tab == "rgba(255, 255, 255, 0.05)", str(tab))
+        # TT-517 fase 11 (besluit Ronald 01-11-2026, B): gekozen is ook in donker een geel vlak (was wit op 5%, TT-290).
+        check("het actieve zoektabblad heeft een geel vlak (TT-517 fase 11, B)", tab == "rgb(255, 184, 28)", str(tab))
         focus = page.evaluate("""() => { const i = document.createElement('input'); document.getElementById('appRoot').appendChild(i);
             i.style.transition = 'none'; i.focus();
             const cs = getComputedStyle(i); const b = [cs.boxShadow, cs.borderTopColor]; i.remove(); return b; }""")
@@ -3650,8 +3651,8 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         # K6 — één gestippelde vorm (de bio-voorzet is vervallen, 08-10-2026).
         stip = page.evaluate("""() => { const e = document.querySelector('.add-link-btn'); const cs = getComputedStyle(e);
             return [cs.borderTopStyle, cs.borderTopLeftRadius, cs.minHeight, document.querySelectorAll('.bio-prompt-chip').length]; }""")
-        check("K6: + Link toevoegen is gestippeld, 8px, 44px; er is nergens meer een bio-voorzet",
-              stip == ["dashed", "8px", "44px", 0], json.dumps(stip))
+        check("K6: + Link toevoegen is gestippeld, een pil (TT-517 fase 11, B), 44px; er is nergens meer een bio-voorzet",
+              stip == ["dashed", "999px", "44px", 0], json.dumps(stip))
 
         wb = page.evaluate("""() => { const v = document.getElementById('bio'); return [v.classList.contains('bio-voorbeeld'), v.placeholder.startsWith('Hoi allemaal! Ik ben Kevin.'),
             getComputedStyle(v, '::placeholder').fontStyle, v.closest('.field').querySelectorAll('button').length]; }""")
@@ -3671,14 +3672,19 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             const b = document.createElement(tag); b.className = k + ' ' + aan; b.textContent = 'x'; b.style.transition = 'none';
             plek.append(a, b); return [k, meet(a), meet(b)]; });
           plek.remove(); return uit; }""")
+        # TT-517 fase 11 (besluit Ronald 01-11-2026): de doelkaart is een kaart (hoek 16px), de andere zes een pil.
+        doel = [k for k in keuze if k[0] == "goal-card"][0]
+        check("de doelkaart (Wat zoek je) heeft hoek 16px, gekozen en niet gekozen",
+              " | 16px | " in doel[1] and " | 16px | " in doel[2], json.dumps(doel))
+        keuze = [[k[0], k[1].replace(" | 16px | ", " | 999px | "), k[2].replace(" | 16px | ", " | 999px | ")] if k[0] == "goal-card" else k for k in keuze]
         los = {k[1] for k in keuze}
         aan = {k[2] for k in keuze}
-        check("K7: niet-gekozen is bij alle zeven soorten gelijk (--surface2, rand 1,5px, hoek 8px, wit)",
-              len(los) == 1 and los.pop().replace(" | 1px", "").replace(" | 1.5px", "") == "rgb(30, 30, 30) | rgb(42, 42, 42) | 8px | rgb(240, 240, 240) | 400 | normal"
+        check("K7: niet-gekozen is bij alle zeven soorten gelijk (--surface2, rand 1,5px, een pil, wit)",
+              len(los) == 1 and los.pop().replace(" | 1px", "").replace(" | 1.5px", "") == "rgb(30, 30, 30) | rgb(42, 42, 42) | 999px | rgb(240, 240, 240) | 400 | normal"
               and all(rand(k) == "var(--line)" for k in (".tag", ".level-btn", ".segmented-btn", ".search-mode-tab", ".media-tab", ".goal-card", ".level-choice")),
               json.dumps(keuze)[:400])
-        check("K7/K8/K12: gekozen is bij alle zeven soorten gelijk (wit op 5%, goud, vet, niet cursief)",
-              len(aan) == 1 and aan.pop().replace(" | 1px", "").replace(" | 1.5px", "") == "rgba(255, 255, 255, 0.05) | rgb(255, 184, 28) | 8px | rgb(255, 184, 28) | 700 | normal",
+        check("K7/K8/K12: gekozen is bij alle zeven soorten gelijk (geel vlak, donkere tekst, vet, niet cursief; TT-517 fase 11, B)",
+              len(aan) == 1 and aan.pop().replace(" | 1px", "").replace(" | 1.5px", "") == "rgb(255, 184, 28) | rgb(255, 184, 28) | 999px | rgb(30, 30, 30) | 700 | normal",
               json.dumps(keuze)[:400])
 
         # TT-315 vervolg: lege sterren zichtbaar op het tagvlak (#555, niet --border).
@@ -4505,7 +4511,9 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
               d40["tab"] == ["rgba(0, 0, 0, 0)", "rgb(168, 168, 168)", "rgb(255, 184, 28)"]
               and l40["tab"] == ["rgba(0, 0, 0, 0)", "rgb(82, 78, 72)", "rgb(255, 184, 28)"], json.dumps([d40["tab"], l40["tab"]]))
         check("donker: ongelezen blijft het rode rondje", d40["ongelezen"] == "rgb(229, 83, 61)", d40["ongelezen"])
-        check("donker: gekozen tabblad houdt de gouden stand", d40["gekozen"][1] == "rgb(255, 184, 28)", json.dumps(d40["gekozen"]))
+        # TT-517 fase 11 (besluit Ronald 01-11-2026, B): gekozen is ook in donker een geel vlak met donkere tekst.
+        check("donker: gekozen tabblad is een geel vlak met donkere tekst (TT-517 fase 11, B)",
+              d40["gekozen"][1] == "rgb(30, 30, 30)" and d40["gekozen"][0] == "rgb(255, 184, 28)", json.dumps(d40["gekozen"]))
         # Besluit Ronald, 26-09-2026 ("1 B", "2 B mits niet vetgedrukt", "3 B"): vorm in beide thema's gelijk.
         check("donker: knoppen en veldlabels in gewone letters, labels in de tekstkleur",
               d40["knop"][2] == "none" and d40["label"] == ["none", "rgb(240, 240, 240)"], json.dumps([d40["knop"], d40["label"]]))
@@ -5256,10 +5264,10 @@ window.TT_STUB.fnAntwoord = {};
         nm = p47.evaluate("""() => {
           const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
           plek.innerHTML = '<div class="messages-conv-name">A</div><div class="result-row-name">B</div>'
-            + '<div class="result-card-name">C</div><div class="geblokkeerd-naam">D</div><div class="zoek-kaart-naam">E</div>';
+            + '<div class="geblokkeerd-naam">D</div><div class="zoek-kaart-naam">E</div>';
           const uit = [...plek.children].map(x => getComputedStyle(x).fontSize); plek.remove(); return uit; }""")
-        check("naam in berichtenlijst, zoekresultaat (rij, kaart, kaart in Zoeken) en blokkadelijst: 15px (TT-517)",
-              nm == ["15px"] * 5, json.dumps(nm))
+        check("naam in berichtenlijst, zoekresultaat (rij, kaart in Zoeken) en blokkadelijst: 15px (TT-517)",
+              nm == ["15px"] * 4, json.dumps(nm))
 
         # 7. De T: één klasse, in het lettertype van het logo, 25% groter dan zijn vak.
         # TT-517 fase 6 en 7: alleen nog het logo (het gesprek met The Talent Tent).
@@ -10649,9 +10657,10 @@ window.TT_STUB.fnAntwoord = {};
               d95["start"]["scherm"] == "start" and d95["start"]["titel"] == "Zoeken"
               and d95["start"]["tegels"] == ["Muzikanten|Muzikanten en bands bij jou in de buurt", "Mix & Match|Ontdek wat jullie samen kunnen spelen"]
               and not d95["start"]["muzZicht"], j95("start"))
-        check("tegels: echte knoppen, één icoon en geen pijl; icoon op een grijs vlak (--surface2), goud in donker",
+        # TT-517 fase 11 (besluit Ronald 01-11-2026, C): geen vlak achter het icoon (was --surface2).
+        check("tegels: echte knoppen, één icoon en geen pijl; geen vlak achter het icoon, goud in donker",
               d95["start"]["knoppen"] == ["BUTTON", "BUTTON"] and d95["start"]["svgs"] == [1, 1]
-              and d95["start"]["vlak"] == "rgb(30, 30, 30)" and d95["start"]["icoonKleur"] == "rgb(255, 184, 28)", j95("start"))
+              and d95["start"]["vlak"] == "rgba(0, 0, 0, 0)" and d95["start"]["icoonKleur"] == "rgb(255, 184, 28)", j95("start"))
         check("de titel Zoeken staat 20px onder de kop", d95["start"]["titelBoven"] == 20, j95("start"))
         check("onderbalk: gekozen knop grijs, gele streep van 3px zo breed als het woord",
               d95["balk"]["vlak"] == "rgba(0, 0, 0, 0)" and d95["balk"]["tekst"] == "rgb(168, 168, 168)"
@@ -10663,9 +10672,10 @@ window.TT_STUB.fnAntwoord = {};
               json.dumps([d95["terug1"], d95["terug2"]]))
         check("een tik op Zoeken onderin brengt je naar het startscherm", d95["tab"] == "start", j95("tab"))
         s95 = d95["soort"]
-        check("Alles · Muzikanten · Bands: losse knoppen van 44px, 8px ertussen, Alles gekozen in goud",
+        # TT-517 fase 11 (besluit Ronald 01-11-2026, B): gekozen is in donker een geel vlak met donkere tekst.
+        check("Alles · Muzikanten · Bands: losse knoppen van 44px, 8px ertussen, Alles gekozen (geel vlak, donkere tekst)",
               s95["tekst"] == ["Alles", "Muzikanten", "Bands"] and min(s95["hoog"]) >= 44 and s95["tussen"] == [8, 8]
-              and s95["gekozen"] == ["true", "false", "false"] and s95["kleur"] == "rgb(255, 184, 28)", j95("soort"))
+              and s95["gekozen"] == ["true", "false", "false"] and s95["kleur"] == "rgb(30, 30, 30)" and s95["rand"] == "rgb(255, 184, 28)", j95("soort"))
         dt = d95["dicht"]
         check("Filters dicht: alleen Naam en Plaats + Straal; Instrument zit erachter; geen zoekknop, uitlegregels of scheiding",
               not dt["vak"] and not dt["instrument"] and dt["aria"] == "false" and dt["oudeKnoppen"] == 0, j95("dicht"))
@@ -11330,7 +11340,7 @@ def blok_tt517_fase1():
         "licht": [rol(licht, r) for r in ("merk", "merk-hover", "gekozen-vlak", "gekozen-rand", "bericht-eigen", "bericht-rand-eigen")],
     }
     check("warmgeel #FFB81C in elke gele rol, met de afgeleide tinten (donker)",
-          rollen["donker"] == ["#FFB81C", "#FFB81C", "#FFC444", "#FFB81C", "#FFB81C", "#DD9F18", "#E5A623", "#E5A623"], json.dumps(rollen))
+          rollen["donker"] == ["#FFB81C", "#FFB81C", "#FFC444", "#FFB81C", "#1E1E1E", "#DD9F18", "#E5A623", "#E5A623"], json.dumps(rollen))  # gekozen-tekst donker sinds fase 11 (B)
     check("warmgeel #FFB81C in elke gele rol, met de afgeleide tinten (licht)",
           rollen["licht"] == ["#FFB81C", "#FFC444", "#FFB81C", "#FFB81C", "#FFC94D", "#FFC94D"], json.dumps(rollen))
     oud = [f for f in TT517_APP for kleur in ("f5c518", "ffd700", "ffd23f", "e0b52a", "f2ce4a", "c8a800")
@@ -11467,7 +11477,9 @@ def blok_0_rijen():
 # een stap lichter vlak (#222); de tegels onder Foto's en video's en Links 12px.
 
 TT517_VLAKKEN = ["result-row", "zoek-kaart", "mm-nummer-rij", "gedeeld-rij", "band-card", "tile", "setlist-rij",
-                 "media-rij", "media-thumb", "band-nummer", "completeness-wrap", "ouder-kaart"]
+                 "media-rij", "media-thumb", "band-nummer", "completeness-wrap", "ouder-kaart",
+                 # TT-517 fase 11: de rij van een gesprek in Berichten (gemist in fase 2).
+                 "messages-conv-row"]
 
 def blok_tt517_fase2():
     print("\nBlok 109 — TT-517 fase 2: knoppen, vlakken en hoeken")
@@ -11518,7 +11530,7 @@ def blok_tt517_fase2():
               const open = document.createElement('div'); open.className = 'gedeeld-rij open'; proef.appendChild(open);
               r.openRand = getComputedStyle(open).borderTopColor;
               r.accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-              // Knoppen: elke .btn een pil; keuzeknoppen en de gestippelde knop 8px.
+              // Knoppen: elke .btn een pil; sinds fase 11 (B) ook de keuzeknoppen en de gestippelde knop.
               const knoppen = [...document.querySelectorAll('.btn')];
               r.knoppen = knoppen.length;
               r.geenPil = knoppen.filter(b => getComputedStyle(b).borderTopLeftRadius !== '999px').map(b => b.textContent.trim()).slice(0, 5);
@@ -11547,8 +11559,8 @@ def blok_tt517_fase2():
                   and ((u["schaduwVerwacht"] != "none") if thema == "licht" else (u["schaduwVerwacht"] == "none")), json.dumps([u["vlakKleur"], u["schaduwVerwacht"]]))
             check(f"{thema}: een open rij in Mix & Match houdt zijn eigen rand (--accent)", u["openRand"] != "rgba(0, 0, 0, 0)", u["openRand"])
             check(f"{thema}: elke knop (.btn) is een pil, 999px ({u['knoppen']} knoppen)", u["knoppen"] > 20 and not u["geenPil"], json.dumps(u["geenPil"]))
-            check(f"{thema}: keuzeknoppen en de gestippelde knop blijven 8px",
-                  all(v == "8px" for v in u["keuze"].values()), json.dumps(u["keuze"]))
+            check(f"{thema}: keuzeknoppen en de gestippelde knop zijn ook een pil, de doelkaart hoek 16px (TT-517 fase 11, besluiten Ronald)",
+                  all(v == ("16px" if k == "goal-card" else "999px") for k, v in u["keuze"].items()), json.dumps(u["keuze"]))
             check(f"{thema}: de tegels onder Foto's en video's en Links hebben hoeken van 12px", u["tegelHoek"] == "12px", u["tegelHoek"])
         check("licht: een veld op de pagina is wit (#FFFEFA), donker grijs (#242424)",
               uit["licht"]["veldPagina"] == "rgb(255, 254, 250)" and uit["donker"]["veldPagina"] == "rgb(36, 36, 36)",
@@ -12772,9 +12784,9 @@ def blok_tt517_fase9():
         for t in regel:
             if t == "{": stapel.append(regel)
             elif t == "}" and stapel: stapel.pop()
-    # Uitgezonderd: de schuifbalk, de dode .result-card (open punt uit fase 3) en een
-    # uitgeschakelde knop, waar :hover een teken juist opheft.
-    buiten = [b for b in buiten if "scrollbar-thumb" not in b and ".result-card" not in b and ":disabled:hover" not in b]
+    # Uitgezonderd: de schuifbalk en een uitgeschakelde knop, waar :hover een teken
+    # juist opheft. (De dode .result-card is in fase 11 weg; geen uitzondering meer.)
+    buiten = [b for b in buiten if "scrollbar-thumb" not in b and ":disabled:hover" not in b]
     check("elke aanwijsstand (:hover) geldt alleen met een muis: na een tik blijft niets hangen", not buiten, str(buiten))
     check("alle drie vragen dezelfde functie of er beweging mag (magBewegen)",
           core.count("!magBewegen()") == 2 and msg.count("!magBewegen()") == 1)
@@ -13057,6 +13069,88 @@ def blok_tt517_fase10():
           f"{inkt[0]} / {W - 1 - inkt[-1]}")
 
 
+def blok_tt517_fase11():
+    # TT-517 fase 11 (01-11-2026), eindcontrole: (1) elke knop is precies 44px
+    # (huisstijl §6), ook een knop met rand; met Inter waren ze 45 en 47px.
+    # (2) "Stap 1 van 5" in de registratie op één regel, ook op 320px.
+    # (3) de dode .result-card is weg. De rij van een gesprek staat in blok 109.
+    print("\nBlok 118 — TT-517 fase 11: eindcontrole")
+    css = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
+    check("de dode .result-card is weg uit styles.css", ".result-card" not in css)
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        fouten = []
+        for thema in ("light", "dark"):
+            for breed in (320, 340, 360, 390, 1280):
+                ctx = browser.new_context(viewport={"width": breed, "height": 800}, color_scheme=thema)
+                ctx.route("https://*.supabase.co/**", lambda r: r.abort())
+                page = ctx.new_page()
+                page.on("pageerror", lambda e: fouten.append(str(e)))
+                page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+                page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+                page.wait_for_timeout(300)
+                u = page.evaluate("""async () => {
+                  const w = ms => new Promise(z => setTimeout(z, ms));
+                  const H = () => [...document.querySelectorAll('.btn')]
+                    .filter(b => b.offsetParent && b.checkVisibility({ opacityProperty: true }))
+                    .map(b => [b.textContent.trim().slice(0, 20), Math.round(b.getBoundingClientRect().height * 100) / 100]);
+                  const u = { knoppen: H() };
+                  showView('auth'); await w(400); u.knoppen.push(...H());
+                  showView('register'); await w(500); u.knoppen.push(...H());
+                  const l = document.getElementById('stepLabel'), st = document.querySelector('.steps');
+                  u.stapHoog = Math.round(l.getBoundingClientRect().height);
+                  u.stapLetter = parseFloat(getComputedStyle(l).lineHeight) || parseFloat(getComputedStyle(l).fontSize) * 1.25;
+                  u.stapPast = st.scrollWidth <= st.clientWidth && l.getBoundingClientRect().right <= st.getBoundingClientRect().right + 0.5;
+                  // Een losse knop van elke soort met rand, ook die niet op deze schermen staan.
+                  const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
+                  plek.innerHTML = '<button class="btn btn-primary">A</button><button class="btn btn-ghost">B</button><button class="btn btn-danger">C</button>';
+                  u.soorten = [...plek.children].map(b => b.getBoundingClientRect().height); plek.remove();
+                  // Besluit Ronald 01-11-2026: een ongelezen gesprek ziet eruit als elk ander gesprek;
+                  // het rode getal is het teken. Geen vlak achter het icoon op een zoektegel (C).
+                  const lijst = document.createElement('div'); document.getElementById('view-messages').appendChild(lijst);
+                  lijst.innerHTML = '<div class="messages-conv-row"><div class="messages-conv-name">A</div></div>'
+                    + '<div class="messages-conv-row unread"><div class="messages-conv-name">B <span class="unread-badge">1</span></div></div>';
+                  const stijl = e => { const c = getComputedStyle(e), n = getComputedStyle(e.querySelector('.messages-conv-name'));
+                    return [c.backgroundColor, c.borderTopColor, c.boxShadow, n.color]; };
+                  u.rij = stijl(lijst.children[0]); u.ongelezen = stijl(lijst.children[1]); lijst.remove();
+                  // Besluit Ronald 01-11-2026 (B): elke knop rond. Ook een gekozen instrument of genre
+                  // en de knop op het foutscherm (een gewone hoofdknop).
+                  const pb = document.createElement('div'); pb.className = 'picker-badge'; pb.textContent = 'Rock';
+                  document.getElementById('appRoot').appendChild(pb); u.badge = getComputedStyle(pb).borderTopLeftRadius; pb.remove();
+                  const fk = document.querySelector('.backend-error-box button');
+                  u.foutKnop = [fk.className, getComputedStyle(fk).borderTopLeftRadius];
+                  showView('search'); await w(300);
+                  u.icoon = [...document.querySelectorAll('.zoek-tegel-icoon')].map(e => getComputedStyle(e).backgroundColor);
+                  // Alles · Muzikanten · Bands: de tekst past in zijn knop, ook onder 360px (dan 12px).
+                  openZoekScherm('muzikanten'); await w(400);
+                  u.soort = [...document.querySelectorAll('.zoek-soort .search-mode-tab')].filter(b => b.offsetParent).map(b => {
+                    const cs = getComputedStyle(b), rg = document.createRange(); rg.selectNodeContents(b);
+                    return [b.textContent.trim(), Math.round(rg.getBoundingClientRect().width * 10) / 10,
+                            b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), cs.fontSize]; });
+                  return u; }""")
+                ctx.close()
+                mis = [k for k in u["knoppen"] if k[1] != 44]
+                check(f"{thema} {breed}px: elke zichtbare knop op landing, inloggen en registratie is 44px ({len(u['knoppen'])} knoppen)",
+                      u["knoppen"] and not mis, json.dumps(mis, ensure_ascii=False))
+                check(f"{thema} {breed}px: hoofdknop, knop met rand en rode knop alle drie 44px", u["soorten"] == [44, 44, 44], json.dumps(u["soorten"]))
+                check(f"{thema} {breed}px: een ongelezen gesprek heeft hetzelfde vlak, dezelfde (onzichtbare) rand en dezelfde naamkleur als een gelezen gesprek",
+                      u["rij"] == u["ongelezen"] and u["rij"][1] == "rgba(0, 0, 0, 0)", json.dumps([u["rij"], u["ongelezen"]]))
+                check(f"{thema} {breed}px: een gekozen instrument of genre is een pil; de knop op het foutscherm is een gewone hoofdknop (pil)",
+                      u["badge"] == "999px" and u["foutKnop"] == ["btn btn-primary", "999px"], json.dumps([u["badge"], u["foutKnop"]]))
+                check(f"{thema} {breed}px: Alles, Muzikanten en Bands passen in hun knop, niets afgekapt",
+                      len(u["soort"]) == 3 and all(t[1] <= t[2] for t in u["soort"])
+                      and all(t[3] == ("12px" if breed < 360 else "15px") for t in u["soort"]), json.dumps(u["soort"]))
+                check(f"{thema} {breed}px: geen vlak achter het icoon op de zoektegels",
+                      len(u["icoon"]) == 2 and all(k == "rgba(0, 0, 0, 0)" for k in u["icoon"]), json.dumps(u["icoon"]))
+                check(f"{thema} {breed}px: \"Stap 1 van 5\" op één regel en binnen de marge",
+                      u["stapHoog"] < 2 * 15 and u["stapPast"], json.dumps([u["stapHoog"], u["stapPast"]]))
+        check("geen JS-fout in blok 118", not fouten, "; ".join(fouten)[:300])
+        browser.close()
+    httpd.shutdown()
+
+
 def main():
     print("The Talent Tent — vaste testset, laag 1 (TT-231)")
     blok1_statisch()
@@ -13070,6 +13164,7 @@ def main():
     blok_tt517_fase8()
     blok_tt517_fase9()
     blok_tt517_fase10()
+    blok_tt517_fase11()
     blok_0_rijen()
     blok_browser()
     blok_xss()
