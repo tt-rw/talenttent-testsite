@@ -77,7 +77,7 @@
      Een <script src> is synchroon, dus op dit punt is de uitslag definitief. */
   window.ttBackendMissing = (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function');
 </script>
-<link rel="stylesheet" href="styles.css?v=20261101c">
+<link rel="stylesheet" href="styles.css?v=20261101d">
 </head>
 <body>
 
@@ -2104,7 +2104,9 @@
 </div>
 
 <!-- TT-520 deel 2 (27-10-2026, Laag 3.4): de uitsnede kiezen na het kiezen van
-     een profielfoto of bandfoto (kiesUitsnede() in utils.js). Geen kruisje
+     een profielfoto of bandfoto (kiesUitsnede() in utils.js). TT-517 fase 5:
+     een kader van 4:3, ook voor een bannerfoto; gestippeld het rondje of
+     vierkant dat klein in lijsten staat (#uitsnedeKlein). Geen kruisje
      (TT-409: een kruisje alleen waar het niet anders kan): Annuleren, Escape
      en de terugknop van het toestel breken af. Tweede knop links, hoofdknop
      rechts (TT-228), zoals de controlevraag. -->
@@ -2115,6 +2117,7 @@
          onpointerup="uitsnedeWijzerOp(event)" onpointercancel="uitsnedeWijzerOp(event)" onwheel="uitsnedeWiel(event)">
       <img id="uitsnedeImg" alt="Je foto" draggable="false">
       <div class="uitsnede-masker" id="uitsnedeMasker"></div>
+      <div class="uitsnede-klein" id="uitsnedeKlein"></div>
     </div>
     <p class="uitsnede-hint">Schuif en zoom tot de foto goed staat.</p>
     <div class="btn-row">
@@ -2513,15 +2516,15 @@
 </div><!-- /#appRoot -->
 
 <script src="core.js?v=20261101a"></script>
-<script src="utils.js?v=20261101c"></script>
+<script src="utils.js?v=20261101d"></script>
 <script src="veiligheid.js?v=20261026b"></script>
 <script src="auth.js?v=20261031a"></script>
 <script src="postcode.js?v=20261027e"></script>
-<script src="wizard.js?v=20261101b"></script>
+<script src="wizard.js?v=20261101c"></script>
 <script src="ouder.js?v=20261023a"></script>
 <script src="search.js?v=20261031a"></script>
-<script src="musicians.js?v=20261101c"></script>
-<script src="bands.js?v=20261101a"></script>
+<script src="musicians.js?v=20261101d"></script>
+<script src="bands.js?v=20261101b"></script>
 <script src="messages.js?v=20261028a"></script>
 <script src="push.js?v=20261027b"></script>
 <script src="modals-shared.js?v=20261026c"></script>

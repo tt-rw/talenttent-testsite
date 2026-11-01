@@ -1761,6 +1761,9 @@
   }
   div.hoes-vlak { cursor: default; }
   .hoes-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  /* TT-517 fase 5: een bannerfoto met een gekozen kader. uitsnedeStijl() zet
+     maat en plek in procenten van de hoes; het vlak knipt de rest weg. */
+  .hoes-img.hoes-kader { position: absolute; max-width: none; object-fit: fill; }
 
   /* Het matglas: vijf lagen van hetzelfde beeld (hoesWaasMaken()), een iets
      groter vlak zodat de vervaagde rand buiten beeld valt. */
@@ -3491,15 +3494,17 @@
   }
 
   /* ── De uitsnede kiezen (TT-520 deel 2, 27-10-2026, Laag 3.4) ─────────────
-     Een vierkant vlak over de volle breedte van het venster. De foto vult
-     altijd het hele vierkant (geen lege rand); kiesUitsnede() zet maat en
-     plek. Bij een profielfoto dimt alles buiten de cirkel; bij een bandfoto
-     alleen een dunne lijn langs het vierkant. touch-action: none, zodat
+     Een kader van 4:3 over de volle breedte van het venster, precies de hoes
+     (TT-517 fase 5, huisstijl §21). De foto vult altijd het hele kader (geen
+     lege rand); kiesUitsnede() zet maat en plek. Een dunne witte lijn langs
+     het kader; gestippeld in het midden wat klein in lijsten komt: het
+     rondje (profielfoto) of het vierkant (bandfoto), zo hoog als het kader.
+     Bij een bannerfoto geen gestippelde vorm. touch-action: none, zodat
      schuiven en zoomen niet de pagina laten scrollen of zoomen. */
   .uitsnede-vlak {
     position: relative;
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 4 / 3;
     margin-top: 12px;
     overflow: hidden;
     border-radius: var(--radius-field);
@@ -3525,10 +3530,19 @@
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
     pointer-events: none;
   }
-  .uitsnede-masker.rond {
-    border-radius: 50%;
-    box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+  .uitsnede-klein {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 50%;
+    aspect-ratio: 1 / 1;
+    transform: translateX(-50%);
+    border: 2px dashed rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
   }
+  .uitsnede-klein.rond { border-radius: 50%; }
+  .uitsnede-klein[hidden] { display: none; }
   /* Op de linkerlijn van het vlak en de knoppen (één linkerlijn, Ronald 27-10-2026). */
   .uitsnede-hint { margin: 8px 0 20px; font-size: var(--fs-sm); line-height: 16px; color: var(--muted); }
 

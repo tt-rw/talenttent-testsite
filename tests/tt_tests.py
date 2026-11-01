@@ -10791,9 +10791,11 @@ window.TT_STUB.fnAntwoord = {};
                     eenLijn: [...new Set(['uitsnedeTitel', 'uitsnedeVlak', 'uitsnedeAnnuleren'].map(id => Math.round(r($(id)).left))
                       .concat([Math.round(r(document.querySelector('#uitsnedeModal .uitsnede-hint')).left)]))].length === 1,
                     knoppen: [...document.querySelectorAll('#uitsnedeModal .btn-row .btn')].map(b => b.className.replace('btn ', '') + ':' + b.textContent),
-                    rond: $('uitsnedeMasker').classList.contains('rond'), knop: $('uitsnedeKnop').textContent,
-                    knopHoog: Math.round(r($('uitsnedeKnop')).height), vierkant: Math.round(r(vlak).height) === z,
-                    dekt: dekt(), hoogte: Math.round(r(img).height) === z };
+                    rond: $('uitsnedeKlein').classList.contains('rond') && !$('uitsnedeKlein').hidden, knop: $('uitsnedeKnop').textContent,
+                    knopHoog: Math.round(r($('uitsnedeKnop')).height),
+                    // TT-517 fase 5 (huisstijl §21): het kader is 4:3, niet meer vierkant.
+                    kader43: Math.abs(r(vlak).height - z * 3 / 4) <= 1,
+                    dekt: dekt(), hoogte: Math.abs(r(img).height - r(vlak).height) <= 0.5 };
           // Uitzoomen kan niet verder dan de rand; schuiven ver naar rechts ook niet.
           uitsnedeZoom(0.2, z / 2, z / 2); u.uit.dektUitgezoomd = dekt();
           uitsnede.x = 5000; uitsnedeTekenen(); u.uit.dektVerschoven = dekt() && uitsnede.x === 0;
@@ -10808,7 +10810,7 @@ window.TT_STUB.fnAntwoord = {};
           u.uit.uitkomst = { type: f.type, maat: [bm.width, bm.height], rechtsBlauw: px[2] > 150 && px[0] < 100, dicht: !$('uitsnedeModal').classList.contains('visible') };
           // Afbreken met het kruisje: null, venster dicht.
           const b2 = kiesUitsnede(bestand, 'vierkant'); await w(300);
-          u.uit.band = !$('uitsnedeMasker').classList.contains('rond') && $('uitsnedeTitel').textContent === 'Bandfoto';
+          u.uit.band = !$('uitsnedeKlein').classList.contains('rond') && !$('uitsnedeKlein').hidden && $('uitsnedeTitel').textContent === 'Bandfoto';
           $('uitsnedeAnnuleren').click();
           u.uit.afgebroken = (await b2) === null && !$('uitsnedeModal').classList.contains('visible');
           // 5. Geen GIF als profielfoto of bandfoto; bij media wel.
@@ -10846,13 +10848,13 @@ window.TT_STUB.fnAntwoord = {};
         check("uitsnede: titel, vlak, uitleg en knoppen op één linkerlijn", u97["eenLijn"], json.dumps(u97))
         check("uitsnede: geen kruisje (TT-409); Annuleren links als tweede knop, de hoofdknop rechts (TT-228)",
               not u97["kruisje"] and u97["knoppen"] == ["btn-ghost:Annuleren", "btn-primary:Gebruik deze foto"], json.dumps(u97))
-        check("uitsnede: een vierkant vlak; een liggende foto vult het precies (korte kant past)",
-              u97["vierkant"] and u97["dekt"] and u97["hoogte"], json.dumps(u97))
+        check("uitsnede: een kader van 4:3 (TT-517 fase 5); een liggende foto van 3:2 vult het precies (de hoogte past)",
+              u97["kader43"] and u97["dekt"] and u97["hoogte"], json.dumps(u97))
         check("uitsnede: nooit een lege rand, ook niet bij ver uitzoomen of ver schuiven; zoomen tot 4×",
               u97["dektUitgezoomd"] and u97["dektVerschoven"] and u97["maxZoom"] == 4, json.dumps(u97))
-        check("uitsnede: 'Gebruik deze foto' geeft een vierkante JPG van de gekozen plek (rechts: blauw), venster dicht",
-              u97["uitkomst"] == {"type": "image/jpeg", "maat": [800, 800], "rechtsBlauw": True, "dicht": True}, json.dumps(u97["uitkomst"]))
-        check("uitsnede: de bandfoto is een vierkant zonder cirkel; Annuleren breekt af zonder foto",
+        check("uitsnede: 'Gebruik deze foto' geeft een JPG van 4:3 van de gekozen plek (rechts: blauw), venster dicht (TT-517 fase 5)",
+              u97["uitkomst"] == {"type": "image/jpeg", "maat": [1067, 800], "rechtsBlauw": True, "dicht": True}, json.dumps(u97["uitkomst"]))
+        check("uitsnede: bij een bandfoto een gestippeld vierkant, geen cirkel; Annuleren breekt af zonder foto",
               u97["band"] and u97["afgebroken"], json.dumps(u97))
         check("geen GIF als profielfoto of bandfoto (besluit Ronald); bij media mag het wel; geen uitsnedevenster voor een GIF",
               bool(d97["gif"]["profiel"]) and "GIF" not in d97["gif"]["profiel"] and d97["gif"]["media"] is None and not d97["gif"]["venster"], j97("gif"))
@@ -11668,9 +11670,10 @@ def blok_tt517_fase4():
     # Besluit Ronald (01-11-2026, A): de bannerbeelden van een muzikant op volgorde van toevoegen, zoals bij een band.
     mus = open(os.path.join(ROOT, "musicians.js"), encoding="utf-8").read()
     wiz = open(os.path.join(ROOT, "wizard.js"), encoding="utf-8").read()
+    # TT-517 fase 5: dezelfde drie plekken lezen ook het kader van een bannerfoto (uitsnede).
     check("de app leest bij elk muzikantprofiel de tijd van toevoegen van de media (created_at), drie plekken",
-          mus.count("musician_media(media_type, url, platform, in_banner, created_at)") == 2
-          and wiz.count("musician_media(media_type, url, platform, in_banner, created_at)") == 1
+          mus.count("musician_media(media_type, url, platform, in_banner, created_at, uitsnede)") == 2
+          and wiz.count("musician_media(media_type, url, platform, in_banner, created_at, uitsnede)") == 1
           and "musician_media(media_type, url, platform, in_banner)" not in mus + wiz)
     check("de hoes en Je mediahoek zetten de media op volgorde van toevoegen (één functie)",
           "return opVolgordeVanToevoegen(mediaLijst)" in utils and "data.musician_media = opVolgordeVanToevoegen(data.musician_media);" in mus)
@@ -11853,6 +11856,158 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
     check("geen paginafouten in blok 111", not fouten, "; ".join(fouten)[:400])
 
 
+def blok_tt517_fase5():
+    # TT-517 fase 5 (01-11-2026, huisstijl §21, besluit Ronald 31-10-2026
+    # optie 1: één regel voor elk beeld): de uitsnede 4:3. Profielfoto en
+    # bandfoto in een kader van 4:3 met het gestippelde rondje of vierkant;
+    # een bannerfoto in hetzelfde kader, zonder gestippelde vorm, en de app
+    # bewaart alleen de plek van het kader. Besluit Ronald (e) 01-11-2026 "A":
+    # een bestaande vierkante foto staat in de hoes zoals nu, het midden.
+    print("\nBlok 112 — TT-517 fase 5: de uitsnede 4:3")
+    lees = lambda f: open(os.path.join(ROOT, f), encoding="utf-8").read()
+    mus, wiz, bnd, utl = lees("musicians.js"), lees("wizard.js"), lees("bands.js"), lees("utils.js")
+    # Elke plek die de media van een profiel of band leest, leest ook het kader.
+    selects = re.findall(r"(?:musician|band)_media\([^)]*\)", mus + wiz + bnd)
+    zonder = [x for x in selects if "in_banner" in x and "uitsnede" not in x]
+    check("elke plek die bannerbeelden leest, leest ook het kader (uitsnede): muzikant drie, band drie",
+          not zonder and sum("uitsnede" in x for x in selects) == 6, str(zonder or selects))
+    check("één functie voor het bannerteken op een foto, in de wizard, Je mediahoek en Onze media",
+          all(f"return bannerTekenTik({a}" in t for a, t in (("state.mediaFiles[i]", wiz), ("mhMediaFiles[i]", mus), ("bmMediaFiles[i]", bnd)))
+          and utl.count("async function bannerTekenTik(") == 1)
+    check("opslaan stuurt het kader mee op elke plek (wizard twee keer, mediahoek, band)",
+          wiz.count("bannerKader(m)") == 2 and mus.count("bannerKader(m)") == 1 and bnd.count("bannerKader(m)") == 1)
+
+    stub_js = open(STUB, encoding="utf-8").read()
+    ingelogd = stub_js + """
+window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
+window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instruments: m.musician_instruments || [],
+  musician_genres: m.musician_genres || [], musician_songs: m.musician_songs || [], musician_media: m.musician_media || [] }));
+"""
+    httpd, port = serve()
+    fouten = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark")
+        page = ctx.new_page()
+        page.on("pageerror", lambda e: fouten.append(str(e)))
+        page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=ingelogd))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+            page.route(pat, lambda r: r.abort())
+        page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+        page.wait_for_timeout(500)
+        d = page.evaluate(r"""async () => {
+          const w = ms => new Promise(r => setTimeout(r, ms));
+          const $ = id => document.getElementById(id), r = el => el.getBoundingClientRect();
+          // Een testbeeld: boven rood, onder blauw.
+          const beeld = async (bw, bh) => { const c = document.createElement('canvas'); c.width = bw; c.height = bh;
+            const x = c.getContext('2d'); x.fillStyle = '#d22'; x.fillRect(0, 0, bw, bh / 2); x.fillStyle = '#22d'; x.fillRect(0, bh / 2, bw, bh / 2);
+            return new File([await new Promise(ok => c.toBlob(ok, 'image/png'))], 'f.png', { type: 'image/png' }); };
+          const staand = await beeld(800, 1200), liggend = await beeld(1600, 900);
+          const u = {};
+          // 1. Profielfoto: kader 4:3, gestippeld rondje in het midden, zo hoog als het kader.
+          let b = kiesUitsnede(staand, 'rond'); await w(400);
+          const v = $('uitsnedeVlak'), k = $('uitsnedeKlein'), rv = r(v), rk = r(k);
+          u.rond = { kader: Math.round(rv.width / rv.height * 1000) / 1000, titel: $('uitsnedeTitel').textContent,
+            rond: getComputedStyle(k).borderTopLeftRadius === '50%', gestippeld: getComputedStyle(k).borderTopStyle,
+            midden: Math.round((rk.left + rk.right) / 2 - (rv.left + rv.right) / 2), vierkant: Math.abs(rk.width - rk.height) <= 0.5,
+            hoog: Math.round(rv.height - rk.height), zichtbaar: getComputedStyle(k).display !== 'none',
+            // Een staande foto begint bovenaan.
+            boven: uitsnede.y === 0, links: Math.abs(uitsnede.x) < 0.5 };
+          uitsnedeGebruiken(); let f = await b; let bm = await createImageBitmap(f);
+          u.rond.uitkomst = [f.type, bm.width, bm.height];
+          // 2. Bandfoto: gestippeld vierkant; een liggende foto begint in het midden.
+          b = kiesUitsnede(liggend, 'vierkant'); await w(300);
+          u.band = { titel: $('uitsnedeTitel').textContent, rond: getComputedStyle(k).borderTopLeftRadius, zichtbaar: getComputedStyle(k).display !== 'none',
+            midden: Math.round(uitsnede.x * 2 + uitsnede.img.naturalWidth * uitsnede.schaal0 - v.clientWidth), boven: uitsnede.y };
+          uitsnedeGebruiken(); f = await b; bm = await createImageBitmap(f); u.band.uitkomst = [bm.width, bm.height];
+          // 3. Bannerfoto: zonder gestippelde vorm; de uitkomst is de plek van het kader, de foto blijft heel.
+          const url = URL.createObjectURL(staand);
+          b = kiesUitsnede(url, 'banner'); await w(400);
+          u.banner = { titel: $('uitsnedeTitel').textContent, zichtbaar: getComputedStyle(k).display !== 'none' };
+          uitsnede.y = -99999; uitsnedeTekenen();               // helemaal naar onder
+          uitsnedeGebruiken(); const kd = await b;
+          u.banner.kader = kd; u.banner.dicht = !$('uitsnedeModal').classList.contains('visible');
+          u.banner.vier3 = kd ? Math.round(kd.b * 800 / (kd.h * 1200) * 1000) / 1000 : null;
+          // 4. Het bannerteken in Je mediahoek: eerst het kader; Annuleren laat alles staan.
+          mhMediaFiles = [{ name: '', url, path: null, type: 'foto', uploading: false, inBanner: false },
+                          { name: '', url: 'https://x/v.mp4', path: null, type: 'video', uploading: false, inBanner: false }];
+          mhMediaLinks = []; document.getElementById('mhMediaGrid').innerHTML = mhMediaFiles.map((m, i) => mediaTegelHTML(m, i, 'mh')).join('');
+          let t = mhToggleMediaBanner(0); await w(300);
+          u.teken = { venster: $('uitsnedeModal').classList.contains('visible'), titel: $('uitsnedeTitel').textContent };
+          $('uitsnedeAnnuleren').click(); await t;
+          u.teken.naAnnuleren = [mhMediaFiles[0].inBanner, mhMediaFiles[0].uitsnede || null];
+          t = mhToggleMediaBanner(0); await w(300); uitsnedeGebruiken(); await t;
+          u.teken.gekozen = [mhMediaFiles[0].inBanner, !!uitsnedeGeldig(mhMediaFiles[0].uitsnede),
+            document.querySelectorAll('#mhMediaGrid .banner-btn')[0].getAttribute('aria-pressed')];
+          // Een video: geen venster.
+          await mhToggleMediaBanner(1);
+          u.teken.video = [mhMediaFiles[1].inBanner, $('uitsnedeModal').classList.contains('visible')];
+          // Opslaan stuurt het kader alleen bij de foto in de banner mee.
+          mhMediaFiles[0].url = 'https://x/f.jpg'; // een geüploade foto (een blob: wordt niet opgeslagen)
+          mhSnapshot = ''; window.TT_STUB.calls.length = 0; window.TT_STUB.rpcResults.tt_save_musician_koppelingen = null;
+          await saveJeMediahoek();
+          const c = window.TT_STUB.calls.find(x => x.name === 'tt_save_musician_koppelingen');
+          u.opslaan = c ? c.params.p_media.map(m => [m.media_type, m.in_banner, !!(m.uitsnede && m.uitsnede.b)]) : null;
+          // Uit de banner halen vergeet het kader.
+          mhMediaFiles[0].url = url;
+          await mhToggleMediaBanner(0); u.teken.uit = [mhMediaFiles[0].inBanner, mhMediaFiles[0].uitsnede];
+          // 5. De hoes toont precies het kader: onderste helft van de staande foto (blauw).
+          const vak = document.createElement('div'); vak.style.cssText = 'width:390px;position:absolute;left:0;top:0;'; document.body.appendChild(vak);
+          const muz = (media) => ({ id: 'm9', weergavenaam: 'Sanne', username: 'sanne', city: 'Den Haag', bio: '', avatar_url: null, age: 17,
+            musician_instruments: [], musician_genres: [], musician_songs: [], musician_media: media });
+          vak.innerHTML = buildMusicianDetailHTML(muz([{ media_type: 'foto', url, in_banner: true, uitsnede: { x: 0, y: 0.5, b: 1, h: 0.5 } }]), false, true);
+          hoesStarten(vak); await w(500);
+          const im = vak.querySelector('.hoes-img'), vl = vak.querySelector('.hoes-vlak'), ri = r(im), rl = r(vl);
+          u.hoes = { kader: im.classList.contains('hoes-kader'), breed: Math.round(ri.width - rl.width), hoog: Math.round(ri.height - 2 * rl.height),
+            boven: Math.round(ri.top - (rl.top - rl.height)), links: Math.round(ri.left - rl.left) };
+          const o = hoesBeeldOordeel(im); u.hoes.meet = o ? [Math.round(o.sy), Math.round(o.sh)] : null;
+          // Zonder kader, of met een kader dat niet klopt: het midden, zoals tot nu toe.
+          for (const [naam, kader] of [['geen', null], ['tekst', 'x'], ['buiten', { x: 0.5, y: 0, b: 0.8, h: 1 }], ['nul', { x: 0, y: 0, b: 0, h: 1 }]]) {
+            vak.innerHTML = buildMusicianDetailHTML(muz([{ media_type: 'foto', url, in_banner: true, uitsnede: kader }]), false, true);
+            u.hoes[naam] = !vak.querySelector('.hoes-kader') && !!vak.querySelector('img.hoes-img');
+          }
+          // 6. Een foto van 4:3 in elke kleine plek: het midden, zonder vervormen (object-fit: cover).
+          const plekken = { '.result-row-avatar': '<span class="result-row-avatar"><img></span>', '.zoek-kaart-foto': '<span class="zoek-kaart-foto"><img></span>',
+            '.messages-conv-avatar': '<span class="messages-conv-avatar"><img></span>', '.avatar-preview': '<span class="avatar-preview"><img></span>',
+            '.gedeeld-speler-foto': '<span class="gedeeld-speler-foto"><img></span>', '.bb-foto': '<img class="bb-foto">', '.band-avatar': '<img class="band-avatar" style="object-fit:cover">' };
+          u.klein = {};
+          for (const [n, html] of Object.entries(plekken)) { vak.innerHTML = html; u.klein[n] = getComputedStyle(vak.querySelector('img')).objectFit; }
+          vak.remove(); URL.revokeObjectURL(url);
+          return u;
+        }""")
+        ctx.close()
+        browser.close()
+    httpd.shutdown()
+    j = lambda k: json.dumps(d.get(k), ensure_ascii=False)
+    r = d["rond"]
+    check("profielfoto: een kader van 4:3 met het gestippelde rondje, in het midden, zo hoog als het kader",
+          r["kader"] == 1.333 and r["titel"] == "Profielfoto" and r["rond"] and r["gestippeld"] == "dashed" and abs(r["midden"]) <= 1
+          and r["vierkant"] and r["hoog"] == 4 and r["zichtbaar"], j("rond"))
+    check("profielfoto: een staande foto begint bovenaan; de uitkomst is een JPG van 4:3 (hoogstens 1080 hoog)",
+          r["boven"] and r["links"] and r["uitkomst"] == ["image/jpeg", 800, 600], j("rond"))
+    b = d["band"]
+    check("bandfoto: het gestippelde vierkant (geen rondje); een liggende foto begint in het midden; uitkomst 4:3",
+          b["titel"] == "Bandfoto" and b["rond"] == "0px" and b["zichtbaar"] and abs(b["midden"]) <= 1 and b["boven"] == 0 and b["uitkomst"] == [1200, 900], j("band"))
+    bn = d["banner"]
+    check("bannerfoto: hetzelfde kader zonder gestippelde vorm; de uitkomst is de plek van het kader, de foto blijft heel",
+          bn["titel"] == "Bannerfoto" and not bn["zichtbaar"] and bn["dicht"] and bn["kader"] == {"x": 0, "y": 0.5, "b": 1, "h": 0.5} and bn["vier3"] == 1.333, j("banner"))
+    t = d["teken"]
+    check("bannerteken op een foto: eerst het kader; Annuleren laat de foto buiten de banner",
+          t["venster"] and t["titel"] == "Bannerfoto" and t["naAnnuleren"] == [False, None], j("teken"))
+    check("bannerteken: na 'Gebruik deze foto' staat de foto in de banner met een kader; een video krijgt geen venster",
+          t["gekozen"] == [True, True, "true"] and t["video"] == [True, False], j("teken"))
+    check("uit de banner halen vergeet het kader", t["uit"] == [False, None], j("teken"))
+    check("opslaan stuurt het kader alleen mee bij de foto in de banner", d["opslaan"] == [["foto", True, True], ["video", True, False]], j("opslaan"))
+    h = d["hoes"]
+    check("de hoes toont precies het gekozen kader (de onderste helft), en meet tekstkleur en matglas op dat kader",
+          h["kader"] and h["breed"] == 0 and abs(h["hoog"]) <= 1 and abs(h["boven"]) <= 1 and h["links"] == 0 and h["meet"] == [600, 600], j("hoes"))
+    check("zonder kader of met een kader dat niet klopt: het midden, zoals tot nu toe (besluit Ronald (e) A)",
+          h["geen"] and h["tekst"] and h["buiten"] and h["nul"], j("hoes"))
+    check("een foto van 4:3 staat in elke kleine plek als het midden, zonder vervormen (object-fit: cover)",
+          all(v == "cover" for v in d["klein"].values()), j("klein"))
+    check("blok 112: geen paginafouten", not fouten, "; ".join(fouten)[:300])
+
+
 def blok_jwt_herhaling():
     print("\nBlok 108 — herhaling bij 'JWT issued at future' (TT-306)")
     core = open(os.path.join(ROOT, "core.js"), encoding="utf-8").read()
@@ -11923,6 +12078,7 @@ def main():
     blok_tt517_fase2()
     blok_tt517_fase3()
     blok_tt517_fase4()
+    blok_tt517_fase5()
     blok_0_rijen()
     blok_browser()
     blok_xss()

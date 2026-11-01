@@ -324,7 +324,7 @@ async function laadProfielScherm(id, linkToegang) {
       musician_instruments(instrument, niveau),
       musician_genres(genre),
       musician_songs(song_title, song_artist, mastery_level),
-      musician_media(media_type, url, platform, in_banner, created_at)
+      musician_media(media_type, url, platform, in_banner, created_at, uitsnede)
     `).eq('id', id).single();
     m = res.data; error = res.error;
     if (m) {
@@ -1419,7 +1419,7 @@ function mhRenderTip() {
 function mhFieldSnapshot() {
   return JSON.stringify({
     avatarUrl: mhAvatarUrl,
-    mediaFiles: mhMediaFiles.map(m => ({ url: m.url, type: m.type, uploading: m.uploading, inBanner: !!m.inBanner })),
+    mediaFiles: mhMediaFiles.map(m => ({ url: m.url, type: m.type, uploading: m.uploading, inBanner: !!m.inBanner, uitsnede: m.uitsnede || null })),
     mediaLinks: mhMediaLinks,
   });
 }
@@ -1427,7 +1427,7 @@ function mhFieldSnapshot() {
 async function openJeMediahoek() {
   mhStartTipCycle();
   const { data, error } = await db.from('musicians')
-    .select('avatar_url, musician_media(media_type, url, platform, in_banner, created_at)')
+    .select('avatar_url, musician_media(media_type, url, platform, in_banner, created_at, uitsnede)')
     .eq('id', myMusicianId).single();
   if (error) {
     showToast(friendlyErrorMessage(error, 'je gegevens laden'));
@@ -1438,7 +1438,7 @@ async function openJeMediahoek() {
   data.musician_media = opVolgordeVanToevoegen(data.musician_media);
   mhMediaFiles = (data.musician_media || [])
     .filter(x => x.media_type === 'foto' || x.media_type === 'video')
-    .map(x => ({ name: '', url: x.url, path: null, type: x.media_type, uploading: false, inBanner: !!x.in_banner }));
+    .map(x => ({ name: '', url: x.url, path: null, type: x.media_type, uploading: false, inBanner: !!x.in_banner, uitsnede: x.uitsnede || null }));
   mhMediaLinks = (data.musician_media || []).filter(x => x.media_type === 'link')
     .map(x => ({ url: x.url, inBanner: !!x.in_banner }));
 
@@ -1550,12 +1550,7 @@ function mhRenderMediaGrid() {
 // TT-263: dezelfde keuze als in de wizard, met dezelfde grens over foto's,
 // video's en links samen.
 function mhToggleMediaBanner(i) {
-  const m = mhMediaFiles[i];
-  if (!m) return;
-  if (!bannerKeuzeMag(bannerAantal(mhMediaFiles, mhMediaLinks), !m.inBanner)) return;
-  m.inBanner = !m.inBanner;
-  bannerKnopStandZetten('mhMediaGrid', i, m.inBanner);
-  bannerTellerBijwerken('mhBannerTeller', mhMediaFiles, mhMediaLinks);
+  return bannerTekenTik(mhMediaFiles[i], mhMediaFiles, mhMediaLinks, 'mhMediaGrid', 'mhBannerTeller');
 }
 
 function mhSpeelMedia(i) {
@@ -1628,7 +1623,7 @@ async function saveJeMediahoek() {
     .map(l => ({ media_type: 'link', url: l.url, platform: detectPlatform(l.url), in_banner: !!l.inBanner }));
   const fileMedia = mhMediaFiles
     .filter(m => m.url && !m.uploading && !m.url.startsWith('blob:'))
-    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner }));
+    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner, uitsnede: bannerKader(m) }));
   const { error: kErr } = await db.rpc('tt_save_musician_koppelingen', {
     p_musician_id: myMusicianId,
     p_media: linkMedia.concat(fileMedia),

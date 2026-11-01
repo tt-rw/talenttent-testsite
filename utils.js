@@ -2317,6 +2317,32 @@ function mediaTegelHTML(m, i, voorvoegsel) {
     </div>`;
 }
 
+// Een tik op het bannerteken van een foto of video (wizard, Je mediahoek,
+// Onze media; één functie, huisstijl §18.2). TT-517 fase 5 (huisstijl §21):
+// kiest de gebruiker een foto voor de banner, dan opent eerst het kader van
+// 4:3 (kiesUitsnede, 'banner'). Annuleren laat alles zoals het was. Uit de
+// banner halen vergeet het kader. Een video krijgt geen kader.
+async function bannerTekenTik(m, bestanden, links, gridId, tellerId) {
+  if (!m) return;
+  if (!bannerKeuzeMag(bannerAantal(bestanden, links), !m.inBanner)) return;
+  if (!m.inBanner && m.type === 'foto') {
+    const kader = await kiesUitsnede(m.url, 'banner');
+    if (!kader) return;
+    m.uitsnede = kader;
+  } else {
+    m.uitsnede = null;
+  }
+  m.inBanner = !m.inBanner;
+  const i = bestanden.indexOf(m);
+  if (i >= 0) bannerKnopStandZetten(gridId, i, m.inBanner);
+  bannerTellerBijwerken(tellerId, bestanden, links);
+}
+
+// Wat de app van het kader bewaart: alleen bij een foto in de banner.
+function bannerKader(m) {
+  return m && m.type === 'foto' && m.inBanner ? uitsnedeGeldig(m.uitsnede) : null;
+}
+
 // De bovengrens geldt over foto's, video's en links samen: de banner toont
 // één reeks, geen reeks per tabblad.
 function bannerAantal(bestanden, links) {
@@ -2422,7 +2448,12 @@ function profielHoesHTML(o) {
     const wat = `Beeld ${i + 1 + voor} van ${n}`;
     let binnen, tik;
     if (it.media_type === 'foto') {
-      binnen = `<img class="hoes-img" ${hoesBronAttr(url)} alt="${wat}" loading="lazy">`;
+      // TT-517 fase 5: een bannerfoto met een gekozen kader toont precies dat
+      // kader; zonder kader het midden (object-fit: cover).
+      const k = uitsnedeGeldig(it.uitsnede);
+      binnen = k
+        ? `<img class="hoes-img hoes-kader" ${hoesBronAttr(url)} style="${uitsnedeStijl(k)}" data-kader="${k.x},${k.y},${k.b},${k.h}" alt="${wat}" loading="lazy">`
+        : `<img class="hoes-img" ${hoesBronAttr(url)} alt="${wat}" loading="lazy">`;
       tik = `openMediaLightbox('${jsAttr(url)}')`;
     } else if (it.media_type === 'video') {
       // #t=0.1 dwingt het eerste beeld af; zonder dat laat Safari op de
@@ -2467,19 +2498,23 @@ function hoesLum(r, g, b) {
   return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
 }
 
-// Tekent het beeld zoals het in de hoes staat (4:3, midden uitgesneden) en
-// beoordeelt het stuk waar de naam, de regel en de tekens staan: de onderste
-// 40%, over de volle breedte. Geeft null als het beeld niet te lezen is (een
-// beeld van een andere site zonder toestemming): dan geldt de veilige vorm.
+// Tekent het beeld zoals het in de hoes staat (4:3, midden uitgesneden, of
+// het gekozen kader van een bannerfoto) en beoordeelt het stuk waar de naam,
+// de regel en de tekens staan: de onderste 40%, over de volle breedte. Geeft
+// null als het beeld niet te lezen is (een beeld van een andere site zonder
+// toestemming): dan geldt de veilige vorm.
 function hoesBeeldOordeel(m) {
   const iw = m.naturalWidth || m.videoWidth, ih = m.naturalHeight || m.videoHeight;
   if (!iw || !ih) return null;
   let sw = iw, sh = iw * 3 / 4;
   if (sh > ih) { sh = ih; sw = ih * 4 / 3; }
+  let sx = (iw - sw) / 2, sy = (ih - sh) / 2;
+  const kader = m.dataset && m.dataset.kader ? m.dataset.kader.split(',').map(Number) : null;
+  if (kader) { sx = kader[0] * iw; sy = kader[1] * ih; sw = kader[2] * iw; sh = kader[3] * ih; }
   const c = document.createElement('canvas');
   c.width = 96; c.height = 72;
   const x = c.getContext('2d', { willReadFrequently: true });
-  x.drawImage(m, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, 96, 72);
+  x.drawImage(m, sx, sy, sw, sh, 0, 0, 96, 72);
   const d = x.getImageData(0, 43, 96, 28).data; // gooit een fout als het beeld niet te lezen is
   const La = hoesLum(...HOES_ANTRACIET), wit = [], ant = [];
   let som = 0, mn = 1, mx = 0;
@@ -2499,7 +2534,7 @@ function hoesBeeldOordeel(m) {
     waas,
     // Hoe groter het verschil tussen licht en donker achter de naam, hoe dichter het matglas.
     sterk: 0.4 + 0.45 * Math.min(1, (mx - mn) / 0.8),
-    canvas: c, beeld: m, sx: (iw - sw) / 2, sy: (ih - sh) / 2, sw, sh
+    canvas: c, beeld: m, sx, sy, sw, sh
   };
 }
 
@@ -2597,28 +2632,42 @@ function nietBeschikbaarMeldingHTML() {
 // ─── Uitsnede kiezen bij een foto (TT-520 deel 2, 27-10-2026, Laag 3.4) ─────
 // Besluiten Ronald: na het kiezen van een profielfoto of bandfoto opent meteen
 // dit venster. Schuiven met één vinger, zoomen met twee vingers of het
-// muiswiel, dan "Gebruik deze foto". De uitsnede is vierkant en de foto vult
-// altijd het hele vierkant ("als er maar geen zwarte randen ontstaan"): verder
-// uitzoomen dan de rand van de foto kan niet. Bij een profielfoto toont een
-// cirkel wat er in de ronde foto's staat; bij een bandfoto het vierkant zelf.
-// Het kruisje, Escape of de terugknop van het toestel breken af: dan verandert
-// er niets. De app bewaart de uitgesneden foto (JPG, hoogstens 1080 pixels),
-// zodat elk scherm dezelfde uitsnede toont.
-// kiesUitsnede(file, 'rond' | 'vierkant') → Promise<File | null>.
+// muiswiel, dan "Gebruik deze foto". De foto vult altijd het hele kader ("als
+// er maar geen zwarte randen ontstaan"): verder uitzoomen dan de rand van de
+// foto kan niet. Het kruisje, Escape of de terugknop van het toestel breken
+// af: dan verandert er niets.
+// TT-517 fase 5 (01-11-2026, huisstijl §21, besluit Ronald 31-10-2026 optie 1:
+// één regel voor elk beeld): het kader is 4:3, precies de hoes. Gestippeld
+// staat erin wat klein in lijsten en berichten komt: het rondje (muzikant) of
+// het vierkant (band), in het midden, zoals het fotootje en object-fit: cover
+// het tonen. Een staande foto begint bovenaan (daar staat meestal het gezicht).
+//   'rond' en 'vierkant' (profielfoto, bandfoto): de app bewaart de uitgesneden
+//     foto als JPG van 4:3, hoogstens UITSNEDE_MAX_PX pixels hoog.
+//   'banner' (een foto die de gebruiker voor de banner kiest): zonder
+//     gestippelde vorm. De foto zelf blijft heel (groot openen toont alles);
+//     de app bewaart alleen de plek van het kader, als delen van de foto:
+//     { x, y, b, h } (links, boven, breedte, hoogte; elk 0 tot 1).
+// kiesUitsnede(bron, 'rond' | 'vierkant' | 'banner') → Promise<File | object | null>.
+// `bron` is een bestand, of bij 'banner' ook het adres van een geüploade foto.
 const UITSNEDE_MAX_PX = 1080;
 const UITSNEDE_MAX_ZOOM = 4;
-let uitsnede = null; // { img, url, vlak, schaal0, zoom, x, y, klaar, wijzers }
+let uitsnede = null; // { img, url, eigenUrl, vlak, vorm, schaal0, zoom, x, y, klaar, wijzers }
 
-function kiesUitsnede(file, vorm) {
+function kiesUitsnede(bron, vorm) {
   return new Promise((klaar) => {
     if (uitsnede) uitsnedeAfsluiten(null);
     const modal = document.getElementById('uitsnedeModal');
     const vlak = document.getElementById('uitsnedeVlak');
     const img = document.getElementById('uitsnedeImg');
-    const url = URL.createObjectURL(file);
-    uitsnede = { img, url, vlak, file, schaal0: 1, zoom: 1, x: 0, y: 0, klaar, wijzers: new Map() };
-    document.getElementById('uitsnedeTitel').textContent = vorm === 'rond' ? 'Profielfoto' : 'Bandfoto';
-    document.getElementById('uitsnedeMasker').classList.toggle('rond', vorm === 'rond');
+    const isBestand = typeof bron !== 'string';
+    const url = isBestand ? URL.createObjectURL(bron) : bron;
+    uitsnede = { img, url, eigenUrl: isBestand, vlak, vorm, file: isBestand ? bron : null,
+      schaal0: 1, zoom: 1, x: 0, y: 0, klaar, wijzers: new Map() };
+    document.getElementById('uitsnedeTitel').textContent =
+      vorm === 'rond' ? 'Profielfoto' : vorm === 'banner' ? 'Bannerfoto' : 'Bandfoto';
+    const klein = document.getElementById('uitsnedeKlein');
+    klein.hidden = vorm === 'banner';
+    klein.classList.toggle('rond', vorm === 'rond');
     document.getElementById('uitsnedeKnop').disabled = true;
     img.onload = () => {
       if (!uitsnede || uitsnede.img !== img) return;
@@ -2629,30 +2678,38 @@ function kiesUitsnede(file, vorm) {
       uitsnedeAfsluiten(null);
       showToast('Deze foto is niet te lezen. Kies een JPG of PNG.');
     };
-    img.src = url;
+    if (isBestand) img.src = url; else fotoBronZetten(img, url);
     modal.classList.add('visible');
   });
 }
 
-// Begin: de foto vult het vierkant precies (de korte kant past), in het midden.
+// De maat van het kader op het scherm. De hoogte volgt uit de breedte (4:3),
+// niet uit clientHeight: die rondt af op hele pixels (358 breed geeft 269 in
+// plaats van 268,5), en dan is de uitkomst geen 4:3 meer.
+function uitsnedeMaten() {
+  const W = uitsnede.vlak.clientWidth;
+  return { W, H: W * 3 / 4 };
+}
+
+// Begin: de foto vult het kader precies. Een staande foto (hoger dan het
+// kader) begint bovenaan, een andere in het midden.
 function uitsnedeBegin() {
-  const u = uitsnede;
-  const z = u.vlak.clientWidth;
-  u.schaal0 = z / Math.min(u.img.naturalWidth, u.img.naturalHeight);
+  const u = uitsnede, m = uitsnedeMaten();
+  const nw = u.img.naturalWidth, nh = u.img.naturalHeight;
+  u.schaal0 = Math.max(m.W / nw, m.H / nh);
   u.zoom = 1;
-  u.x = (z - u.img.naturalWidth * u.schaal0) / 2;
-  u.y = (z - u.img.naturalHeight * u.schaal0) / 2;
+  u.x = (m.W - nw * u.schaal0) / 2;
+  u.y = nh / nw > m.H / m.W ? 0 : (m.H - nh * u.schaal0) / 2;
   uitsnedeTekenen();
 }
 
-// Houdt de foto altijd over het hele vierkant: geen lege rand.
+// Houdt de foto altijd over het hele kader: geen lege rand.
 function uitsnedeBegrens() {
-  const u = uitsnede;
-  const z = u.vlak.clientWidth;
+  const u = uitsnede, m = uitsnedeMaten();
   u.zoom = Math.min(UITSNEDE_MAX_ZOOM, Math.max(1, u.zoom));
   const s = u.schaal0 * u.zoom;
-  u.x = Math.min(0, Math.max(z - u.img.naturalWidth * s, u.x));
-  u.y = Math.min(0, Math.max(z - u.img.naturalHeight * s, u.y));
+  u.x = Math.min(0, Math.max(m.W - u.img.naturalWidth * s, u.x));
+  u.y = Math.min(0, Math.max(m.H - u.img.naturalHeight * s, u.y));
 }
 
 function uitsnedeTekenen() {
@@ -2725,19 +2782,28 @@ function uitsnedeWiel(e) {
   uitsnedeZoom(uitsnede.zoom * Math.exp(-e.deltaY / 500), p.x, p.y);
 }
 
-// "Gebruik deze foto": het vierkant op ware grootte uitsnijden, als JPG.
+// "Gebruik deze foto". Bij een bannerfoto: de plek van het kader, als delen
+// van de foto. Anders: het kader op ware grootte uitsnijden, als JPG van 4:3.
 function uitsnedeGebruiken() {
   const u = uitsnede;
   if (!u || !u.img.naturalWidth) return;
+  const m = uitsnedeMaten();
   const s = u.schaal0 * u.zoom;
-  const zijde = u.vlak.clientWidth / s;           // de zijde in pixels van de foto
-  const uit = Math.max(1, Math.round(Math.min(UITSNEDE_MAX_PX, zijde)));
+  const bw = m.W / s, bh = m.H / s;               // het kader in pixels van de foto
+  if (u.vorm === 'banner') {
+    const nw = u.img.naturalWidth, nh = u.img.naturalHeight;
+    const r = v => Math.max(0, Math.round(v * 10000) / 10000);
+    uitsnedeAfsluiten({ x: r(-u.x / s / nw), y: r(-u.y / s / nh), b: r(bw / nw), h: r(bh / nh) });
+    return;
+  }
+  const uh = Math.max(1, Math.round(Math.min(UITSNEDE_MAX_PX, bh)));
+  const uw = Math.round(uh * 4 / 3);
   const canvas = document.createElement('canvas');
-  canvas.width = uit; canvas.height = uit;
+  canvas.width = uw; canvas.height = uh;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, uit, uit);
-  ctx.drawImage(u.img, -u.x / s, -u.y / s, zijde, zijde, 0, 0, uit, uit);
+  ctx.fillRect(0, 0, uw, uh);
+  ctx.drawImage(u.img, -u.x / s, -u.y / s, bw, bh, 0, 0, uw, uh);
   const naam = (u.file.name || 'foto').replace(/\.[^.]*$/, '') + '.jpg';
   document.getElementById('uitsnedeKnop').disabled = true;
   canvas.toBlob((blob) => {
@@ -2754,7 +2820,7 @@ function uitsnedeAfsluiten(uitkomst) {
   if (!u) return;
   u.img.onload = null; u.img.onerror = null;
   u.img.removeAttribute('src');
-  URL.revokeObjectURL(u.url);
+  if (u.eigenUrl) URL.revokeObjectURL(u.url);
   u.klaar(uitkomst || null);
 }
 function sluitUitsnede() { uitsnedeAfsluiten(null); }
@@ -2762,9 +2828,28 @@ function sluitUitsnede() { uitsnedeAfsluiten(null); }
 // Draait de telefoon of verandert het venster, dan blijft de uitsnede staan.
 window.addEventListener('resize', () => {
   if (!uitsnede || !uitsnede.img.naturalWidth) return;
-  const u = uitsnede;
+  const u = uitsnede, m = uitsnedeMaten();
   const oud = u.schaal0;
-  u.schaal0 = u.vlak.clientWidth / Math.min(u.img.naturalWidth, u.img.naturalHeight);
+  u.schaal0 = Math.max(m.W / u.img.naturalWidth, m.H / u.img.naturalHeight);
   u.x *= u.schaal0 / oud; u.y *= u.schaal0 / oud;
   uitsnedeTekenen();
 });
+
+// De bewaarde plek van het kader van een bannerfoto, gecontroleerd: vier
+// getallen tussen 0 en 1 die binnen de foto vallen. Anders null: dan toont de
+// hoes het midden, zoals bij een foto zonder kader.
+function uitsnedeGeldig(k) {
+  if (!k || typeof k !== 'object') return null;
+  const x = Number(k.x), y = Number(k.y), b = Number(k.b), h = Number(k.h);
+  if (![x, y, b, h].every(Number.isFinite)) return null;
+  if (x < 0 || y < 0 || b <= 0 || h <= 0 || x + b > 1.001 || y + h > 1.001) return null;
+  return { x, y, b, h };
+}
+
+// Een bannerfoto met een kader in de hoes: de foto zo groot en zo verschoven
+// dat precies het kader de hoes vult. In procenten van de hoes, zodat de
+// maat van het scherm niet uitmaakt.
+function uitsnedeStijl(k) {
+  const p = v => (Math.round(v * 1000) / 1000) + '%';
+  return `width:${p(100 / k.b)};height:${p(100 / k.h)};left:${p(-k.x / k.b * 100)};top:${p(-k.y / k.h * 100)}`;
+}

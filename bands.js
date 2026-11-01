@@ -945,7 +945,7 @@ function vandaagISO() {
 // later op.
 async function bandUitTabellen(id) {
   const { data: b, error } = await db.from('bands')
-    .select(`*, band_members(role, status, joined_at, musicians(id, weergavenaam, username, avatar_url, musician_instruments(instrument))), band_wanted(instrument), band_media(media_type, url, platform, in_banner, created_at), band_nummers(titel, url, platform, created_at), band_covers(song_title, song_artist), band_invallers(instrument, datum)`)
+    .select(`*, band_members(role, status, joined_at, musicians(id, weergavenaam, username, avatar_url, musician_instruments(instrument))), band_wanted(instrument), band_media(media_type, url, platform, in_banner, created_at, uitsnede), band_nummers(titel, url, platform, created_at), band_covers(song_title, song_artist), band_invallers(instrument, datum)`)
     .eq('id', id).maybeSingle(); // TT-464: een band die niet (meer) bestaat is geen fout
   if (error) throw error;
   if (!b) return null;
@@ -2142,11 +2142,11 @@ let bmMediaLinks = [];   // { id, url, inBanner }
 let bmSnapshot = null;
 let bmFotoUrl = null;    // de bandfoto (bands.avatar_url)
 let bmFotoBezig = false;
-let bmOrigineel = [];    // [id, url, in_banner] zoals in de database
+let bmOrigineel = [];    // [id, url, in_banner, uitsnede] zoals in de database
 
 function bmFieldSnapshot() {
   return JSON.stringify({
-    files: bmMediaFiles.map(m => [m.id || null, m.url, m.type, !!m.uploading, !!m.inBanner]),
+    files: bmMediaFiles.map(m => [m.id || null, m.url, m.type, !!m.uploading, !!m.inBanner, m.uitsnede || null]),
     links: bmMediaLinks.map(l => [l.id || null, l.url, !!l.inBanner]),
     instagram: waardeVan('bmInstagram'), tiktok: waardeVan('bmTiktok'), youtube: waardeVan('bmYoutube'),
     foto: bmFotoUrl || null
@@ -2158,7 +2158,7 @@ async function openBandMedia() {
   const scherm = document.getElementById('bandMediaScreen');
   scherm.querySelectorAll('.media-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
   scherm.querySelectorAll('.media-pane').forEach((p, i) => p.classList.toggle('active', i === 0));
-  const b = await bandBewerkGegevens('name, city, avatar_url, instagram, tiktok, youtube, band_media(id, media_type, url, platform, in_banner, created_at)');
+  const b = await bandBewerkGegevens('name, city, avatar_url, instagram, tiktok, youtube, band_media(id, media_type, url, platform, in_banner, created_at, uitsnede)');
   if (!b) return;
   bmZet(b);
   bmSnapshot = bmFieldSnapshot();
@@ -2167,9 +2167,9 @@ async function openBandMedia() {
 function bmZet(b) {
   const opTijd = (x, y) => String(x.created_at || '').localeCompare(String(y.created_at || ''));
   const rijen = (b.band_media || []).slice().sort(opTijd);
-  bmOrigineel = rijen.map(r => [r.id, r.url, !!r.in_banner]);
+  bmOrigineel = rijen.map(r => [r.id, r.url, !!r.in_banner, JSON.stringify(uitsnedeGeldig(r.uitsnede))]);
   bmMediaFiles = rijen.filter(r => r.media_type === 'foto' || r.media_type === 'video')
-    .map(r => ({ id: r.id, name: '', url: r.url, path: null, type: r.media_type, uploading: false, inBanner: !!r.in_banner }));
+    .map(r => ({ id: r.id, name: '', url: r.url, path: null, type: r.media_type, uploading: false, inBanner: !!r.in_banner, uitsnede: r.uitsnede || null }));
   bmMediaLinks = rijen.filter(r => r.media_type === 'link').map(r => ({ id: r.id, url: r.url, inBanner: !!r.in_banner }));
   document.getElementById('bmInstagram').value = b.instagram || '';
   document.getElementById('bmTiktok').value = b.tiktok || '';
@@ -2270,12 +2270,7 @@ function bmRenderMediaGrid() {
 }
 
 function bmToggleMediaBanner(i) {
-  const m = bmMediaFiles[i];
-  if (!m) return;
-  if (!bannerKeuzeMag(bannerAantal(bmMediaFiles, bmMediaLinks), !m.inBanner)) return;
-  m.inBanner = !m.inBanner;
-  bannerKnopStandZetten('bmMediaGrid', i, m.inBanner);
-  bannerTellerBijwerken('bmBannerTeller', bmMediaFiles, bmMediaLinks);
+  return bannerTekenTik(bmMediaFiles[i], bmMediaFiles, bmMediaLinks, 'bmMediaGrid', 'bmBannerTeller');
 }
 
 function bmSpeelMedia(i) {
@@ -2366,9 +2361,9 @@ async function saveBandMedia() {
     // Alleen wat wegging weghalen, wat wijzigde bijwerken en wat nieuw is
     // toevoegen (zie Onze muziek). De volgorde blijft die van binnenkomst.
     const nu = bmMediaFiles.filter(m => m.url && !m.url.startsWith('blob:'))
-      .map(m => ({ id: m.id, media_type: m.type, url: m.url, platform: null, in_banner: !!m.inBanner }))
+      .map(m => ({ id: m.id, media_type: m.type, url: m.url, platform: null, in_banner: !!m.inBanner, uitsnede: bannerKader(m) }))
       .concat(bmMediaLinks.filter(l => l.url.trim())
-        .map(l => ({ id: l.id, media_type: 'link', url: l.url.trim(), platform: detectPlatform(l.url.trim()), in_banner: !!l.inBanner })));
+        .map(l => ({ id: l.id, media_type: 'link', url: l.url.trim(), platform: detectPlatform(l.url.trim()), in_banner: !!l.inBanner, uitsnede: null })));
     const weg = bmOrigineel.map(r => r[0]).filter(x => !nu.some(m => m.id === x));
     if (weg.length) {
       const { error } = await db.from('band_media').delete().in('id', weg);
@@ -2376,19 +2371,19 @@ async function saveBandMedia() {
     }
     for (const m of nu.filter(m => m.id)) {
       const oud = bmOrigineel.find(r => r[0] === m.id);
-      if (oud && oud[1] === m.url && oud[2] === m.in_banner) continue;
-      const { error } = await db.from('band_media').update({ url: m.url, platform: m.platform, in_banner: m.in_banner }).eq('id', m.id);
+      if (oud && oud[1] === m.url && oud[2] === m.in_banner && oud[3] === JSON.stringify(m.uitsnede)) continue;
+      const { error } = await db.from('band_media').update({ url: m.url, platform: m.platform, in_banner: m.in_banner, uitsnede: m.uitsnede }).eq('id', m.id);
       if (error) throw error;
     }
     const nieuw = nu.filter(m => !m.id);
     if (nieuw.length) {
       const { error } = await db.from('band_media').insert(nieuw.map(m =>
-        ({ band_id: id, media_type: m.media_type, url: m.url, platform: m.platform, in_banner: m.in_banner })));
+        ({ band_id: id, media_type: m.media_type, url: m.url, platform: m.platform, in_banner: m.in_banner, uitsnede: m.uitsnede })));
       if (error) throw error;
     }
     opslagOpruimen('media', 'bands/' + id, nu.map(m => m.url));
 
-    const b = await bandBewerkGegevens('avatar_url, instagram, tiktok, youtube, band_media(id, media_type, url, platform, in_banner, created_at)');
+    const b = await bandBewerkGegevens('avatar_url, instagram, tiktok, youtube, band_media(id, media_type, url, platform, in_banner, created_at, uitsnede)');
     if (!b) return;
     bmZet(b);
     bmSnapshot = bmFieldSnapshot();

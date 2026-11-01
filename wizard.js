@@ -298,7 +298,7 @@ async function loadMyProfile(opties) {
              avatar_url, accepts_band_invites,
              musician_instruments(instrument, niveau), musician_genres(genre),
              musician_songs(song_title, song_artist, mastery_level),
-             musician_media(media_type, url, platform, in_banner, created_at)`)
+             musician_media(media_type, url, platform, in_banner, created_at, uitsnede)`)
     .eq('user_id', currentUser.id)
     .single();
 
@@ -464,7 +464,7 @@ async function persistEditedProfile() {
     .map(l => ({ media_type: 'link', url: l.url, platform: detectPlatform(l.url), in_banner: !!l.inBanner }));
   const fileMedia = state.mediaFiles
     .filter(m => m.url && !m.uploading && !m.url.startsWith('blob:'))
-    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner }));
+    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner, uitsnede: bannerKader(m) }));
 
   const { error: kErr } = await db.rpc('tt_save_musician_koppelingen', {
     p_musician_id: mid,
@@ -935,6 +935,7 @@ async function submitProfile() {
         media_type:  m.type,
         url:         m.url,
         in_banner:   !!m.inBanner,
+        uitsnede:    bannerKader(m),
       }));
     if (fileMedia.length) {
       const { error: fErr } = await db.from('musician_media').insert(fileMedia);
@@ -1829,12 +1830,7 @@ function renderMediaGrid() {
 // TT-263: welke media in de bannerbalk op het profiel komt, kiest de
 // gebruiker hier. De grens geldt over foto's, video's en links samen.
 function toggleMediaBanner(i) {
-  const m = state.mediaFiles[i];
-  if (!m) return;
-  if (!bannerKeuzeMag(bannerAantal(state.mediaFiles, state.mediaLinks), !m.inBanner)) return;
-  m.inBanner = !m.inBanner;
-  bannerKnopStandZetten('mediaGrid', i, m.inBanner);
-  bannerTellerBijwerken('wizardBannerTeller', state.mediaFiles, state.mediaLinks);
+  return bannerTekenTik(state.mediaFiles[i], state.mediaFiles, state.mediaLinks, 'mediaGrid', 'wizardBannerTeller');
 }
 
 function speelMedia(i) {
