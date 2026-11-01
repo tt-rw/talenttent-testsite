@@ -1183,10 +1183,11 @@ def blok_browser():
         }""")
 
         check("zonder gekozen items staat alleen het eerste beeld in de hoes, zonder stippen", banner["zonderKeuzeAlleenFoto"], "")
-        check("na de profielfoto krijgt elk gekozen item een vlak (zonder foto: het podium eerst)",
-              banner["aantalItems"] == 5 and banner["eersteIsPodium"], str(banner["aantalItems"]))
+        # Besluit Ronald (01-11-2026, A): zonder profielfoto begint de hoes met de gekozen media, niet met het podium.
+        check("zonder profielfoto krijgt elk gekozen item een vlak, het eerste vooraan; geen podium",
+              banner["aantalItems"] == 4 and not banner["eersteIsPodium"], str(banner["aantalItems"]))
         check("en elk vlak een stip; de stippen zijn geen knop (TT-541)",
-              banner["aantalStippen"] == 5 and banner["stipIsKnop"] == 0, str(banner["aantalStippen"]))
+              banner["aantalStippen"] == 4 and banner["stipIsKnop"] == 0, str(banner["aantalStippen"]))
         check("de eerste stip staat aan, de rest uit",
               banner["eersteStipAan"] and banner["tweedeStipUit"], "")
         check("vegen gaat via scroll-snap, niet via een eigen touchmove", banner["snapX"], "")
@@ -1204,8 +1205,8 @@ def blok_browser():
               banner["kaartVoorSpotify"] and banner["kaartPlatform"] == "Spotify", banner["kaartPlatform"])
         check("de stippen volgen het vegen", banner["stipVolgtSwipe"], "")
         check("de hoes schuift niet uit zichzelf door (besluit Ronald 30-10-2026)", banner["staatStil"], "")
-        check("boven zes gekozen items telt alleen de eerste zes, na de profielfoto",
-              banner["grensZes"] == 7, str(banner["grensZes"]))
+        check("boven zes gekozen items telt alleen de eerste zes",
+              banner["grensZes"] == 6, str(banner["grensZes"]))
         check("foto's en video's staan in één raster",
               banner["mediaTitels"] == ["Foto's en video's", "Links"], json.dumps(banner["mediaTitels"]))
         check("met een tegel per foto en per video", banner["fotoEnVideoSamen"] == 2, str(banner["fotoEnVideoSamen"]))
@@ -4039,7 +4040,7 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             const r = {
               tegels: vak.querySelectorAll('.profile-media-tegel.media-afgeschermd').length,
               banner: vak.querySelectorAll('.hoes-vlak.media-afgeschermd, .hoes .media-afgeschermd').length,
-              balk: vak.querySelectorAll('.hoes-vlak').length - 1, // TT-517 fase 4: de banner zit in de hoes
+              balk: vak.querySelectorAll('.hoes-vlak:not(.hoes-leeg):not([aria-label^="Foto van"])').length, // TT-517 fase 4: de bannerbeelden in de hoes
               opBanner: vak.querySelectorAll('.hoes-stip').length > 0,
               knoppen: t.filter(e => e.tagName === 'BUTTON' || e.closest('button') || e.hasAttribute('onclick')).length,
               tekst: t.map(e => e.textContent.trim()),
@@ -5964,7 +5965,7 @@ window.TT_STUB.fnAntwoord = {};
             invallers: [{ instrument: 'Drums', datum: straks }] }];
           await openBandScherm('b7');
           uit.gast = { titels: titels(), tags: tags(),
-            balk: vak().querySelectorAll('.hoes-vlak').length - 1, // TT-517 fase 4: de banner zit in de hoes
+            balk: vak().querySelectorAll('.hoes-vlak:not(.hoes-leeg):not([aria-label^="Foto van"])').length, // TT-517 fase 4: de bannerbeelden in de hoes
             tegelT: vak().querySelectorAll('.profile-media-tegel.media-afgeschermd').length,
             nummerKnop: vak().querySelectorAll('button.band-nummer').length,
             nummerDicht: vak().querySelectorAll('div.band-nummer .media-afgeschermd').length,
@@ -5999,7 +6000,7 @@ window.TT_STUB.fnAntwoord = {};
             const r = { titels: titels(), tags: tags(),
               namen: [...vak().querySelectorAll('.bezetting-lid:not(.bezetting-open) .bb-naam')].map(e => e.textContent),
               open: [...vak().querySelectorAll('.bezetting-open')].map(e => [...e.querySelectorAll('.bb-foto, .bb-naam, .bb-sub')].map(c => c.textContent.trim()).join(' ')),
-              balk: vak().querySelectorAll('.hoes-vlak').length - 1, // TT-517 fase 4: de banner zit in de hoes
+              balk: vak().querySelectorAll('.hoes-vlak:not(.hoes-leeg):not([aria-label^="Foto van"])').length, // TT-517 fase 4: de bannerbeelden in de hoes
               links: [...vak().querySelectorAll('a.social-knop')].map(a => a.getAttribute('href')),
               nummer: vak().querySelectorAll('button.band-nummer img').length,
               menu: [...vak().querySelectorAll('.profiel-knoppen .nav-menu-item')].map(b => b.textContent.trim()),
@@ -11664,6 +11665,15 @@ def blok_tt517_fase4():
                        ".profile-avatar-initials", ".bandfoto") if w in alles]
     check("de oude bannerbalk en de ronde profielfoto in de kop zijn weg, ook hun code (dode code)", not oud, str(oud))
     check("de hoes staat stil: geen tijd die hem laat doorschuiven", "setInterval" not in utils[utils.index("// TT-517 fase 4 (01-11-2026): het profiel als hoes"):utils.index("function hoesStarten") + 2500])
+    # Besluit Ronald (01-11-2026, A): de bannerbeelden van een muzikant op volgorde van toevoegen, zoals bij een band.
+    mus = open(os.path.join(ROOT, "musicians.js"), encoding="utf-8").read()
+    wiz = open(os.path.join(ROOT, "wizard.js"), encoding="utf-8").read()
+    check("de app leest bij elk muzikantprofiel de tijd van toevoegen van de media (created_at), drie plekken",
+          mus.count("musician_media(media_type, url, platform, in_banner, created_at)") == 2
+          and wiz.count("musician_media(media_type, url, platform, in_banner, created_at)") == 1
+          and "musician_media(media_type, url, platform, in_banner)" not in mus + wiz)
+    check("de hoes en Je mediahoek zetten de media op volgorde van toevoegen (één functie)",
+          "return opVolgordeVanToevoegen(mediaLijst)" in utils and "data.musician_media = opVolgordeVanToevoegen(data.musician_media);" in mus)
     check("--op-foto-donker is antraciet #52575F en --podium #101114 (huisstijl §21)",
           "--op-foto-donker: #52575F;" in css and "--podium: #101114;" in css)
 
@@ -11724,8 +11734,10 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
         ("wit", 1, [profiel(F("wit")), "openProfielScherm('m2')"]),
         ("strepen", 1, [profiel(F("strepen")), "openProfielScherm('m2')"]),
         ("geen", 1, [profiel("null"), "openProfielScherm('m2')"]),
+        ("geenfotowelmedia", 1, [profiel("null", "[{media_type:'foto',url:" + F("licht") + ",in_banner:true},{media_type:'foto',url:" + F("donker") + ",in_banner:true},{media_type:'foto',url:" + F("wit") + ",in_banner:false}]"), "openProfielScherm('m2')"]),
         ("bandleeg", 1, ["window.TT_STUB.data.bands[0].founder_id='m1'", "openBandScherm('b1')"]),
-        ("banner", 1, [profiel(F("donker"), "[{media_type:'foto',url:" + F("wit") + ",in_banner:true},{media_type:'foto',url:" + F("strepen") + ",in_banner:true},{media_type:'link',url:'https://open.spotify.com/track/x',platform:'Spotify',in_banner:true},{media_type:'foto',url:" + F("licht") + ",in_banner:false}]"), "openProfielScherm('m2')"]),
+        # De rijen komen in een andere volgorde uit de database dan ze zijn toegevoegd: de hoes zet ze op created_at.
+        ("banner", 1, [profiel(F("donker"), "[{media_type:'link',url:'https://open.spotify.com/track/x',platform:'Spotify',in_banner:true,created_at:'2026-10-03'},{media_type:'foto',url:" + F("strepen") + ",in_banner:true,created_at:'2026-10-02'},{media_type:'foto',url:" + F("wit") + ",in_banner:true,created_at:'2026-10-01'},{media_type:'foto',url:" + F("licht") + ",in_banner:false,created_at:'2026-09-01'}]"), "openProfielScherm('m2')"]),
         ("afgeschermd", 0, [publiek(F("donker"), "[{media_type:'foto',url:null,afgeschermd:true,in_banner:true}]"), "openProfielScherm('m2')"]),
         ("lang", 1, [profiel(F("donker"), "[]", "Sanne van der Heijden-B"), "openProfielScherm('m2')"]),
         ("opslag", 1, [profiel("location.origin+'/storage/v1/object/public/avatars/a/foto.png'"), "openProfielScherm('m2')"]),
@@ -11776,7 +11788,7 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
             page.route(pat, lambda r: r.abort())
         page.route("**/testfoto/*.png", lambda r: r.fulfill(status=200, content_type="image/png", body=beelden[r.request.url.rsplit("/", 1)[1][:-4]]))
         page.goto(f"{basis}/index.html", wait_until="load"); page.wait_for_timeout(500)
-        page.evaluate(SC[8][2][0]); page.evaluate("openProfielScherm('m2')"); page.wait_for_timeout(1200)
+        page.evaluate(dict((x[0], x[2]) for x in SC)["banner"][0]); page.evaluate("openProfielScherm('m2')"); page.wait_for_timeout(1200)
         pijl = "[...document.querySelectorAll('.app-view.active .hoes-pijl')].map(x => getComputedStyle(x).display + (x.hidden ? '/verborgen' : ''))"
         muis = {"rust": page.evaluate(pijl)}
         hb = page.locator(".app-view.active .hoes").bounding_box()
@@ -11817,6 +11829,9 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
           json.dumps([r[k]["vlakken"] for k in ((390, "strepen"), (360, "strepen"))]))
     g = r[(390, "geen")]
     check("zonder foto: het lege podium (#101114) met witte naam; een bezoeker kan er niet op tikken", g["podium"] == "rgb(16, 17, 20)" and g["naamKleur"] == WIT and g["leegKnop"] == "DIV:", json.dumps(g))
+    gm = r[(390, "geenfotowelmedia")]
+    check("zonder profielfoto maar met gekozen media: de hoes begint met die media, geen podium (besluit Ronald 01-11-2026, A)",
+          gm["aantal"] == 2 and gm["leegKnop"] is None and gm["eersteIsFoto"] and gm["stippen"] == 2 and gm["donker"], json.dumps(gm))
     check("band zonder foto: de beheerder tikt op het podium en kiest een foto (TT-385 punt 2)", (r[(390, "bandleeg")]["leegKnop"] or "").startswith("BUTTON:openBandTegels("), str(r[(390, "bandleeg")]["leegKnop"]))
     bn = r[(390, "banner")]
     check("de banner zit in de hoes: eerst de profielfoto, dan de gekozen media (drie van vier), geen bannerbalk meer",

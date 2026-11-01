@@ -324,7 +324,7 @@ async function laadProfielScherm(id, linkToegang) {
       musician_instruments(instrument, niveau),
       musician_genres(genre),
       musician_songs(song_title, song_artist, mastery_level),
-      musician_media(media_type, url, platform, in_banner)
+      musician_media(media_type, url, platform, in_banner, created_at)
     `).eq('id', id).single();
     m = res.data; error = res.error;
     if (m) {
@@ -1427,13 +1427,15 @@ function mhFieldSnapshot() {
 async function openJeMediahoek() {
   mhStartTipCycle();
   const { data, error } = await db.from('musicians')
-    .select('avatar_url, musician_media(media_type, url, platform, in_banner)')
+    .select('avatar_url, musician_media(media_type, url, platform, in_banner, created_at)')
     .eq('id', myMusicianId).single();
   if (error) {
     showToast(friendlyErrorMessage(error, 'je gegevens laden'));
     return;
   }
   mhAvatarUrl = data.avatar_url || null;
+  // TT-517 fase 4: op volgorde van toevoegen, zoals in de hoes en bij een band.
+  data.musician_media = opVolgordeVanToevoegen(data.musician_media);
   mhMediaFiles = (data.musician_media || [])
     .filter(x => x.media_type === 'foto' || x.media_type === 'video')
     .map(x => ({ name: '', url: x.url, path: null, type: x.media_type, uploading: false, inBanner: !!x.in_banner }));

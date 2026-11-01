@@ -2335,7 +2335,8 @@ function bannerTellerBijwerken(elId, bestanden, links) {
 // - De foto groot bovenaan, 4:3, binnen de marge, hoeken 16px, 8px onder de
 //   kop. De naam groot op de foto, de regel eronder in dezelfde kleur.
 // - De banner zit in de hoes: eerst de profielfoto (of bandfoto), daarna de
-//   media die de muzikant of band voor de banner koos (maximaal zes).
+//   media die de muzikant of band voor de banner koos (maximaal zes). Zonder
+//   profielfoto begint de hoes met die media (besluit Ronald 01-11-2026, A).
 // - Vegen om te bladeren. De stippen zijn alleen een aanwijzing, geen knop
 //   (TT-541). Met een muis twee pijltjes, niet op het eerste en het laatste
 //   beeld, nooit op een telefoon.
@@ -2343,11 +2344,18 @@ function bannerTellerBijwerken(elId, bestanden, links) {
 // - Delen en ⋯ rechtsonder op de foto, in de tekstkleur van de hoes.
 // - Tekstkleur en matglas komen uit het beeld zelf (hoesBeeldOordeel()): wit
 //   of antraciet, en matglas alleen als de foto erom vraagt.
-// Zonder foto staat er een leeg, donker podium (de schijnwerper komt in
-// fase 6).
+// Zonder foto en zonder gekozen media staat er een leeg, donker podium (de
+// schijnwerper komt in fase 6).
+
+// Op volgorde van toevoegen, de oudste eerst, voor muzikant en band gelijk
+// (besluit Ronald 01-11-2026, A). Zonder tijd (de publieke functie zet de
+// media zelf al op volgorde) blijft de volgorde staan: sort() is stabiel.
+function opVolgordeVanToevoegen(lijst) {
+  return (lijst || []).slice().sort((x, y) => String((x && x.created_at) || '').localeCompare(String((y && y.created_at) || '')));
+}
 
 function profielBannerItems(mediaLijst) {
-  return (mediaLijst || [])
+  return opVolgordeVanToevoegen(mediaLijst)
     .filter(x => x && x.in_banner)
     .map(x => ({ ...x, veilig: safeUrl(x.url) }))
     .filter(x => x.veilig || x.afgeschermd)
@@ -2393,10 +2401,15 @@ function profielHoesHTML(o) {
   // niet. De database schermt een profiel in zijn geheel af, dus één
   // afgeschermd item is genoeg. Dan blijft alleen het eerste beeld.
   const banner = items.some(it => it.afgeschermd) ? [] : items;
-  const n = banner.length + 1;
+  // Besluit Ronald (01-11-2026, A): zonder profielfoto begint de hoes met de
+  // media die voor de banner gekozen zijn. Het lege podium staat er alleen
+  // als er geen enkel beeld is.
+  const podium = !o.foto && !banner.length;
+  const voor = o.foto || podium ? 1 : 0;
+  const n = banner.length + voor;
   const naam = escHtml(o.naam);
 
-  const eerste = o.foto
+  const eerste = !voor ? '' : o.foto
     ? `<button type="button" class="hoes-vlak" onclick="openMediaLightbox('${jsAttr(o.foto)}')" aria-label="Foto van ${naam} groot bekijken">` +
       `<img class="hoes-img" ${hoesBronAttr(o.foto)} alt="${naam}"></button>`
     : o.leegTik
@@ -2406,7 +2419,7 @@ function profielHoesHTML(o) {
   const vlakken = banner.map((it, i) => {
     const url = it.veilig;
     const platform = it.platform || detectPlatform(url);
-    const wat = `Beeld ${i + 2} van ${n}`;
+    const wat = `Beeld ${i + 1 + voor} van ${n}`;
     let binnen, tik;
     if (it.media_type === 'foto') {
       binnen = `<img class="hoes-img" ${hoesBronAttr(url)} alt="${wat}" loading="lazy">`;

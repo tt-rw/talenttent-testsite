@@ -298,7 +298,7 @@ async function loadMyProfile(opties) {
              avatar_url, accepts_band_invites,
              musician_instruments(instrument, niveau), musician_genres(genre),
              musician_songs(song_title, song_artist, mastery_level),
-             musician_media(media_type, url, platform, in_banner)`)
+             musician_media(media_type, url, platform, in_banner, created_at)`)
     .eq('user_id', currentUser.id)
     .single();
 
