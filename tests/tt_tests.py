@@ -4041,27 +4041,42 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
             const vak = document.getElementById('profielSchermContent');
             const t = [...vak.querySelectorAll('.media-afgeschermd')];
             const r = {
-              tegels: vak.querySelectorAll('.profile-media-tegel.media-afgeschermd').length,
+              tegels: vak.querySelectorAll('.profile-media-tegel').length,
+              vlak: vak.querySelectorAll('.profile-media .media-afgeschermd').length,
+              vlakTekst: [...vak.querySelectorAll('.media-afgeschermd-tekst > *')].map(e => e.textContent.trim()),
+              vlakBeeld: [...vak.querySelectorAll('.media-afgeschermd img')].map(i => i.className + '|' + i.getAttribute('src').slice(0, 30)),
+              titels: [...vak.querySelectorAll('.profile-media-title')].map(e => e.textContent.trim()),
+              hoesWazig: vak.querySelectorAll('.hoes-vlak.hoes-wazig img.foto-wazig.hoes-img').length,
+              hoesWazigKnop: vak.querySelectorAll('button .foto-wazig, .hoes-wazig[onclick]').length,
               banner: vak.querySelectorAll('.hoes-vlak.media-afgeschermd, .hoes .media-afgeschermd').length,
               balk: vak.querySelectorAll('.hoes-vlak:not(.hoes-leeg):not([aria-label^="Foto van"])').length, // TT-517 fase 4: de bannerbeelden in de hoes
               opBanner: vak.querySelectorAll('.hoes-stip').length > 0,
               knoppen: t.filter(e => e.tagName === 'BUTTON' || e.closest('button') || e.hasAttribute('onclick')).length,
               tekst: t.map(e => e.textContent.trim()),
-              beeld: vak.querySelectorAll('.profile-media img, .profile-media video, .hoes img, .hoes video').length,
-              fotoAvatar: vak.querySelectorAll('.hoes-vlak img.hoes-img').length,
+              // TT-517 fase 7: alleen het wazige beeld (een data-tekst, nooit een adres in de opslag).
+              beeld: [...vak.querySelectorAll('.profile-media img, .profile-media video, .hoes img, .hoes video')]
+                .filter(e => !(e.classList.contains('foto-wazig') && (e.getAttribute('src') || '').startsWith('data:image/jpeg;base64,'))
+                          && !e.closest('.hoes-waas')).length,
+              fotoAvatar: vak.querySelectorAll('.hoes-vlak img.hoes-img:not(.foto-wazig)').length,
               tAvatar: vak.querySelectorAll('.hoes-vlak.hoes-leeg').length,
               gewoneTegels: vak.querySelectorAll('button.profile-media-tegel').length,
             };
-            if (t[0]) { const cs = getComputedStyle(t[0]); r.kleur = cs.color; r.cursor = cs.cursor; }
+            const tk = vak.querySelector('.media-afgeschermd-tekst');
+            if (tk) r.kleur = getComputedStyle(tk).color;
+            if (t[0]) r.cursor = getComputedStyle(t[0]).cursor;
             return r;
           };
           const uit = {};
           // Afgeschermd: drie items zonder adres, één daarvan in de banner
           S.rpcResults.tt_get_musicians_public = () => rij([
-            { media_type: 'foto', url: null, platform: null, in_banner: true, afgeschermd: true },
+            { media_type: 'foto', url: null, platform: null, in_banner: true, afgeschermd: true, wazig: null },
             { media_type: 'video', url: null, platform: null, in_banner: false, afgeschermd: true },
             { media_type: 'link', url: null, platform: null, in_banner: false, afgeschermd: true }], null);
           uit.af = await meet();
+          // TT-517 fase 7: afgeschermd mét profielfoto: de database stuurt de wazige versie.
+          S.rpcResults.tt_get_musicians_public = () => rij([
+            { media_type: 'foto', url: null, platform: null, in_banner: false, afgeschermd: true, wazig: WAZIG_ALGEMEEN }], WAZIG_ALGEMEEN);
+          uit.afFoto = await meet();
           // Niet afgeschermd (16+): zelfde soorten, met adres — mag niet veranderen
           S.rpcResults.tt_get_musicians_public = () => rij([
             { media_type: 'foto', url: 'https://x.test/a.jpg', platform: null, in_banner: false },
@@ -4073,23 +4088,30 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
           return uit;
         }""")
         af, op = tt45["af"], tt45["open"]
-        check("afgeschermd: foto, video en link staan er als T-tegel",
-              af["tegels"] == 3 and all(t == "T" for t in af["tekst"]), json.dumps(af))
+        # TT-517 fase 7 (besluit Ronald 01-11-2026, B; huisstijl §18.7): geen
+        # tegels meer, maar één wazig vlak met het aantal en de opmerking.
+        check("afgeschermd: foto, video en link samen in één wazig vlak, geen tegels, geen apart blok Links (fase 7)",
+              af["tegels"] == 0 and af["vlak"] == 1 and af["titels"] == ["Foto's en video's"]
+              and af["vlakTekst"] == ["2 foto's en video's · 1 link", "Maak een profiel aan om de inhoud te bekijken."], json.dumps(af))
+        check("afgeschermd zonder wazige versie: het vlak toont het algemene wazige beeld (fase 7)",
+              len(af["vlakBeeld"]) == 1 and af["vlakBeeld"][0].startswith("foto-wazig|data:image/jpeg;base64,"), json.dumps(af))
         # TT-385 (02-10-2026, besluit Ronald: "dan banner weglaten bij publieke
         # profielen onder 16 jaar"): geen bannerbalk, ook geen T-vlak.
         check("afgeschermd: geen banner in de hoes, ook geen T-vlak (TT-385; TT-517 fase 4)",
               af["banner"] == 0 and af["balk"] == 0 and not af["opBanner"], json.dumps(af))
-        check("afgeschermd: geen enkel beeld of video in de pagina", af["beeld"] == 0, json.dumps(af))
-        check("afgeschermd: de T is geen knop (er valt niets te openen)",
+        check("afgeschermd: geen enkel echt beeld of video in de pagina, alleen het wazige beeld", af["beeld"] == 0, json.dumps(af))
+        check("afgeschermd: het vlak is geen knop (er valt niets te openen)",
               af["knoppen"] == 0 and af.get("cursor") == "default", json.dumps(af))
-        # TT-341 stap 2: het afgeschermde vlak is het profielvlak — geel met een zwarte T.
-        check("afgeschermd: de T is zwart op geel, zoals het profielvlak",
-              af.get("kleur") == "rgb(0, 0, 0)", json.dumps(af))
+        check("afgeschermd: de tekst in het vlak is wit (huisstijl §18.7)",
+              af.get("kleur") == "rgb(255, 255, 255)", json.dumps(af))
+        check("afgeschermd met profielfoto: de hoes toont het wazige beeld, geen knop, geen podium (fase 7)",
+              tt45["afFoto"]["hoesWazig"] == 1 and tt45["afFoto"]["hoesWazigKnop"] == 0
+              and tt45["afFoto"]["tAvatar"] == 0 and tt45["afFoto"]["fotoAvatar"] == 0 and tt45["afFoto"]["beeld"] == 0, json.dumps(tt45["afFoto"]))
         # TT-517 fase 4: zonder foto staat in de hoes het lege podium; de T vervalt (huisstijl §21).
         check("afgeschermd zonder profielfoto: het lege podium in de hoes", af["tAvatar"] == 1 and af["fotoAvatar"] == 0, json.dumps(af))
         # TT-517 fase 2: de link-tegel is dezelfde .profile-media-tegel als foto en video (was een gelijke inline stijl).
         check("16+: foto, video en link blijven gewone knoppen (drie tegels)",
-              op["gewoneTegels"] == 3 and op["tegels"] == 0 and op["fotoAvatar"] == 1, json.dumps(op))
+              op["gewoneTegels"] == 3 and op["vlak"] == 0 and op["fotoAvatar"] == 1 and op["hoesWazig"] == 0, json.dumps(op))
 
         html45 = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
         check("geen 'meldknop volgt nog' meer in de voorwaarden en de gedragscode",
@@ -4099,8 +4121,10 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         priv = html45.split('id="view-privacy"')[1].split('id="view-terms"')[0]
         check("voorwaarden en gedragscode wijzen naar de knop ⋯",
               "knop ⋯" in voorw and "knop ⋯" in gedr)
-        check("privacyverklaring noemt het afschermen voor onder de 16",
-              "Ben je jonger dan 16 jaar? Dan zien bezoekers zonder account" in priv and "De T van The Talent Tent" in priv.replace("de T", "De T"))
+        check("privacyverklaring noemt het afschermen voor onder de 16, met het wazige beeld (TT-517 fase 7)",
+              "Ben je jonger dan 16 jaar? Dan zien bezoekers zonder account" in priv
+              and "een piepkleine versie van de foto, zo klein dat niemand erop te herkennen is" in priv
+              and "T van The Talent Tent" not in html45)
         check("geen paginafouten in blok 36", not page_errors, "; ".join(page_errors)[:300])
         page_errors.clear()
         page.evaluate("window.TT_STUB.reset()")
@@ -5232,18 +5256,17 @@ window.TT_STUB.fnAntwoord = {};
               nm == ["15px"] * 5, json.dumps(nm))
 
         # 7. De T: één klasse, in het lettertype van het logo, 25% groter dan zijn vak.
-        # TT-517 fase 6: alleen nog het logo (het gesprek met The Talent Tent) en,
-        # tot fase 7, een afgeschermd medium. Een lege foto is de schijnwerper (blok 113).
+        # TT-517 fase 6 en 7: alleen nog het logo (het gesprek met The Talent Tent).
+        # Een lege foto is de schijnwerper (blok 113), een afgeschermd beeld wazig (blok 114).
         t47 = p47.evaluate("""() => {
           const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
-          plek.innerHTML = '<div class="messages-conv-avatar">' + TT_AVATAR_HTML + '</div>'
-            + mediaAfgeschermdHTML('tegel') + mediaAfgeschermdHTML('banner');
+          plek.innerHTML = '<div class="messages-conv-avatar">' + TT_AVATAR_HTML + '</div>';
           const r = [...plek.children].map(v => { const t = v.querySelector('span');
             return t ? [t.className, Math.round(parseFloat(getComputedStyle(t).fontSize) / parseFloat(getComputedStyle(v).fontSize) * 100),
                         getComputedStyle(t).fontFamily.includes('TT Woordmerk')] : null; });
           plek.remove(); return { r }; }""")
         check("elke T is .avatar-t, in het lettertype van het logo, 125% van zijn vak",
-              len(t47["r"]) == 3 and all(x and x[0].split()[0] == "avatar-t" and x[1] == 125 and x[2] for x in t47["r"]), json.dumps(t47["r"]))
+              len(t47["r"]) == 1 and all(x and x[0].split()[0] == "avatar-t" and x[1] == 125 and x[2] for x in t47["r"]), json.dumps(t47["r"]))
 
         # 8. Op een telefoon blijft na een tik geen vlak achter de terugknop staan.
         css47 = open(os.path.join(ROOT, "styles.css"), encoding="utf-8").read()
@@ -5962,11 +5985,24 @@ window.TT_STUB.fnAntwoord = {};
             covers: [{ song_title: 'Last Nite', song_artist: 'The Strokes' }],
             invallers: [{ instrument: 'Drums', datum: straks }] }];
           await openBandScherm('b7');
+          // TT-517 fase 7: dezelfde band mét bandfoto en een lid met foto: wazig, het lid zonder foto de schijnwerper.
+          const zonder = S.rpcResults.tt_get_bands_public;
+          S.rpcResults.tt_get_bands_public = () => zonder().map(b => Object.assign(b, { avatar_url: WAZIG_ALGEMEEN,
+            members: [Object.assign(b.members[0], { avatar_url: 'afgeschermd' }), b.members[1]] }));
+          await openBandScherm('b7');
+          uit.gastFoto = {
+            hoes: vak().querySelectorAll('.hoes-vlak.hoes-wazig img.foto-wazig').length,
+            hoesKnop: vak().querySelectorAll('.hoes button .foto-wazig').length,
+            leden: [...vak().querySelectorAll('.bezetting-lid .bb-foto')].map(f => f.querySelector('.foto-wazig') ? 'wazig' : f.querySelector('.schijnwerper') ? 'leeg' : '?'),
+            nummer: [...vak().querySelectorAll('div.band-nummer .media-mini-wazig img.foto-wazig')].map(i => i.getAttribute('src') === WAZIG_ALGEMEEN),
+            vlak: vak().querySelectorAll('.profile-media .media-afgeschermd img.foto-wazig').length };
+          S.rpcResults.tt_get_bands_public = zonder;
+          await openBandScherm('b7');
           uit.gast = { titels: titels(), tags: tags(),
             balk: vak().querySelectorAll('.hoes-vlak:not(.hoes-leeg):not([aria-label^="Foto van"])').length, // TT-517 fase 4: de bannerbeelden in de hoes
-            tegelT: vak().querySelectorAll('.profile-media-tegel.media-afgeschermd').length,
+            tegelT: vak().querySelectorAll('.profile-media .media-afgeschermd').length + vak().querySelectorAll('.profile-media-tegel').length * 10,
             nummerKnop: vak().querySelectorAll('button.band-nummer').length,
-            nummerDicht: vak().querySelectorAll('div.band-nummer .media-afgeschermd').length,
+            nummerDicht: vak().querySelectorAll('div.band-nummer .media-mini-wazig .foto-wazig').length,
             socialDicht: vak().querySelectorAll('.social-dicht').length,
             socialLink: vak().querySelectorAll('a.social-knop').length,
             gezichtenT: vak().querySelectorAll('.bezetting-lid .bb-foto-leeg .schijnwerper').length, // TT-517 fase 6: de schijnwerper
@@ -6032,8 +6068,12 @@ window.TT_STUB.fnAntwoord = {};
               g57["titels"] == ["Bezetting", "Wie zijn we", "Onze nummers", "Foto's en video's", "Volg ons", "Covers (1 nummer)"], json.dumps(g57))
         check("gast: tags genre, soort, Zoekend en de ervaring (de band zoekt)",
               g57["tags"][:3] == ["Indie", "Eigen nummers en covers", "Zoekend"] and g57["tags"][3].startswith("Ervaring"), json.dumps(g57))
-        check("gast, afgeschermd: geen banner, de foto's de T, het nummer zonder knop",
+        check("gast, afgeschermd: geen banner, de media één wazig vlak, het nummer wazig zonder knop (TT-517 fase 7)",
               g57["balk"] == 0 and g57["tegelT"] == 1 and g57["nummerKnop"] == 0 and g57["nummerDicht"] == 1, json.dumps(g57))
+        gf57 = d57["gastFoto"]
+        check("gast, afgeschermd met bandfoto: de hoes wazig zonder knop; een lid met foto wazig, zonder foto de schijnwerper; nummer en vlak wazig (TT-517 fase 7)",
+              gf57["hoes"] == 1 and gf57["hoesKnop"] == 0 and gf57["leden"] == ["wazig", "leeg"]
+              and gf57["nummer"] == [True] and gf57["vlak"] == 1, json.dumps(gf57))
         check("gast, afgeschermd: de socials gedempt, zonder link (besluit f)",
               g57["socialDicht"] == 2 and g57["socialLink"] == 0, json.dumps(g57))
         check("gast: gebruikersnamen, de T zonder foto, open rol en invaller zonder knop",
@@ -8612,6 +8652,11 @@ window.TT_STUB.fnAntwoord = {};
         # een beeld dat al via fotoBronAttr() geladen is; geen link naar de opslag.
         _waas105 = "const waasBeeld = c.toDataURL('image/jpeg', 0.8);" in bron105["utils.js"]
         _kaal105 = [x for x in _kaal105 if not (_waas105 and x.endswith("${waasBeeld}"))]
+        # TT-517 fase 7: het wazige beeld is een kleine JPG als tekst die wazigBron()
+        # heeft gecontroleerd (alleen data:image/jpeg;base64), nooit een link naar de opslag.
+        _wazig105 = ("return s.length <= 2000 && WAZIG_VORM.test(s) ? s : null;" in bron105["utils.js"]
+                     and "const bron = eerste || wazigBron(fotoWazig) || WAZIG_ALGEMEEN;" in bron105["utils.js"])
+        _kaal105 = [x for x in _kaal105 if not (_wazig105 and x.endswith("${bron}") and x.startswith('<img class="foto-wazig'))]
         check("afgeschermd: geen <img> of <video> met een eigen bron buiten fotoBronAttr", not _kaal105, str(_kaal105)[:300])
         check("afgeschermd: signOut wist de links vóór het uitloggen",
               re.search(r"async function signOut\(\) \{[^}]*fotoLinksWissen\(\);", bron105["auth.js"]) is not None, "auth.js")
@@ -12201,6 +12246,166 @@ window.TT_STUB.data.bands[0].founder_id = 'm1';
     check("geen paginafouten in blok 113", not fouten, "; ".join(fouten)[:400])
 
 
+def blok_tt517_fase7():
+    # TT-517 fase 7 (01-11-2026, huisstijl §18.7, besluit Ronald 01-11-2026,
+    # B): afgeschermd wordt wazig. Per foto een eigen, piepkleine versie (16 x
+    # 12, JPG als tekst) die de app bij het uploaden maakt; de database stuurt
+    # die een bezoeker zonder account in plaats van de foto van een 13- tot
+    # 15-jarige, of 'afgeschermd' (dan het algemene wazige beeld). Leeg blijft
+    # de schijnwerper. Media samen in één wazig vlak; wit 6,1:1.
+    print("\nBlok 114 — TT-517 fase 7: afgeschermd wordt wazig")
+    lees = lambda f: open(os.path.join(ROOT, f), encoding="utf-8").read()
+    css, html = lees("styles.css"), lees("index.html")
+    js = {f: lees(f) for f in JS_FILES}
+    alles = "".join(js.values())
+    check("de T als afgeschermd medium is weg: .avatar-t alleen nog voor het gesprek met Talent Tent (dode code)",
+          [f for f, t in js.items() if "avatar-t" in t] == ["messages.js"] and alles.count("avatar-t") == 1
+          and ".media-afgeschermd .avatar-t" not in css and "T van The Talent Tent" not in html, str([f for f, t in js.items() if "avatar-t" in t]))
+    check("één functie voor elk beeld van een foto in een lijst (fotoHTML) en één voor het vlak (mediaAfgeschermdHTML), beide in utils.js",
+          alles.count("function fotoHTML(") == 1 and alles.count("function mediaAfgeschermdHTML(") == 1
+          and "function fotoHTML(" in js["utils.js"] and "kleinFotoAttr(avatarSrc)" not in js["search.js"])
+    m = re.search(r"const WAZIG_ALGEMEEN = '([^']+)'", js["utils.js"])
+    check("het algemene wazige beeld is een kleine JPG als tekst (hoogstens 2000 tekens)",
+          bool(m) and m.group(1).startswith("data:image/jpeg;base64,") and len(m.group(1)) <= 2000, str(len(m.group(1)) if m else None))
+
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    basis = f"http://127.0.0.1:{port}"
+    ingelogd = stub_js + """
+window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
+window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instruments: m.musician_instruments || [],
+  musician_genres: m.musician_genres || [], musician_songs: m.musician_songs || [], musician_media: m.musician_media || [] }));
+"""
+    res, fouten = {}, []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        def nieuw(breed, thema, stub):
+            ctx = browser.new_context(viewport={"width": breed, "height": 844}, color_scheme=thema)
+            page = ctx.new_page()
+            page.on("pageerror", lambda e: fouten.append(str(e)))
+            page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub))
+            for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+                page.route(pat, lambda r: r.abort())
+            page.goto(f"{basis}/index.html", wait_until="load"); page.wait_for_timeout(500)
+            return ctx, page
+        # 1. De vorm die de app aanneemt: alleen een kleine JPG als tekst, of 'afgeschermd'.
+        ctx, page = nieuw(390, "light", stub_js)
+        res["vorm"] = page.evaluate("""() => {
+          const ok = 'data:image/jpeg;base64,QUJD';
+          return { goed: wazigBron(ok) === ok, algemeen: wazigBron('afgeschermd') === WAZIG_ALGEMEEN,
+            fout: ['javascript:alert(1)', 'data:image/svg+xml;base64,QUJD', 'data:image/jpeg;base64,QU"JD', 'data:image/jpeg;base64,' + 'A'.repeat(2000),
+                   'https://x.test/a.jpg', '', null].map(wazigBron).filter(Boolean).length,
+            echt: fotoHTML('https://x.test/a.jpg', 'Kim'), leeg: fotoHTML(null, 'Kim'), wazig: fotoHTML(ok, 'Kim') }; }""")
+        # 2. De wazige versie maken: 16 x 12, uit het midden (4:3), als JPG-tekst.
+        res["maken"] = page.evaluate("""async () => {
+          const c = document.createElement('canvas'); c.width = 400; c.height = 600;
+          const x = c.getContext('2d'); x.fillStyle = '#0000ff'; x.fillRect(0, 0, 400, 600); x.fillStyle = '#ff0000'; x.fillRect(0, 150, 400, 300);
+          const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.9));
+          const w = await wazigMaken(new File([blob], 'staand.jpg', { type: 'image/jpeg' }));
+          const img = new Image(); img.src = w; await img.decode();
+          const d = document.createElement('canvas'); d.width = 16; d.height = 12; const y = d.getContext('2d'); y.drawImage(img, 0, 0);
+          const px = y.getImageData(8, 6, 1, 1).data;
+          return { lengte: w.length, maat: [img.naturalWidth, img.naturalHeight], midden: [px[0] > 200, px[2] < 60], vorm: wazigBron(w) === w }; }""")
+        ctx.close()
+        # 3. Uploaden en opslaan (ingelogd): de wazige versie gaat mee naar de database.
+        ctx, page = nieuw(390, "light", ingelogd)
+        res["opslaan"] = page.evaluate("""async () => {
+          const c = document.createElement('canvas'); c.width = 400; c.height = 300; c.getContext('2d').fillRect(0, 0, 400, 300);
+          const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.9));
+          const { url } = await uploadAvatarFile(new File([blob], 'foto.jpg', { type: 'image/jpeg' }), 'u1');
+          const veld = wazigVeld(url), geen = wazigVeld('https://x.test/ouder.jpg');
+          myMusicianId = 'm1'; mhAvatarUrl = url; mhMediaFiles = []; mhMediaLinks = []; mhSnapshot = 'anders';
+          await saveJeMediahoek();
+          const rij = window.TT_STUB.data.musicians.find(m => m.id === 'm1');
+          return { veld: !!(veld.avatar_wazig && wazigBron(veld.avatar_wazig)), geen: Object.keys(geen).length,
+                   bewaard: rij.avatar_url === url && wazigBron(rij.avatar_wazig) === rij.avatar_wazig }; }""")
+        ctx.close()
+        # 4. Elke plek in een lijst: wazig, gevuld en afgesneden door zijn vak, vervaagd; leeg blijft de schijnwerper.
+        for breed, thema in ((390, "light"), (360, "dark")):
+            ctx, page = nieuw(breed, thema, stub_js)
+            res[("klein", breed)] = page.evaluate("""() => {
+              const W = WAZIG_ALGEMEEN, plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
+              const m = { id: 'm1', username: 'kim', weergavenaam: 'kim', avatar_url: W, musician_instruments: [], musician_genres: [] };
+              const b = { id: 'b1', name: 'Kelder', avatar_url: W, band_wanted: [] };
+              plek.innerHTML = '<div id="r1">' + musicianRowHTML(m) + '</div><div class="zoek-kaarten" id="r2">' + musicianCardHTML(m) + '</div>'
+                + '<div id="r3">' + bandRowHTML(b) + '</div><div class="zoek-kaarten" id="r4">' + bandCardHTML(b) + '</div>'
+                + '<div id="r5">' + bbFotoHTML(W) + '</div><div id="r6">' + bbFotoHTML('afgeschermd', false, true) + '</div>'
+                + '<div id="r7"><span class="gedeeld-speler-foto">' + (fotoHTML(W, '') || ZONDER_FOTO_HTML) + '</span></div>'
+                + '<div id="r8">' + musicianRowHTML(Object.assign({}, m, { avatar_url: null })) + '</div>';
+              const uit = [...plek.querySelectorAll('img.foto-wazig')].map(i => {
+                let v = i.parentElement; while (v && v !== plek && getComputedStyle(v).overflow !== 'hidden') v = v.parentElement;
+                if (!v || v === plek) return ['geen vak dat afsnijdt', i.parentElement.className];
+                const a = i.getBoundingClientRect(), c = v.getBoundingClientRect();
+                return [a.left <= c.left + 0.5 && a.top <= c.top + 0.5 && a.right >= c.right - 0.5 && a.bottom >= c.bottom - 0.5,
+                        /blur\\(\\d/.test(getComputedStyle(i).filter), c.width > 0 && c.height > 0 && v === i.parentElement, i.getAttribute('aria-hidden')];
+              });
+              const leeg = plek.querySelectorAll('#r8 .schijnwerper').length, wazigInLeeg = plek.querySelectorAll('#r8 .foto-wazig').length;
+              plek.remove();
+              return { uit, leeg, wazigInLeeg }; }""")
+            # 5. Het vlak met de media, met een wit beeld (het zwaarste geval) en het algemene.
+            res[("vlak", breed)] = page.evaluate("""async () => {
+              const c = document.createElement('canvas'); c.width = 16; c.height = 12; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 16, 12);
+              const wit = c.toDataURL('image/jpeg', 0.7), plek = document.createElement('div');
+              plek.style.width = '358px'; document.getElementById('appRoot').appendChild(plek);
+              const lijst = [{ media_type: 'foto', afgeschermd: true, wazig: wit }, { media_type: 'video', afgeschermd: true }, { media_type: 'link', afgeschermd: true }];
+              plek.innerHTML = profielMediaHTML(lijst, null) + profielMediaHTML([{ media_type: 'link', afgeschermd: true }], null);
+              await new Promise(r => setTimeout(r, 300));
+              const lum = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+              // Het vlak nagetekend zoals de browser het toont (cover, 1,2 groter, vervaagd 20px,
+              // de waas erover); het lichtste punt tegen wit.
+              const naTekenen = (v, waas) => {
+                const r = v.getBoundingClientRect(), img = v.querySelector('img.foto-wazig');
+                const c = document.createElement('canvas'); c.width = Math.round(r.width); c.height = Math.round(r.height);
+                const x = c.getContext('2d');
+                const sc = Math.max(c.width / img.naturalWidth, c.height / img.naturalHeight) * 1.2;
+                const w = img.naturalWidth * sc, h = img.naturalHeight * sc;
+                x.filter = 'blur(20px)'; x.drawImage(img, (c.width - w) / 2, (c.height - h) / 2, w, h); x.filter = 'none';
+                x.fillStyle = 'rgba(13,13,13,' + waas + ')'; x.fillRect(0, 0, c.width, c.height);
+                const d = x.getImageData(0, 0, c.width, c.height).data;
+                let mx = 0; for (let i = 0; i < d.length; i += 4) mx = Math.max(mx, 0.2126 * lum(d[i]) + 0.7152 * lum(d[i + 1]) + 0.0722 * lum(d[i + 2]));
+                return Math.round(1.05 / (mx + 0.05) * 10) / 10;
+              };
+              const uit = [...plek.querySelectorAll('.media-afgeschermd')].map(v => {
+                const cs = getComputedStyle(v), t = v.querySelector('.media-afgeschermd-tekst'), b = t.querySelector('b'), s = t.querySelector('span');
+                const waas = parseFloat(cs.getPropertyValue('--waas-vlak') || '0.45');
+                return { hoog: v.getBoundingClientRect().height, hoek: cs.borderTopLeftRadius, knop: v.tagName,
+                         maat: [getComputedStyle(b).fontSize, getComputedStyle(b).fontWeight, getComputedStyle(s).fontSize],
+                         kleur: [getComputedStyle(b).color, getComputedStyle(s).color], tekst: [b.textContent, s.textContent],
+                         waas, contrast: naTekenen(v, waas),
+                         beeld: v.querySelector('img.foto-wazig').getAttribute('src') === (v === plek.querySelector('.media-afgeschermd') ? wit : WAZIG_ALGEMEEN) };
+              });
+              plek.remove();
+              return uit; }""")
+            ctx.close()
+        browser.close()
+    httpd.shutdown()
+    v = res["vorm"]
+    check("alleen een kleine JPG als tekst of 'afgeschermd' geeft een wazig beeld; een adres, SVG, script of te lange tekst niet",
+          v["goed"] and v["algemeen"] and v["fout"] == 0, json.dumps(v)[:300])
+    check("fotoHTML: een echte foto het fotootje, een afgeschermde het wazige beeld zonder adres, geen foto niets",
+          'class="foto-wazig"' in v["wazig"] and 'src="data:image/jpeg;base64,QUJD"' in v["wazig"] and v["leeg"] == ""
+          and "foto-wazig" not in v["echt"] and 'alt="Kim"' in v["echt"], json.dumps(v)[:400])
+    mk = res["maken"]
+    check("de wazige versie: 16 x 12 pixels uit het midden van de foto (4:3), als JPG-tekst van hoogstens 2000 tekens",
+          mk["maat"] == [16, 12] and mk["midden"] == [True, True] and mk["vorm"] and mk["lengte"] <= 2000, json.dumps(mk))
+    o = res["opslaan"]
+    check("na uploaden en opslaan staat de wazige versie bij de foto in de database; een foto van eerder krijgt geen leeg veld mee",
+          o["veld"] and o["geen"] == 0 and o["bewaard"], json.dumps(o))
+    for breed in (390, 360):
+        k = res[("klein", breed)]
+        f = [x for x in k["uit"] if x != [True, True, True, "true"]]
+        check(f"{breed}px: elke plek in een lijst (rij, kaart, rij en kaart van een band, bezetting, bandfoto, Mix & Match) toont het wazige beeld, vervaagd en binnen zijn vak; zonder foto de schijnwerper",
+              len(k["uit"]) == 7 and not f and k["leeg"] == 1 and k["wazigInLeeg"] == 0, json.dumps(k))
+        vl = res[("vlak", breed)]
+        f = [x for x in vl if not (x["hoog"] >= 168 and x["hoek"] == "10px" and x["knop"] == "DIV" and x["maat"] == ["15px", "700", "15px"]
+                                   and x["kleur"] == ["rgb(255, 255, 255)"] * 2 and x["contrast"] >= 6.1 and x["waas"] >= 0.45 and x["beeld"])]
+        check(f"{breed}px: het vlak: minstens 168px hoog, hoek 10px, geen knop, 15px vet en 15px, wit 6,1:1 ook op een wit beeld; het eigen beeld, anders het algemene",
+              len(vl) == 2 and not f, json.dumps(vl))
+        check(f"{breed}px: het aantal en de opmerking in het vlak", vl[0]["tekst"] == ["2 foto's en video's · 1 link", "Maak een profiel aan om de inhoud te bekijken."]
+              and vl[1]["tekst"][0] == "1 link", json.dumps([x["tekst"] for x in vl]))
+    check("geen paginafouten in blok 114", not fouten, "; ".join(fouten)[:400])
+
+
 def blok_jwt_herhaling():
     print("\nBlok 108 — herhaling bij 'JWT issued at future' (TT-306)")
     core = open(os.path.join(ROOT, "core.js"), encoding="utf-8").read()
@@ -12273,6 +12478,7 @@ def main():
     blok_tt517_fase4()
     blok_tt517_fase5()
     blok_tt517_fase6()
+    blok_tt517_fase7()
     blok_0_rijen()
     blok_browser()
     blok_xss()

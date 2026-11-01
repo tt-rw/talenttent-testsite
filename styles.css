@@ -250,9 +250,9 @@
   :root {
     --font-display: 'TT Woordmerk', 'Inter', sans-serif;
   }
-  /* De T van het logo: het gesprek met The Talent Tent zelf (TT_AVATAR_HTML
-     in messages.js) en, tot fase 7 van TT-517, een afgeschermd medium (TT-45).
-     Een lege profielfoto is de T niet meer, maar de schijnwerper (hieronder).
+  /* De T van het logo: alleen het gesprek met The Talent Tent zelf
+     (TT_AVATAR_HTML in messages.js). Een lege profielfoto is de schijnwerper
+     (hieronder), een afgeschermd beeld is wazig (.foto-wazig, TT-517 fase 7).
      Bevinding Ronald 28-09-2026: de T is 25% groter dan de letter van zijn
      vak ("voer dat door in de hele app"). De maat van elk vak blijft staan. */
   .avatar-t {
@@ -1969,22 +1969,36 @@
     background: none;
     cursor: pointer;
   }
-  /* TT-45 (25-09-2026): een afgeschermd medium van een 13- tot 15-jarige,
-     voor een bezoeker zonder account. De T van het app-icoon: goud op
-     antraciet. Geen knop, dus ook geen handje als cursor. */
-  .media-afgeschermd {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* TT-341 stap 2: zelfde vlak als het profielvlak — geel met een zwarte T,
-       in elk thema. Was een gouden T op --surface2. */
-    background: var(--merk);
-    color: var(--merk-tekst);
-    font-size: 32px;
-    line-height: 1;
-    cursor: default;
-    user-select: none;
+  /* TT-517 fase 7 (huisstijl §18.7, besluit Ronald 01-11-2026, B): een
+     afgeschermd beeld van een 13- tot 15-jarige, voor een bezoeker zonder
+     account. Een eigen, piepkleine versie van de foto (16 x 12 pixels), groot
+     getoond en vervaagd; iets vergroot, zodat de vage rand buiten het vak valt.
+     De vervaging volgt de maat van het vak (--wazig). Geen teken, geen knop. */
+  .foto-wazig {
+    display: block; width: 100%; height: 100%; object-fit: cover;
+    filter: blur(var(--wazig, 3px)); transform: scale(1.2);
+    pointer-events: none; user-select: none;
   }
+  .hoes-wazig, .media-afgeschermd, .media-mini-wazig { overflow: hidden; }
+  .hoes-wazig { --wazig: 24px; }
+  /* Foto's, video's en links samen in één vlak (mediaAfgeschermdHTML()):
+     het wazige beeld onder een donkere waas (minstens 45%, zo dat wit 6,1:1
+     haalt op het lichtste punt), hoek 10px, minstens 168px hoog;
+     het aantal (15px vet) en de opmerking (15px), wit, gecentreerd. De
+     opmerking was op de proef 14px; 14 is geen van de zes lettermaten (§2). */
+  .media-afgeschermd {
+    position: relative; display: grid; place-items: center;
+    min-height: 168px; border-radius: 10px; padding: 16px;
+    background: var(--podium); cursor: default; --wazig: 20px;
+  }
+  .media-afgeschermd .foto-wazig { position: absolute; inset: 0; }
+  /* De waas: minstens 45%, donkerder bij een licht beeld (wazigWaasZetten()). */
+  .media-afgeschermd::after { content: ""; position: absolute; inset: 0; background: rgb(13 13 13 / var(--waas-vlak, .45)); }
+  .media-afgeschermd-tekst {
+    position: relative; z-index: 1; display: grid; gap: 6px; text-align: center; color: #fff; max-width: 28ch;
+  }
+  .media-afgeschermd-tekst b { font-size: 15px; line-height: 20px; font-weight: 700; }
+  .media-afgeschermd-tekst span { font-size: 15px; line-height: 20px; }
 
   .profile-media-tegel .pb-label {
     left: 4px;
@@ -3940,7 +3954,7 @@
   .band-nummer-tekst { display: flex; flex-direction: column; min-width: 0; }
   .band-nummer-titel { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .band-nummer-sub { font-size: var(--fs-sm); color: var(--muted); }
-  .media-mini.media-afgeschermd { background: var(--merk); color: var(--merk-tekst); font-size: 24px; border: 0; cursor: default; }
+  .media-mini.media-mini-wazig { border: 0; cursor: default; --wazig: 2px; }
 
   /* Socials: knoppen met alleen het logo (Ronald, 02-10-2026). Teken 28px,
      tikvlak 44px (§6), 12px ertussen. De rij schuift 8px naar links, zodat
@@ -3991,7 +4005,7 @@
     width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  .bb-foto-leeg { background: var(--podium); } /* TT-517 fase 6: zonder foto de schijnwerper */
+  .bb-foto-leeg { background: var(--podium); overflow: hidden; } /* TT-517 fase 6: zonder foto de schijnwerper; fase 7: het vak snijdt het wazige beeld af */
   .bb-foto.bezetting-open-rondje { font-size: 18px; }
   .bb-wacht { opacity: .55; }
   .bb-tekst { flex: 1; min-width: 0; }

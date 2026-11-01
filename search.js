@@ -1167,11 +1167,10 @@ function zoekRijHTML(opts) {
 function musicianRowHTML(m) {
   // TT-38 / TT-43: de foto is voor iedereen zichtbaar (Ronald: die is te
   // belangrijk voor de presentatie om achter een login te zetten).
-  const avatarSrc = safeUrl(m.avatar_url);
   const displayName = displayNameOf(m);
   return zoekRijHTML({
     klik: `openProfielScherm('${jsAttr(m.id)}')`,
-    foto: avatarSrc ? `<img ${kleinFotoAttr(avatarSrc)} alt="${escHtml(displayName)}">` : ZONDER_FOTO_HTML,
+    foto: fotoHTML(m.avatar_url, displayName) || ZONDER_FOTO_HTML,
     naam: displayName,
     eerste: eersteGekozen((m.musician_instruments || []).map(x => x.instrument)),
     plaats: m.city || '',
@@ -1203,11 +1202,10 @@ function zoekKaartHTML(o) {
 }
 
 function musicianCardHTML(m) {
-  const avatarSrc = safeUrl(m.avatar_url);
   const displayName = displayNameOf(m);
   return zoekKaartHTML({
     klik: `openProfielScherm('${jsAttr(m.id)}')`,
-    foto: avatarSrc ? `<img ${kleinFotoAttr(avatarSrc)} alt="${escHtml(displayName)}">` : '',
+    foto: fotoHTML(m.avatar_url, displayName),
     naam: displayName,
     eerste: eersteGekozen((m.musician_instruments || []).map(x => x.instrument)),
     plaats: m.city || '',
@@ -1236,12 +1234,11 @@ function instrumentInZin(naam) {
 // zoeker waarom de band in het resultaat staat (Laag 3.1, besluit Ronald
 // 25-10-2026). Geen berichtknop (zie MESSAGE_ICON_SVG).
 function bandRowHTML(b) {
-  const foto = safeUrl(b.avatar_url);
   const gezocht = (b.band_wanted || []).map(w => w.instrument);
   const zoekt = gezocht.length ? eersteGekozen(gezocht) : '';
   return zoekRijHTML({
     klik: `openBandScherm('${jsAttr(b.id)}')`,
-    foto: foto ? `<img ${kleinFotoAttr(foto)} alt="${escHtml(b.name)}">` : ZONDER_FOTO_HTML,
+    foto: fotoHTML(b.avatar_url, b.name) || ZONDER_FOTO_HTML,
     vierkant: true,
     naam: b.name || '',
     eerste: eersteGekozen(b.genres || []),
@@ -1255,12 +1252,11 @@ function bandRowHTML(b) {
 // aan een band gaat via de bandpagina naar de contactpersoon. Rechtsonder op de
 // foto "Zoekt <instrument>", hetzelfde instrument als in de rij (TT-520).
 function bandCardHTML(b) {
-  const foto = safeUrl(b.avatar_url);
   const gezocht = (b.band_wanted || []).map(w => w.instrument);
   const zoekt = gezocht.length ? eersteGekozen(gezocht) : '';
   return zoekKaartHTML({
     klik: `openBandScherm('${jsAttr(b.id)}')`,
-    foto: foto ? `<img ${kleinFotoAttr(foto)} alt="${escHtml(b.name)}">` : '',
+    foto: fotoHTML(b.avatar_url, b.name),
     band: true,
     naam: b.name || '',
     eerste: eersteGekozen(b.genres || []),
@@ -1725,12 +1721,11 @@ function mmTellingHTML(n, van) {
 // berichtknop (Laag 3.2.b.4). Een tik opent het profiel. Het instrument: het
 // gekozen filter als hij dat speelt, anders zijn eerste.
 function musicianSetlistRowHTML(m) {
-  const avatarSrc = safeUrl(m.avatar_url);
   const displayName = displayNameOf(m);
   const instr = (m.musician_instruments || []).map(x => x.instrument);
   return zoekRijHTML({
     klik: `openProfielScherm('${jsAttr(m.id)}')`,
-    foto: avatarSrc ? `<img ${kleinFotoAttr(avatarSrc)} alt="${escHtml(displayName)}">` : ZONDER_FOTO_HTML,
+    foto: fotoHTML(m.avatar_url, displayName) || ZONDER_FOTO_HTML,
     naam: displayName,
     eerste: instr.find(v => filterSetlistInstruments.includes(v)) || instr[0] || '',
     plaats: m.city || '',
@@ -2004,10 +1999,9 @@ function renderGedeeldGekozen() {
   const teller = document.getElementById('gedeeldTeller');
   list.hidden = !gedeeldGekozen.length;
   list.innerHTML = gedeeldGekozen.map((g, i) => {
-    const foto = safeUrl(g.foto);
     return zoekRijHTML({
       klik: `openProfielScherm('${jsAttr(g.id)}')`,
-      foto: foto ? `<img ${kleinFotoAttr(foto)} alt="${escHtml(g.naam)}">` : ZONDER_FOTO_HTML,
+      foto: fotoHTML(g.foto, g.naam) || ZONDER_FOTO_HTML,
       naam: g.naam,
       eerste: g.instrument,
       plaats: g.city,
@@ -2134,10 +2128,9 @@ function gedeeldRijHTML(n, i) {
   const spelers = gedeeldSpelersVolgorde(n).map(g => {
     const speelt = Object.prototype.hasOwnProperty.call(n.spelers, g.id);
     const lvl = speelt ? n.spelers[g.id] : '';
-    const foto = safeUrl(g.foto);
     return `
       <div class="gedeeld-speler${speelt ? '' : ' niet'}">
-        <span class="gedeeld-speler-foto">${foto ? `<img ${kleinFotoAttr(foto)} alt="">` : ZONDER_FOTO_HTML}</span>
+        <span class="gedeeld-speler-foto">${fotoHTML(g.foto, '') || ZONDER_FOTO_HTML}</span>
         <button type="button" class="gedeeld-speler-naam" onclick="openProfielScherm('${jsAttr(g.id)}')">${escHtml(g.naam)}</button>
         ${speelt
           ? (lvl ? `<span class="level-pill">${escHtml(LEVEL_LABELS[lvl])}</span>` : '')

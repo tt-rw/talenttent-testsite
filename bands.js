@@ -1073,18 +1073,17 @@ async function profielBandsOphalen(musicianId) {
 function profielBandsHTML(bands) {
   if (!bands || !bands.length) return '';
   return bandSectieHTML('Bands', bands.map(b => {
-    const foto = safeUrl(b.foto);
-    const beeld = foto
-      ? `<img class="bb-foto bb-foto-vierkant" ${kleinFotoAttr(foto)} alt="">`
-      : `<span class="bb-foto bb-foto-leeg bb-foto-vierkant" aria-hidden="true">${ZONDER_FOTO_HTML}</span>`;
+    const beeld = bbFotoHTML(b.foto, false, true);
     const sub = b.instrumenten.concat(b.rol === 'Oprichter' ? [roleLabel(b.rol)] : []).join(' · ');
     return `<button type="button" class="bb-rij bb-rij-knop" onclick="openBandScherm('${jsAttr(b.id)}')">${beeld}<span class="bb-tekst"><span class="bb-naam">${escHtml(b.naam)}</span>${sub ? `<span class="bb-sub">${escHtml(sub)}</span>` : ''}</span></button>`;
   }).join(''));
 }
 
-function bandNummerHTML(n) {
+function bandNummerHTML(n, fotoWazig) {
+  // TT-517 fase 7: afgeschermd het wazige beeld van de bandfoto (een nummer
+  // heeft zelf geen beeld), anders het algemene (huisstijl §18.7).
   if (n.afgeschermd) {
-    return `<div class="band-nummer"><span class="media-mini media-afgeschermd" role="img" aria-label="Alleen zichtbaar met een account"><span class="avatar-t">T</span></span>` +
+    return `<div class="band-nummer"><span class="media-mini media-mini-wazig" role="img" aria-label="Alleen zichtbaar met een account">${wazigHTML(wazigBron(fotoWazig) || WAZIG_ALGEMEEN)}</span>` +
       `<span class="band-nummer-tekst"><span class="band-nummer-titel">${escHtml(n.titel)}</span><span class="band-nummer-sub">Alleen met een account</span></span></div>`;
   }
   const url = safeUrl(n.url);
@@ -1169,7 +1168,7 @@ function bandPaginaHTML(b, kijker) {
   // TT-517 fase 4 (01-11-2026): de kop is de hoes, zoals bij de muzikant (huisstijl §21).
   let h = `
     ${profielHoesHTML({
-      foto, naam: b.name, media: b.media, fotoToevoegen,
+      foto, wazig: wazigBron(b.avatar_url), naam: b.name, media: b.media, fotoToevoegen,
       regels: `<div class="profile-meta" style="margin-bottom:0;">${escHtml(b.city || '')}</div>`,
       knoppen: profielKnoppenHTML('band', b.id, b.name, menuHTML, deelActie, beheer || b.delen_aan !== false)
     })}
@@ -1191,13 +1190,13 @@ function bandPaginaHTML(b, kijker) {
   if (b.description) h += bandSectieHTML('Wie zijn we', `<p class="band-bio">${escHtml(b.description)}</p>`);
   else if (beheer) h += bandSectieHTML('Wie zijn we', uitnodiging('+ Vertel wie jullie zijn'));
   // 3. Eigen nummers.
-  const nummers = b.nummers.map(bandNummerHTML).join('');
+  const nummers = b.nummers.map(n => bandNummerHTML(n, b.avatar_url)).join('');
   if (nummers) h += bandSectieHTML('Onze nummers', nummers);
   else if (beheer && voortgang.telt.nummers) h += bandSectieHTML('Onze nummers', uitnodiging('+ Laat horen hoe jullie klinken'));
   // 4. Foto's en video's, en links: dezelfde functie als bij de muzikant.
   // profielMediaHTML() geeft altijd tekst terug (met een toelichting erin);
   // tel dus zelf of er iets te tonen is.
-  if (b.media.some(x => safeUrl(x.url) || x.afgeschermd)) h += profielMediaHTML(b.media);
+  if (b.media.some(x => safeUrl(x.url) || x.afgeschermd)) h += profielMediaHTML(b.media, b.avatar_url);
   else if (beheer) h += bandSectieHTML("Foto's en video's", uitnodiging("+ Foto's en video's toevoegen"));
   // 5. Socials.
   const socials = bandSocialsHTML(b);
@@ -1739,9 +1738,13 @@ async function bbLaadLeden(contactStart) {
   bbRenderLeden();
 }
 
-function bbFotoHTML(url, wacht) {
+// De foto in een rij (.bb-rij): het fotootje, afgeschermd het wazige beeld
+// (TT-517 fase 7), anders de schijnwerper. `vierkant`: een bandfoto.
+function bbFotoHTML(url, wacht, vierkant) {
+  const extra = (wacht ? ' bb-wacht' : '') + (vierkant ? ' bb-foto-vierkant' : '');
+  const w = wazigBron(url);
+  if (w) return `<span class="bb-foto bb-foto-leeg${extra}" aria-hidden="true">${wazigHTML(w)}</span>`;
   const veilig = safeUrl(url);
-  const extra = wacht ? ' bb-wacht' : '';
   return veilig
     ? `<img class="bb-foto${extra}" ${kleinFotoAttr(veilig)} alt="">`
     : `<span class="bb-foto bb-foto-leeg${extra}" aria-hidden="true">${ZONDER_FOTO_HTML}</span>`;
@@ -2353,7 +2356,8 @@ async function saveBandMedia() {
       instagram: waardeVan('bmInstagram') || null,
       tiktok: waardeVan('bmTiktok') || null,
       youtube: waardeVan('bmYoutube') || null,
-      avatar_url: bmFotoUrl || null
+      avatar_url: bmFotoUrl || null,
+      ...wazigVeld(bmFotoUrl)
     }).eq('id', id).select('id'));
     if (sErr) throw sErr;
     opslagOpruimen('avatars', 'bands/' + id, [bmFotoUrl]);
@@ -2378,7 +2382,7 @@ async function saveBandMedia() {
     const nieuw = nu.filter(m => !m.id);
     if (nieuw.length) {
       const { error } = await db.from('band_media').insert(nieuw.map(m =>
-        ({ band_id: id, media_type: m.media_type, url: m.url, platform: m.platform, in_banner: m.in_banner, uitsnede: m.uitsnede })));
+        ({ band_id: id, media_type: m.media_type, url: m.url, platform: m.platform, in_banner: m.in_banner, uitsnede: m.uitsnede, wazig: wazigVoor(m.url) })));
       if (error) throw error;
     }
     opslagOpruimen('media', 'bands/' + id, nu.map(m => m.url));

@@ -65,7 +65,7 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
   // profielfoto naast de knoppen (TT-384) en de bannerbalk (TT-265).
   return `
     ${profielHoesHTML({
-      foto: avatarSrc, naam: displayName, media: m.musician_media,
+      foto: avatarSrc, wazig: wazigBron(m.avatar_url), naam: displayName, media: m.musician_media,
       // TT-517 fase 6: zonder foto ziet alleen de eigenaar "Voeg een foto toe".
       fotoToevoegen: isOwn ? 'voegFotoToe()' : null,
       // TT-420 (09-10-2026, Ronald): geen tweede naam op het profiel. Er staat één naam: de gekozen.
@@ -84,7 +84,7 @@ function buildMusicianDetailHTML(m, isOwn, inModal) {
         <div class="profile-songs-title">Repertoire (${m.musician_songs.length} ${m.musician_songs.length === 1 ? 'nummer' : 'nummers'})</div>
         ${nummerLijstHTML(songRows)}
       </div>` : ''}
-    ${profielMediaHTML(m.musician_media)}`;
+    ${profielMediaHTML(m.musician_media, m.avatar_url)}`;
 }
 
 // TT-517 fase 6 (huisstijl §21, besluit Ronald 31-10-2026): de knop "Voeg een
@@ -103,12 +103,21 @@ async function voegFotoToe(bandId) {
 // een href voert code uit zodra iemand erop klikt — die laten we hier vallen
 // in plaats van hem als lege link te tonen.
 // TT-45 (25-09-2026): een afgeschermd item heeft geen adres, maar hoort er
-// wél te staan — als de T, zie mediaAfgeschermdHTML() in utils.js.
+// wél te staan. TT-517 fase 7: alle afgeschermde media samen in één wazig vlak
+// (mediaAfgeschermdHTML() in utils.js); `fotoWazig` is de profiel- of bandfoto.
 // TT-02: ook geüploade foto's en video's, niet alleen links.
-function profielMediaHTML(mediaLijst) {
+function profielMediaHTML(mediaLijst, fotoWazig) {
   const lijst = (mediaLijst || [])
     .map(x => ({ ...x, safeHref: safeUrl(x.url) }))
     .filter(x => x.safeHref || x.afgeschermd);
+  // De database schermt een profiel in zijn geheel af: één afgeschermd item is genoeg.
+  if (lijst.some(x => x.afgeschermd)) {
+    return `
+    <div class="profile-media">
+      <div class="profile-media-title">Foto's en video's</div>
+      ${mediaAfgeschermdHTML(lijst, fotoWazig)}
+    </div>`;
+  }
   const links = lijst.filter(x => x.media_type === 'link');
   const photos = lijst.filter(x => x.media_type === 'foto');
   const videos = lijst.filter(x => x.media_type === 'video');
@@ -124,8 +133,8 @@ function profielMediaHTML(mediaLijst) {
       <div class="profile-media">
         <div class="profile-media-title">Foto's en video's</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;">
-          ${photos.map(p => p.afgeschermd ? mediaAfgeschermdHTML() : `<button type="button" class="profile-media-tegel" onclick="openMediaLightbox('${jsAttr(p.safeHref)}')"><img ${kleinFotoAttr(p.safeHref)} alt="Foto" style="width:100%;height:100%;object-fit:cover;"></button>`).join('')}
-          ${videos.map(v => v.afgeschermd ? mediaAfgeschermdHTML() : `<button type="button" class="profile-media-tegel" onclick="openMediaSpeler('${jsAttr(v.safeHref)}', 'video')"><video ${fotoBronAttr(v.safeHref + '#t=0.1')} muted playsinline preload="metadata" tabindex="-1" aria-hidden="true" style="width:100%;height:100%;object-fit:cover;background:#000;"></video><span class="pb-label">Video</span>${SPEELTEKEN_HTML}</button>`).join('')}
+          ${photos.map(p => `<button type="button" class="profile-media-tegel" onclick="openMediaLightbox('${jsAttr(p.safeHref)}')"><img ${kleinFotoAttr(p.safeHref)} alt="Foto" style="width:100%;height:100%;object-fit:cover;"></button>`).join('')}
+          ${videos.map(v => `<button type="button" class="profile-media-tegel" onclick="openMediaSpeler('${jsAttr(v.safeHref)}', 'video')"><video ${fotoBronAttr(v.safeHref + '#t=0.1')} muted playsinline preload="metadata" tabindex="-1" aria-hidden="true" style="width:100%;height:100%;object-fit:cover;background:#000;"></video><span class="pb-label">Video</span>${SPEELTEKEN_HTML}</button>`).join('')}
         </div>
       </div>` : ''}
     ${links.length ? `
@@ -133,7 +142,6 @@ function profielMediaHTML(mediaLijst) {
         <div class="profile-media-title">Links</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;">
           ${links.map(l => {
-            if (l.afgeschermd) return mediaAfgeschermdHTML();
             const ytId = extractYouTubeId(l.safeHref);
             const label = l.platform || 'Link';
             const inner = ytId
@@ -1624,7 +1632,7 @@ async function saveJeMediahoek() {
   if (mhFieldSnapshot() === mhSnapshot) return;
 
   const { error: uErr } = rijenGeraakt(await db.from('musicians')
-    .update({ avatar_url: mhAvatarUrl || null }).eq('id', myMusicianId).select('id'));
+    .update({ avatar_url: mhAvatarUrl || null, ...wazigVeld(mhAvatarUrl) }).eq('id', myMusicianId).select('id'));
   if (uErr) { showToast(friendlyErrorMessage(uErr, 'je gegevens opslaan')); return; }
   opslagOpruimen('avatars', currentUser && currentUser.id, [mhAvatarUrl]);
 
@@ -1634,7 +1642,7 @@ async function saveJeMediahoek() {
     .map(l => ({ media_type: 'link', url: l.url, platform: detectPlatform(l.url), in_banner: !!l.inBanner }));
   const fileMedia = mhMediaFiles
     .filter(m => m.url && !m.uploading && !m.url.startsWith('blob:'))
-    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner, uitsnede: bannerKader(m) }));
+    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner, uitsnede: bannerKader(m), wazig: wazigVoor(m.url) }));
   const { error: kErr } = await db.rpc('tt_save_musician_koppelingen', {
     p_musician_id: myMusicianId,
     p_media: linkMedia.concat(fileMedia),

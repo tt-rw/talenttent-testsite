@@ -2390,15 +2390,76 @@ function profielBannerItems(mediaLijst) {
 
 // ─── TT-45 (25-09-2026, besluit Ronald 23-09-2026): afgeschermde media ──────
 // Een bezoeker zonder account ziet van een 13- tot 15-jarige geen enkel
-// medium. De database geeft zo'n item terug zonder adres en met
-// `afgeschermd: true` (tt_get_musicians_public). Op die plek staat de T van
-// The Talent Tent: een zwarte T op geel, als het profielvlak (TT-341). Geen knop — er valt
-// niets te openen, en een knop die niets doet is een fout (onderhoudsronde).
-// TT-385 (02-10-2026, besluit Ronald): alleen nog voor de tegel op het
-// profiel. Een afgeschermd profiel heeft geen banner in de hoes, zie
-// profielHoesHTML() hieronder.
-function mediaAfgeschermdHTML() {
-  return `<div class="profile-media-tegel media-afgeschermd" role="img" aria-label="Alleen zichtbaar met een account"><span class="avatar-t">T</span></div>`;
+// beeld. De database beslist dat, niet de app (tt_get_musicians_public en
+// tt_get_bands_public): een afgeschermd medium komt zonder adres, met
+// `afgeschermd: true`.
+// TT-517 fase 7 (besluit Ronald 01-11-2026, B): op de plek van elk beeld staat
+// een wazig beeld, per foto een eigen, piepkleine versie (16 x 12 pixels) die
+// de app bij het uploaden maakt (wazigMaken() in wizard.js). Afgeschermd geeft
+// de database in avatar_url die versie ("data:image/jpeg;base64,…"), of het
+// woord 'afgeschermd' als er (nog) geen versie is; dan staat er één algemeen
+// wazig beeld. Leeg blijft leeg: de schijnwerper (geen foto). Een medium
+// krijgt `wazig`. Geen teken, geen knop (huisstijl §18.7).
+const WAZIG_ALGEMEEN = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAMABADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDmNO0qT7JM0Z2nsBWxBorJpgWRSWPtWNpurXUNoShXJbuKtXPiTUk+VZEwAP4a8WbqNtI9FcmjP//Z';
+const WAZIG_VORM = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+// De bron van het wazige beeld, of null als src geen afgeschermde foto is.
+function wazigBron(src) {
+  const s = String(src || '');
+  if (s === 'afgeschermd') return WAZIG_ALGEMEEN;
+  return s.length <= 2000 && WAZIG_VORM.test(s) ? s : null;
+}
+function wazigHTML(bron, klasse) {
+  return `<img class="foto-wazig${klasse ? ' ' + klasse : ''}" src="${bron}" alt="" aria-hidden="true">`;
+}
+// Het beeld van een profiel- of bandfoto in een lijst, een rij of een kaart:
+// het fotootje, het wazige beeld (afgeschermd), of '' (geen foto: de plek
+// zet dan zelf de schijnwerper). `alt` is gewone tekst.
+function fotoHTML(src, alt, klasse) {
+  const w = wazigBron(src);
+  if (w) return wazigHTML(w, klasse);
+  const u = safeUrl(src);
+  return u ? `<img${klasse ? ` class="${klasse}"` : ''} ${kleinFotoAttr(u)} alt="${escHtml(alt || '')}">` : '';
+}
+// De afgeschermde media van een profiel: één vlak in plaats van tegels, met
+// het aantal en één opmerking (huisstijl §18.7). Het beeld: de eerste foto
+// met een wazige versie, anders die van de profielfoto, anders het algemene.
+function mediaAfgeschermdHTML(lijst, fotoWazig) {
+  const beeld = lijst.filter(x => x.media_type !== 'link').length;
+  const links = lijst.length - beeld;
+  const tekst = [beeld ? `${beeld} ${beeld === 1 ? 'foto of video' : "foto's en video's"}` : '',
+    links ? `${links} ${links === 1 ? 'link' : 'links'}` : ''].filter(Boolean).join(' · ');
+  const eerste = lijst.map(x => wazigBron(x.wazig)).find(Boolean);
+  const bron = eerste || wazigBron(fotoWazig) || WAZIG_ALGEMEEN;
+  return `<div class="media-afgeschermd"><img class="foto-wazig" src="${bron}" alt="" aria-hidden="true" onload="wazigWaasZetten(this)">` +
+    `<span class="media-afgeschermd-tekst"><b>${escHtml(tekst)}</b>` +
+    `<span>Maak een profiel aan om de inhoud te bekijken.</span></span></div>`;
+}
+
+// De donkere waas over het vlak: minstens 45%, en zo veel meer als nodig is
+// voor wit 6,1:1 op het lichtste punt van het beeld (huisstijl §18.7). Een
+// eigen foto kan licht zijn; het algemene beeld is donker genoeg met 45%.
+function wazigWaasZetten(img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 16; c.height = 12;
+    const x = c.getContext('2d');
+    x.drawImage(img, 0, 0, 16, 12);
+    const d = x.getImageData(0, 0, 16, 12).data;
+    // Het vlak toont het beeld vervaagd: ongeveer één pixel van de kleine
+    // versie. Meet daarom het gemiddelde van elke pixel met zijn buren (1-2-1).
+    const k = (px, py, n) => d[(Math.min(11, Math.max(0, py)) * 16 + Math.min(15, Math.max(0, px))) * 4 + n];
+    let licht = 0;
+    for (let py = 0; py < 12; py++) for (let px = 0; px < 16; px++) for (let n = 0; n < 3; n++) {
+      let som = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) som += k(px + dx, py + dy, n) * (2 - Math.abs(dx)) * (2 - Math.abs(dy));
+      licht = Math.max(licht, som / 16);
+    }
+    const lum = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    let waas = 0.45;
+    // De waas mengt in sRGB, zoals de browser: elk kanaal × (1 − waas), plus 13 × waas.
+    while (waas < 0.9 && 1.05 / (lum(licht * (1 - waas) + 13 * waas) + 0.05) < 6.1) waas += 0.01;
+    img.parentNode.style.setProperty('--waas-vlak', waas.toFixed(2));
+  } catch (e) { img.parentNode.style.setProperty('--waas-vlak', '0.65'); }
 }
 
 // Het speelteken: een driehoek in een ronde schijf, midden op elk beeld dat een
@@ -2417,7 +2478,8 @@ function hoesBronAttr(src) {
 
 const HOES_PIJL = r => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="${r ? '9 5 16 12 9 19' : '15 5 8 12 15 19'}"/></svg>`;
 
-// o.foto: de profiel- of bandfoto (uit safeUrl) of null; o.naam: de naam als
+// o.foto: de profiel- of bandfoto (uit safeUrl) of null; o.wazig: het wazige
+// beeld van een afgeschermde foto (wazigBron(), TT-517 fase 7) of null; o.naam: de naam als
 // tekst; o.regels: HTML van de regel onder de naam; o.knoppen: HTML van
 // profielKnoppenHTML(); o.media: de media voor de banner; o.fotoToevoegen:
 // JavaScript voor de knop "Voeg een foto toe" op een leeg podium, alleen voor de
@@ -2431,14 +2493,16 @@ function profielHoesHTML(o) {
   // Besluit Ronald (01-11-2026, A): zonder profielfoto begint de hoes met de
   // media die voor de banner gekozen zijn. Het lege podium staat er alleen
   // als er geen enkel beeld is.
-  const podium = !o.foto && !banner.length;
-  const voor = o.foto || podium ? 1 : 0;
+  const podium = !o.foto && !o.wazig && !banner.length;
+  const voor = o.foto || o.wazig || podium ? 1 : 0;
   const n = banner.length + voor;
   const naam = escHtml(o.naam);
 
   const eerste = !voor ? '' : o.foto
     ? `<button type="button" class="hoes-vlak" onclick="openMediaLightbox('${jsAttr(o.foto)}')" aria-label="Foto van ${naam} groot bekijken">` +
       `<img class="hoes-img" ${hoesBronAttr(o.foto)} alt="${naam}"></button>`
+    // TT-517 fase 7: afgeschermd het wazige beeld, geen knop (huisstijl §18.7).
+    : o.wazig ? `<div class="hoes-vlak hoes-wazig" role="img" aria-label="Alleen zichtbaar met een account">${wazigHTML(o.wazig, 'hoes-img')}</div>`
     // TT-517 fase 6: zonder foto de schijnwerper, twee bundels die samen op
     // de naam vallen (hoesBundelZetten()). Het podium zelf is geen knop.
     : `<div class="hoes-vlak hoes-leeg" role="img" aria-label="Nog geen foto"><span class="hoes-bundel"></span></div>`;

@@ -446,6 +446,7 @@ async function persistEditedProfile() {
     musical_ambition:    state.musicalAmbition || null,
     repertoire_type:  state.repertoireType || null,
     avatar_url:       state.avatarUrl || null,
+    ...wazigVeld(state.avatarUrl),
     city_source:      state.citySource || 'pdok',
     profile_complete: true, // TT-09: dit is de definitieve klik op "Profiel aanmaken"/"Wijzigingen opslaan"/"Opslaan"
   }).eq('id', mid).select('id'));
@@ -464,7 +465,7 @@ async function persistEditedProfile() {
     .map(l => ({ media_type: 'link', url: l.url, platform: detectPlatform(l.url), in_banner: !!l.inBanner }));
   const fileMedia = state.mediaFiles
     .filter(m => m.url && !m.uploading && !m.url.startsWith('blob:'))
-    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner, uitsnede: bannerKader(m) }));
+    .map(m => ({ media_type: m.type, url: m.url, in_banner: !!m.inBanner, uitsnede: bannerKader(m), wazig: wazigVoor(m.url) }));
 
   const { error: kErr } = await db.rpc('tt_save_musician_koppelingen', {
     p_musician_id: mid,
@@ -867,6 +868,7 @@ async function submitProfile() {
         repertoire_type:  state.repertoireType || null,
         profile_color:    DEFAULT_PROFILE_COLOR,
         avatar_url:       state.avatarUrl || null,
+        ...wazigVeld(state.avatarUrl),
         city_source:      state.citySource || 'pdok',
         user_id:          userId,
         profile_complete: true,
@@ -936,6 +938,7 @@ async function submitProfile() {
         url:         m.url,
         in_banner:   !!m.inBanner,
         uitsnede:    bannerKader(m),
+        wazig:       wazigVoor(m.url),
       }));
     if (fileMedia.length) {
       const { error: fErr } = await db.from('musician_media').insert(fileMedia);
@@ -1401,6 +1404,7 @@ async function createAccountAndProfile() {
       bio:              state.bio || null,
       profile_color:    DEFAULT_PROFILE_COLOR,
       avatar_url:       state.avatarUrl || null,
+      ...wazigVeld(state.avatarUrl),
       user_id:          userId,
       profile_complete: false,
       city_source:      state.citySource || 'pdok',
@@ -1595,7 +1599,12 @@ function bestandTeGrootMelding(file, maxBytes) {
 // `avatars` en in `media` (TT-537). Mislukt het, dan staat de foto er toch: de
 // app toont dan de grote foto (utils.js). fotoUploadsBezig telt de uploads die
 // nog lopen; opslagOpruimen() wist dan niets.
+// TT-517 fase 7: elke foto krijgt ook een wazige versie (wazigMaken()). Die
+// gaat niet naar de opslag maar naar de database, bij het opslaan
+// (wazigVeld(), wazigVoor()). Mislukt hij, dan ziet een bezoeker bij een
+// afgeschermde foto het algemene wazige beeld (WAZIG_ALGEMEEN in utils.js).
 let fotoUploadsBezig = 0;
+const wazigBijUpload = new Map(); // adres van de foto → wazige versie
 async function uploadToStorage(bucket, userId, file, maxBytes, maxLabel, allowedTypes, typeLabel) {
   fotoUploadsBezig++;
   try {
@@ -1608,6 +1617,12 @@ async function uploadToStorage(bucket, userId, file, maxBytes, maxLabel, allowed
         if (error) throw error;
       } catch (e) {
         logCaught('fotootjeUploaden', e);
+      }
+      try {
+        const w = await wazigMaken(uit.file);
+        if (w) wazigBijUpload.set(uit.url, w);
+      } catch (e) {
+        logCaught('wazigMaken', e);
       }
     }
     return uit;
@@ -1656,6 +1671,46 @@ async function fotootjeMaken(file) {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+// TT-517 fase 7 (huisstijl §18.7, besluit Ronald 01-11-2026, B): de wazige
+// versie van een foto. Het midden, 4:3 (de vorm van de hoes), 16 x 12 pixels,
+// JPG, als tekst ("data:image/jpeg;base64,…"). Hierop is niemand te
+// herkennen; de database stuurt hem een bezoeker zonder account in plaats van
+// de foto van een 13- tot 15-jarige. null als het niet lukt.
+async function wazigMaken(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, fout) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => fout(new Error('foto niet te lezen'));
+      i.src = url;
+    });
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const b = Math.min(W, H * 4 / 3), h = b * 3 / 4;
+    const canvas = document.createElement('canvas');
+    canvas.width = 16; canvas.height = 12;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 16, 12);
+    ctx.drawImage(img, (W - b) / 2, (H - h) / 2, b, h, 0, 0, 16, 12);
+    return wazigBron(canvas.toDataURL('image/jpeg', 0.7));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+// De wazige versie van een foto die in deze sessie is geüpload, of null.
+function wazigVoor(url) {
+  return wazigBijUpload.get(url) || null;
+}
+// Het veld voor de profiel- of bandfoto bij het opslaan: alleen als de app
+// een nieuwe wazige versie heeft. Anders niets, zodat een bewaarde versie
+// blijft staan; een nieuwe foto zonder versie wist de oude in de database
+// (trigger tt_wazig_bij_profielfoto).
+function wazigVeld(url) {
+  const w = url ? wazigVoor(url) : null;
+  return w ? { avatar_wazig: w } : {};
 }
 
 function uploadAvatarFile(file, userId) {
