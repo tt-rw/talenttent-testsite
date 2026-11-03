@@ -113,10 +113,44 @@ async function insertMessage(recipientId, body) {
       showToast('Deze persoon kan geen berichten ontvangen.');
       return false;
     }
+    // TT-481: de database bewaakt de grens (zie zetWachtOpAntwoord). Gewoonlijk
+    // staat het veld dan al dicht; dit vangt alleen een gelijktijdige poging.
+    if (/^Wacht op antwoord/i.test((e && e.message) || '')) {
+      showToast('Wacht op antwoord.');
+      return false;
+    }
     logCaught('insertMessage', e);
     showToast(friendlyErrorMessage(e, 'je bericht versturen'));
     return false;
   }
+}
+
+// TT-481 (03-11-2026, besluit Ronald): zolang de ander nooit antwoordde,
+// stuur je hooguit 3 berichten per 24 uur. Antwoordt de ander, dan is het
+// gesprek vrij. Zoals de grote apps: de grens zit in het tekstveld, zonder
+// uitleg ("Wacht op antwoord"). Melden en blokkeren blijven de weg tegen
+// lastigvallen. De database (trigger `tt_berichtgrens`) bewaakt dezelfde regel.
+const BERICHTGRENS = 3;
+const BERICHTGRENS_UUR = 24;
+
+function wachtOpAntwoord(verstuurd, ontvangen, nu) {
+  if ((ontvangen || []).length) return false;
+  const vanaf = (nu || Date.now()) - BERICHTGRENS_UUR * 3600 * 1000;
+  return (verstuurd || []).filter(m => new Date(m.created_at).getTime() > vanaf).length >= BERICHTGRENS;
+}
+
+function zetWachtOpAntwoord(aan) {
+  const input = document.getElementById('messagesReplyInput');
+  const knop = document.querySelector('#messagesThreadPanel .messages-send-btn');
+  if (!input) return;
+  if (!input.dataset.standaard) input.dataset.standaard = input.getAttribute('placeholder') || '';
+  input.disabled = !!aan;
+  input.setAttribute('placeholder', aan ? 'Wacht op antwoord' : input.dataset.standaard);
+  if (aan) input.value = '';
+  if (knop) knop.disabled = !!aan;
+  // De teller zegt niets als je niet kunt typen; zichtbaarheid, zodat niets verschuift.
+  const teller = document.getElementById('messagesReplyCounter');
+  if (teller) teller.style.visibility = aan ? 'hidden' : '';
 }
 
 async function sendReplyInThread() {
@@ -405,6 +439,7 @@ let activeConversationDeleted = false;
 async function openConversation(otherId, otherName, otherAvatarSrc, stil, deleted) {
   if (!otherId) return;
   activeConversationId = otherId;
+  if (!stil) zetWachtOpAntwoord(false); // TT-481: elk gesprek begint open; de telling volgt hieronder
   zetSysteemGesprek(false); // TT-451: een gewoon gesprek heeft weer invoerveld en menu
   werkTerugKnopBij(); // TT-301: een open gesprek is een stap terug
   if (deleted !== undefined) activeConversationDeleted = deleted;
@@ -459,6 +494,8 @@ async function openConversation(otherId, otherName, otherAvatarSrc, stil, delete
     ]);
     if (sentRes.error) throw sentRes.error;
     if (receivedRes.error) throw receivedRes.error;
+    // TT-481: telt over alle berichten, ook die van een verwijderd gesprek.
+    if (activeConversationId === otherId) zetWachtOpAntwoord(wachtOpAntwoord(sentRes.data, receivedRes.data));
     const data = [...(sentRes.data || []), ...(receivedRes.data || [])]
       .filter(msg => !gesprekVerborgenTot(verborgen, otherId, msg.created_at))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
