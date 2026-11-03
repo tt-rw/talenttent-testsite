@@ -125,17 +125,19 @@ async function insertMessage(recipientId, body) {
   }
 }
 
-// TT-481 (03-11-2026, besluit Ronald): zolang de ander nooit antwoordde,
-// stuur je hooguit 3 berichten per 24 uur. Antwoordt de ander, dan is het
-// gesprek vrij. Zoals de grote apps: de grens zit in het tekstveld, zonder
-// uitleg ("Wacht op antwoord"). Melden en blokkeren blijven de weg tegen
+// TT-481 (03-11-2026, besluit Ronald): hooguit 10 berichten per 24 uur zonder
+// antwoord. Elk antwoord van de ander zet de teller op 0; na 24 uur kan het
+// weer. Zoals de grote apps: de grens zit in het tekstveld, zonder uitleg
+// ("Wacht op antwoord"). Melden en blokkeren blijven de weg tegen
 // lastigvallen. De database (trigger `tt_berichtgrens`) bewaakt dezelfde regel.
-const BERICHTGRENS = 3;
+const BERICHTGRENS = 10;
 const BERICHTGRENS_UUR = 24;
 
 function wachtOpAntwoord(verstuurd, ontvangen, nu) {
-  if ((ontvangen || []).length) return false;
-  const vanaf = (nu || Date.now()) - BERICHTGRENS_UUR * 3600 * 1000;
+  // Elk antwoord zet de teller op 0: alleen berichten ná het laatste antwoord
+  // en binnen de laatste 24 uur tellen mee.
+  const laatsteAntwoord = Math.max(0, ...(ontvangen || []).map(m => new Date(m.created_at).getTime()));
+  const vanaf = Math.max(laatsteAntwoord, (nu || Date.now()) - BERICHTGRENS_UUR * 3600 * 1000);
   return (verstuurd || []).filter(m => new Date(m.created_at).getTime() > vanaf).length >= BERICHTGRENS;
 }
 

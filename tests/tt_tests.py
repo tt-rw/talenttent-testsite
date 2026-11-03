@@ -13397,8 +13397,8 @@ def blok_tt481():
     # TT-481 (03-11-2026, besluiten Ronald): (1) één vriendelijke tekst voor "dit
     # e-mailadres heeft al een account", bij aanmelden en bij wijzigen; (2) een te
     # makkelijk wachtwoord (Supabase: weak_password) staat bij het wachtwoordveld;
-    # (3) zolang de ander nooit antwoordde, hooguit 3 berichten per 24 uur.
-    print("\nBlok 122 — TT-481: account bestaat al, te makkelijk wachtwoord, berichtgrens")
+    # (3) hooguit 10 berichten per 24 uur zonder antwoord; elk antwoord zet de teller op 0.
+    print("\nBlok 122 — TT-481: account bestaat al, te makkelijk wachtwoord, berichtgrens (10 per 24 uur)")
     ACCOUNT = "Je hebt al een account met dit e-mailadres. Log in en ga verder waar je was"
     BEZET = "Dit e-mailadres hoort al bij een ander account. Kies een ander e-mailadres"
     ZWAK = "Dit wachtwoord is te makkelijk te raden. Kies een ander wachtwoord"
@@ -13407,6 +13407,7 @@ def blok_tt481():
     oud = [n for n, t in app.items() if re.search(
         r"heeft al een account\. Log in, of|gebruik een ander adres|'Dit e-mailadres is al in gebruik'|Er bestaat al een account", t)]
     check("de oude teksten voor 'account bestaat al' staan nergens meer in de app", not oud, str(oud))
+    check("de berichtgrens is 10, in de app (messages.js)", "const BERICHTGRENS = 10;" in app["messages.js"], "")
     check("de tekst staat op één plek (utils.js) en vijf plekken gebruiken hem",
           app["utils.js"].count(ACCOUNT) == 1 and app["utils.js"].count(BEZET) == 1
           and sum(t.count("TEKST_ACCOUNT_BESTAAT") + t.count("TEKST_EMAIL_BEZET") for t in app.values()) >= 7, "")
@@ -13473,11 +13474,13 @@ def blok_tt481():
           // Berichtgrens: de regel zelf
           const nu = Date.now(), uur = 3600 * 1000;
           const m = h => ({ created_at: new Date(nu - h * uur).toISOString() });
+          const reeks = (n, h) => Array.from({ length: n }, (_, i) => m(h + i * 0.1));
           u.regel = {
-            tweeVers: wachtOpAntwoord([m(1), m(2)], [], nu),
-            drieVers: wachtOpAntwoord([m(1), m(2), m(3)], [], nu),
-            drieOud: wachtOpAntwoord([m(1), m(2), m(25)], [], nu),
-            metAntwoord: wachtOpAntwoord([m(1), m(2), m(3), m(4)], [{ created_at: m(30).created_at }], nu)
+            negenVers: wachtOpAntwoord(reeks(9, 1), [], nu),
+            tienVers: wachtOpAntwoord(reeks(10, 1), [], nu),
+            tienEenOud: wachtOpAntwoord([...reeks(9, 1), m(25)], [], nu),
+            antwoordReset: wachtOpAntwoord([...reeks(10, 2), ...reeks(3, 0.1)], [m(1)], nu),
+            tienNaAntwoord: wachtOpAntwoord(reeks(10, 0.1), [m(3)], nu)
           };
 
           // Berichtgrens: in het gesprek
@@ -13489,23 +13492,24 @@ def blok_tt481():
           const invoer = $('messagesReplyInput'), knop = document.querySelector('#messagesThreadPanel .messages-send-btn');
           const stand = () => ({ dicht: invoer.disabled, knopDicht: knop.disabled, tekst: invoer.getAttribute('placeholder'),
                                  teller: $('messagesReplyCounter').style.visibility !== 'hidden' });
-          S.data.messages = [bericht('a', 'm1', 'm2', 1), bericht('b', 'm1', 'm2', 2), bericht('c', 'm1', 'm2', 3)];
+          const tien = Array.from({ length: 10 }, (_, i) => bericht('t' + i, 'm1', 'm2', 1 + i * 0.1));
+          S.data.messages = tien.slice();
           await openConversation('m2', 'Dylan', '', false, false); await w(50);
           u.gesprekDicht = stand();
           S.data.messages = [bericht('d', 'm1', 'm3', 1)];
           await openConversation('m3', 'Lua', '', false, false); await w(50);
           u.anderGesprekOpen = stand();
-          S.data.messages = [bericht('a', 'm1', 'm2', 1), bericht('b', 'm1', 'm2', 2), bericht('c', 'm1', 'm2', 3), bericht('e', 'm2', 'm1', 40)];
+          S.data.messages = [...tien, bericht('e', 'm2', 'm1', 0.5)];
           await openConversation('m2', 'Dylan', '', false, false); await w(50);
           u.naAntwoordOpen = stand();
-          // Twee berichten, dan het derde: na het versturen gaat het veld dicht
-          S.data.messages = [bericht('a', 'm1', 'm2', 1), bericht('b', 'm1', 'm2', 2)];
+          // Negen berichten, dan het tiende: na het versturen gaat het veld dicht
+          S.data.messages = tien.slice(0, 9);
           gesprekVanuit = null;
           await openConversation('m2', 'Dylan', '', false, false); await w(50);
-          u.naTweeOpen = stand();
-          invoer.value = 'derde bericht';
+          u.naNegenOpen = stand();
+          invoer.value = 'tiende bericht';
           await sendReplyInThread(); await w(150);
-          u.naDerdeDicht = stand();
+          u.naTiendeDicht = stand();
           // De database weigert (gelijktijdige poging): korte melding, tekst blijft
           zetWachtOpAntwoord(false); S.data.messages = [];
           S.errors.messages = { code: 'P0001', message: 'Wacht op antwoord.' }; toastWeg(); const l1 = logs();
@@ -13529,15 +13533,15 @@ def blok_tt481():
           r["wijzigWw"]["tekst"] == ZWAK and not r["wijzigWw"]["toast"], j)
     check("Instellingen, e-mailadres wijzigen naar een bezet e-mailadres: de wijzig-tekst bij het veld",
           r["wijzigEmail"]["tekst"] == BEZET and not r["wijzigEmail"]["toast"], j)
-    check("berichtgrens: 2 vrij, 3 binnen 24 uur dicht, ouder dan 24 uur telt niet, na een antwoord vrij",
-          r["regel"] == {"tweeVers": False, "drieVers": True, "drieOud": False, "metAntwoord": False}, j)
-    check("gesprek met 3 berichten zonder antwoord: veld en knop dicht, het veld zegt 'Wacht op antwoord'",
+    check("berichtgrens: 9 vrij, 10 binnen 24 uur dicht, ouder dan 24 uur telt niet, een antwoord zet de teller op 0, 10 na het antwoord dicht",
+          r["regel"] == {"negenVers": False, "tienVers": True, "tienEenOud": False, "antwoordReset": False, "tienNaAntwoord": True}, j)
+    check("gesprek met 10 berichten zonder antwoord: veld en knop dicht, het veld zegt 'Wacht op antwoord'",
           r["gesprekDicht"] == {"dicht": True, "knopDicht": True, "tekst": "Wacht op antwoord", "teller": False}, j)
     check("een ander gesprek opent daarna gewoon open, met de gewone tekst",
           r["anderGesprekOpen"]["dicht"] is False and r["anderGesprekOpen"]["knopDicht"] is False
           and r["anderGesprekOpen"]["tekst"] == "Typ een bericht..." and r["anderGesprekOpen"]["teller"] is True, j)
-    check("heeft de ander ooit geantwoord, dan is het gesprek vrij", r["naAntwoordOpen"]["dicht"] is False, j)
-    check("na het derde bericht gaat het veld dicht", r["naTweeOpen"]["dicht"] is False and r["naDerdeDicht"]["dicht"] is True, j)
+    check("antwoordt de ander na de 10 berichten, dan gaat het veld weer open", r["naAntwoordOpen"]["dicht"] is False, j)
+    check("na het tiende bericht gaat het veld dicht", r["naNegenOpen"]["dicht"] is False and r["naTiendeDicht"]["dicht"] is True, j)
     check("weigert de database toch (gelijktijdig), dan 'Wacht op antwoord.' en geen foutlog",
           r["dbWeigert"]["ok"] is False and r["dbWeigert"]["toast"] == "Wacht op antwoord." and r["dbWeigert"]["log"] == 0, j)
     check("geen paginafouten in blok 122", not fouten, "; ".join(fouten)[:300])
