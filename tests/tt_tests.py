@@ -14485,6 +14485,10 @@ def blok_tt543():
           u["opname"] == {"stap": 2, "step": None, "doel": False} or u["opname"] == {"stap": 2, "doel": False}, json.dumps(u["opname"]))
     check("een opname van vóór TT-543 komt op dezelfde stap terug: oud 3 (setlist) wordt 2, oud 4 (media) wordt 3, oud 2 (doel) wordt de setlist",
           u["omzetting"] == [0, 1, 2, 2, 3, 0, 3, 0], json.dumps(u["omzetting"]))
+    privacy = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+    privacy = privacy[privacy.index('id="view-privacy"'):privacy.index('id="view-terms"')]
+    check("de privacyverklaring noemt geen doel of ambitie meer en is bijgewerkt op 6 november 2026 (besluit Ronald 06-11-2026)",
+          not re.search(r"\bdoel\b|ambitie", privacy, re.I) and "Laatst bijgewerkt: 6 november 2026" in privacy, "")
     check("geen paginafouten in blok 131", not fouten, "; ".join(fouten)[:300])
 
 def main():
