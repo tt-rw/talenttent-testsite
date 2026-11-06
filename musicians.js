@@ -466,7 +466,11 @@ async function laadProfielScherm(id, linkToegang) {
   const beschikbaar = await beschikbaarVraag;
   if (volgnr !== profielSchermVolgnr) return; // intussen een ander profiel geopend
 
+  // TT-561 D7 (zoals TT-464 bij een band): geen rij is een profiel dat niet meer
+  // bestaat; dan helpt opnieuw proberen niet. Alleen een echte fout is de foutstaat.
+  if (!m && (!error || error.code === 'PGRST116')) { toonProfielNietBeschikbaar('muzikant', true); return; }
   if (error || !m) {
+    logCaught('laadProfielScherm', error);
     footer.innerHTML = '';
     content.innerHTML = foutStaatHTML(error, 'het profiel laden', `laadProfielScherm('${jsAttr(id)}', ${!!linkToegang})`);
     return;
@@ -512,10 +516,14 @@ async function laadProfielScherm(id, linkToegang) {
 function toonProfielNietBeschikbaar(soort, bestaatNiet) {
   const band = soort === 'band';
   document.getElementById('profielSchermVoet').innerHTML = '';
-  // TT-464: bestaatNiet is alleen voor een band die uit de database is verdwenen.
+  // TT-464: bestaatNiet is een band of profiel dat uit de database is verdwenen
+  // (sinds TT-561 ook een profiel, muzikant en band gelijk).
+  const kop = band ? (bestaatNiet ? 'Deze bandpagina bestaat niet meer' : 'Deze bandpagina is niet beschikbaar')
+                   : (bestaatNiet ? 'Dit profiel bestaat niet meer' : 'Dit profiel is niet beschikbaar');
+  const uitleg = band ? (bestaatNiet ? 'De band is opgeheven, of de link klopt niet.' : 'De band deelt deze pagina niet via een link.')
+                      : (bestaatNiet ? 'Het account is verwijderd, of de link klopt niet.' : 'De muzikant deelt dit profiel niet via een link.');
   document.getElementById('profielSchermContent').innerHTML = emptyStateHTML(
-    band ? (bestaatNiet ? 'Deze bandpagina bestaat niet meer' : 'Deze bandpagina is niet beschikbaar') : 'Dit profiel is niet beschikbaar',
-    band ? (bestaatNiet ? 'De band is opgeheven, of de link klopt niet.' : 'De band deelt deze pagina niet via een link.') : 'De muzikant deelt dit profiel niet via een link.',
+    kop, uitleg,
     'Naar Zoeken →',
     "showView('search')"
   );

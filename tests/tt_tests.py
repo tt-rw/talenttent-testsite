@@ -14369,7 +14369,13 @@ def blok_onderhoud_0611():
           u.tipLoopt = tip(); await w(2700); u.tipLooptNa = tip();
           document.getElementById('bottomNavSearch').click(); await w(200);
           const stand = tip(); await w(2700); u.tipStil = stand === tip();
+          // TT-561 D7: een profiel dat niet bestaat is geen storing
+          showView('profiel', undefined, { id: 'bestaat-niet', app: true }); await w(800);
+          u.weg = tekst('view-profiel');
+          showView('myprofile'); await w(200);
           return u; }""")
+        check("TT-561 D7: een profiel dat niet bestaat zegt 'Dit profiel bestaat niet meer', geen foutstaat",
+              "Dit profiel bestaat niet meer" in uit["weg"] and "Laden lukt nu niet" not in uit["weg"], uit["weg"][:160])
         check("TT-561: een storing toont op Mijn Profiel 'Laden lukt nu niet' met 'Probeer het opnieuw', niet 'Nog geen profiel'",
               "Laden lukt nu niet" in uit["profiel"] and "Probeer het opnieuw" in uit["profiel"] and "Nog geen profiel" not in uit["profiel"], uit["profiel"][:160])
         check("TT-562: de foutstaat staat in de tekstkleur, niet in rood", uit["profielKleur"] == uit["tekstKleur"],
