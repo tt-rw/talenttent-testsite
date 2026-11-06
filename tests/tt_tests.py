@@ -14607,8 +14607,8 @@ def blok_tt570():
               b["hervat"]["stap"] == 3 and b["hervat"]["paneel"] == "step3" and b["hervat"]["fname"] == "Kevin"
               and b["hervat"]["email"] == "kevin@talenttent.org" and b["hervat"]["instr"] == "Gitaar" and b["hervat"]["songs"] == 3
               and b["hervat"]["ww"] == "", jb)
-        check("na verversen ontbreekt alleen het wachtwoord: terug naar stap 1 met de fout bij het veld, geen account",
-              b["geenWw"]["stap"] == 0 and b["geenWw"]["tekst"] == "Kies een wachtwoord" and b["geenWw"]["signUp"] == 0
+        check("na verversen ontbreekt alleen het wachtwoord: terug naar stap 1 met \"Vul je wachtwoord opnieuw in\" bij het veld, geen account (besluit Ronald)",
+              b["geenWw"]["stap"] == 0 and b["geenWw"]["tekst"] == "Vul je wachtwoord opnieuw in" and b["geenWw"]["signUp"] == 0
               and b["geenWw"]["fname"] == "Kevin" and b["geenWw"]["instr"] == "Gitaar" and b["geenWw"]["songs"] == 3, jb)
         check("te makkelijk wachtwoord bij de laatste knop: terug naar stap 1, het veld met de fout in beeld, alle gegevens blijven staan",
               b["zwak"]["stap"] == 0 and b["zwak"]["tekst"] == "Dit wachtwoord is te makkelijk te raden. Kies een ander wachtwoord"

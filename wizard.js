@@ -696,8 +696,9 @@ async function submitProfile() {
 
   // TT-570: het wachtwoord staat bewust niet in de browser. Na verversen is
   // het dus weg: terug naar stap 1, de fout bij het veld, de rest blijft staan.
+  // De tekst zegt waarom je terug bent (besluit Ronald, 06-11-2026).
   if (!currentUser && !state.ouderRoute && !state.regPassword) {
-    terugNaarVeld('regPassword', 'Kies een wachtwoord');
+    terugNaarVeld('regPassword', 'Vul je wachtwoord opnieuw in');
     return;
   }
 
