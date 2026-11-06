@@ -468,7 +468,7 @@ async function laadProfielScherm(id, linkToegang) {
 
   if (error || !m) {
     footer.innerHTML = '';
-    content.innerHTML = '<p style="color:var(--danger)">Kon profiel niet laden.</p>';
+    content.innerHTML = foutStaatHTML(error, 'het profiel laden', `laadProfielScherm('${jsAttr(id)}', ${!!linkToegang})`);
     return;
   }
 
@@ -575,7 +575,7 @@ function closeMediaLightbox() {
 // toelichting bij executeAccountDeletion().
 async function openDeleteAccountModal() {
   const mid = await getMyMusicianId();
-  if (!mid) { showToast('Je hebt geen profiel om te verwijderen.'); return; }
+  if (!mid) { geenProfielMelding('Je hebt geen profiel om te verwijderen.'); return; }
 
   const area = document.getElementById('deleteAccountBandsArea');
   area.innerHTML = '<div style="color:var(--muted);font-size:12px;">Bezig met controleren...</div>';
@@ -614,7 +614,9 @@ async function openDeleteAccountModal() {
         </div>`).join('')}`;
   } catch (e) {
     logCaught('openDeleteAccountModal', e);
-    area.innerHTML = `<div style="color:var(--danger);font-size:12px;">${escHtml(friendlyErrorMessage(e, 'je bands laden'))}</div>`;
+    // Zonder je bands kun je niet per band kiezen: eerst opnieuw laden (TT-561).
+    document.getElementById('deleteAccountConfirmBtn').disabled = true;
+    area.innerHTML = foutStaatHTML(e, 'je bands laden', 'openDeleteAccountModal()');
   }
 }
 
@@ -778,7 +780,8 @@ async function executeAccountDeletion() {
 async function deleteAllStorageForUser(userId) {
   for (const bucket of ['avatars', 'media']) {
     try {
-      const { data: files } = await db.storage.from(bucket).list(userId);
+      const { data: files, error: lijstFout } = await db.storage.from(bucket).list(userId);
+      if (lijstFout) throw lijstFout; // TT-561: anders blijven bestanden stil achter
       if (files && files.length) {
         const paths = files.map(f => `${userId}/${f.name}`);
         await db.storage.from(bucket).remove(paths);
@@ -1344,7 +1347,7 @@ async function jstOnArtistSearch(q, p = 'jst') {
       jstRenderArtistResults(ac, artists, p);
     } catch (e) {
       logCaught('jstOnArtistSearch', e);
-      ac.innerHTML = '<div class="ac-item"><span style="color:var(--danger);">Zoeken lukt nu niet. Controleer je verbinding en typ opnieuw</span></div>';
+      ac.innerHTML = AC_FOUT_HTML;
     }
   }, 400);
 }
@@ -1393,7 +1396,7 @@ async function jstOnTrackSearch(q, p = 'jst') {
     jstRenderTrackResults(ac, songs, q, p);
   } catch (e) {
     logCaught('jstOnTrackSearch', e);
-    ac.innerHTML = '<div class="ac-item"><span style="color:var(--danger);">Zoeken lukt nu niet. Controleer je verbinding en typ opnieuw</span></div>';
+    ac.innerHTML = AC_FOUT_HTML;
   }
 }
 function jstRenderTrackResults(ac, songs, q, p = 'jst') {
