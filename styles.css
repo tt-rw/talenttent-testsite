@@ -4450,6 +4450,9 @@
     background: transparent; border: 2px dashed var(--border); border-radius: 999px; font-size: 15px;
   }
   .picker-toevoegen .picker-field-label { line-height: 20px; }
+  /* Het niveaupaneel staat in de rijen direct onder het gekozen instrument; de
+     ruimte erboven is de 8px van het raster (besluit Ronald 07-11-2026, a). */
+  .picker-badge-row.instrument-rijen > .niveau-paneel { margin-top: 0; }
   .picker-toevoegen .media-toevoegen-plus { width: 16px; height: 16px; }
 
   .picker-list-item {

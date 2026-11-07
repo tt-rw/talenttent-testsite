@@ -277,6 +277,9 @@ function renderInstrumentBadges(id) {
   // renderPickerBadges() hierboven.
   document.getElementById(cfg.fieldId + 'Label').textContent = 'Kies een instrument';
   if (list.length) clearFieldError(cfg.fieldId); // TT-444: zoals renderPickerBadges()
+  // Het niveaupaneel kan ín het raster staan (zie hieronder); een nieuwe tekening
+  // haalt het daar weg, dus eerst vasthouden.
+  const paneel = document.getElementById(cfg.badgeRowId + 'Niveau');
   wrap.innerHTML = list.map(i => {
     const n = levels[i] || 0;
     const open = cfg.openInstrument === i;
@@ -290,6 +293,13 @@ function renderInstrumentBadges(id) {
     </div>`;
   }).join('');
   pickerToevoegenPlaatsen(cfg, wrap, true);
+  // TT-543 blok 4 (besluit Ronald 07-11-2026, a): in de rijen opent het
+  // niveaupaneel direct onder het instrument waarop je tikte, boven "+ Instrument".
+  // Anders (geen rijen, of geen open instrument) staat het onder het raster.
+  if (paneel) {
+    const open = wrap.classList.contains('instrument-rijen') && wrap.querySelector('.picker-badge.open');
+    if (open) open.after(paneel); else wrap.after(paneel);
+  }
   renderInstrumentPaneel(id);
 }
 

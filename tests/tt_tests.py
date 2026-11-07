@@ -15325,6 +15325,11 @@ def blok_tt543_blok4():
               // 29: een niveau kiezen klapt het paneel dicht.
               const rij0 = $('wspInstrumentBadgeRow').querySelector('.picker-badge'); rij0.click(); await w(100);
               const pn = $('wspInstrumentBadgeRowNiveau'); u.a.paneelOpen = !pn.hidden;
+              // Besluit Ronald 07-11-2026 (a): het paneel opent direct onder het instrument waarop je tikte, boven "+ Instrument".
+              const rijen = [...$('wspInstrumentBadgeRow').children], open0 = $('wspInstrumentBadgeRow').querySelector('.picker-badge'); // na de tik opnieuw getekend
+              u.a.plek = { naGetikte: pn.previousElementSibling === open0 && open0.classList.contains('open'), afstand: Math.round(R(pn).top - R(open0).bottom),
+                voorTweede: rijen.indexOf(pn) < rijen.indexOf($('wspInstrumentBadgeRow').querySelectorAll('.picker-badge')[1]),
+                toevoegenLaatst: rijen[rijen.length - 1].id };
               pn.querySelectorAll('.level-choice')[1].click(); await w(100);
               u.a.paneelNaNiveau = pn.hidden;
               document.querySelectorAll('.modal-overlay.visible').forEach(o => typeof sluitModal === 'function' ? sluitModal(o) : o.classList.remove('visible')); await w(200);
@@ -15402,6 +15407,8 @@ def blok_tt543_blok4():
         check(f"{breed}px 28 A: de genrelijst toont alleen wat je nog niet koos; één tik voegt toe en sluit de lijst; \"+ Genre\" blijft de laatste knop",
               b["a"]["zonderGekozen"] and b["a"]["dicht"] and b["a"]["genres"][-1] == "Jazz" and b["a"]["laatsteKnop"] == "wspGenreField", jb)
         check(f"{breed}px 29: een niveau kiezen klapt het paneel dicht", b["a"]["paneelOpen"] and b["a"]["paneelNaNiveau"], jb)
+        check(f"{breed}px het niveaupaneel opent direct onder het instrument waarop je tikte (8px), vóór het volgende instrument; \"+ Instrument\" blijft de laatste knop",
+              b["a"]["plek"] == {"naGetikte": True, "afstand": 8, "voorTweede": True, "toevoegenLaatst": "wspInstrumentField"}, jb)
         check(f"{breed}px 22: een tik op \"+ Genre\" opent de lijst; zonder instrument staat de foutregel onder het raster",
               t["lijst"] and t["fout"] == ["Kies minimaal één instrument", "wspInstrumentBadgeRow"], jb)
         check(f"{breed}px F4 (8D): met gevulde schermen geen regelhoogte \"normal\" in Wat speel je, Je setlist en Je mediahoek, en in stap 2, 3 en 4; de bannerregel 16px",
