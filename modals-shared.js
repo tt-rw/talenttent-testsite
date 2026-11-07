@@ -73,6 +73,35 @@ function renderPickerBadges(cfg) {
       <button type="button" class="picker-badge-remove" aria-label="${escHtml(v)} verwijderen" onclick="removePickerValue('${jsAttr(cfg.id)}','${jsAttr(v)}')"><span aria-hidden="true">✕</span></button>
       <div class="picker-badge-label">${pickerDisplayLabel(v)}</div>
     </div>`).join('');
+  pickerToevoegenPlaatsen(cfg, cfg.badgeRowEl, false);
+}
+
+// TT-543 blok 4 (besluit Ronald 07-11-2026, voorstel 22): in Profiel aanmaken en
+// Wat speel je staat geen keuzeveld boven de keuzes. Het veld zelf is de laatste
+// knop van het raster, "+ Instrument" of "+ Genre", in de stippelvorm van
+// "+ Toevoegen" in Je mediahoek; een tik opent dezelfde lijst. Instrumenten
+// staan dan als rijen onder elkaar, met de sterren rechts (voorstel 21 C).
+// Alleen voor een keuze met `toevoegen` in zijn cfg; de bandschermen volgen in
+// onderdeel 6 van TT-543.
+// Het veld staat ín het raster; een nieuwe tekening van het raster haalt het even
+// uit de pagina. Daarom onthoudt de app het element per veld, de eerste keer dat
+// het er nog los staat (ook als een tegel opnieuw een cfg maakt).
+const TOEVOEG_VELDEN = {};
+function pickerToevoegenPlaatsen(cfg, rij, rijen) {
+  // Staat het veld al in het raster, dan blijft het daar, ook als een cfg zonder
+  // `toevoegen` het raster opnieuw tekent (anders raakt het veld weg).
+  const bekend = TOEVOEG_VELDEN[cfg.fieldId];
+  if (!cfg.toevoegen && !bekend) return;
+  const veld = bekend || (TOEVOEG_VELDEN[cfg.fieldId] = document.getElementById(cfg.fieldId));
+  if (!veld.classList.contains('picker-toevoegen')) {
+    veld.classList.add('picker-toevoegen');
+    veld.dataset.toevoegen = cfg.toevoegen;
+    veld.insertAdjacentHTML('afterbegin', PLUS_TEKEN);
+  }
+  veld.querySelector('.picker-field-label').textContent = cfg.toevoegen || veld.dataset.toevoegen;
+  rij.classList.add('met-toevoegen');
+  rij.classList.toggle('instrument-rijen', rijen);
+  rij.appendChild(veld);
 }
 
 let activeListPickerId = null;
@@ -242,6 +271,7 @@ function renderInstrumentBadges(id) {
       ${onder}
     </div>`;
   }).join('');
+  pickerToevoegenPlaatsen(cfg, wrap, true);
   renderInstrumentPaneel(id);
 }
 
