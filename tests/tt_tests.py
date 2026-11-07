@@ -15293,6 +15293,13 @@ def blok_tt543_blok4():
               bio.value = 'Test'; bio.dispatchEvent(new Event('input', { bubbles: true })); await w(60);
               u.weerUit = knop().disabled; await w(400);
               u.halfDoorzichtig = getComputedStyle(knop()).opacity;
+              // Ook als er geen beeld getekend wordt (verborgen venster): geen requestAnimationFrame nodig.
+              const rafOud = window.requestAnimationFrame; window.requestAnimationFrame = () => 0;
+              bio.value = 'Zonder beeld'; bio.dispatchEvent(new Event('input', { bubbles: true })); await w(60);
+              u.zonderBeeld = knop().disabled === false;
+              bio.value = 'Test'; bio.dispatchEvent(new Event('input', { bubbles: true })); await w(60);
+              u.zonderBeeld = u.zonderBeeld && knop().disabled === true;
+              window.requestAnimationFrame = rafOud;
               // 20: na Opslaan terug naar Profiel bewerken, met de melding.
               bio.value = 'Nieuw'; bio.dispatchEvent(new Event('input', { bubbles: true })); await w(60);
               knop().click(); await w(500);
@@ -15396,7 +15403,7 @@ def blok_tt543_blok4():
     for breed in (390, 360):
         b = uit[breed]["b"]; jb = json.dumps(b, ensure_ascii=False)
         check(f"{breed}px 19: Opslaan staat uit bij het openen van elke tegel, aan na een wijziging, weer uit als alles terug is; half doorzichtig",
-              all(b["uit"].values()) and b["aan"] and b["weerUit"] and b["halfDoorzichtig"] == "0.5", jb)
+              all(b["uit"].values()) and b["aan"] and b["weerUit"] and b["halfDoorzichtig"] == "0.5" and b["zonderBeeld"], jb)
         check(f"{breed}px 20: na Opslaan terug naar Profiel bewerken, met \"Wijzigingen opgeslagen.\"",
               b["naOpslaan"] == {"tegel": "overview", "overzicht": True, "toast": "Wijzigingen opgeslagen."}, jb)
         t = b["tegel"]

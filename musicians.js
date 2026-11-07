@@ -951,7 +951,9 @@ function werkOpslaanBij() { zetOpslaanAan(tegelHeeftWijzigingen()); }
   const plan = () => {
     if (gepland || !TEGELS_MET_BALK.includes(activeTegelScreen)) return;
     gepland = true;
-    requestAnimationFrame(() => { gepland = false; werkOpslaanBij(); });
+    // setTimeout, geen requestAnimationFrame: dat wacht op het volgende beeld,
+    // en in een venster dat niet getekend wordt komt dat niet (gemeten sessie 88).
+    setTimeout(() => { gepland = false; werkOpslaanBij(); }, 0);
   };
   ['input', 'change', 'click'].forEach(t => document.addEventListener(t, plan, true));
   const view = document.getElementById('view-profieltegels');
