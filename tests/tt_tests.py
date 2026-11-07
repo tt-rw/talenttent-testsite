@@ -8902,12 +8902,16 @@ window.TT_STUB.fnAntwoord = {};
             binnen: r.left >= 0 && r.right <= window.innerWidth, scrollBreed: document.documentElement.scrollWidth <= window.innerWidth };
           // 3. Niveau kiezen: een tik, het paneel blijft open met één zin over het niveau
           const knoppen = () => [...paneel().querySelectorAll('.level-choice')];
+          // TT-543 blok 4 (besluit Ronald 07-11-2026): een niveau kiezen klapt het paneel dicht.
           knoppen()[2].click(); await w(60);
           u.niveau3 = { niveau: wspState.instrumentLevels.Gitaar, paneelOpen: !paneel().hidden,
-            gekozen: knoppen().map(b => b.classList.contains('selected')), badge: badges()[0].querySelector('.picker-badge-stars').textContent.trim(),
-            zin: paneel().querySelector('.picker-level-blurb').textContent === instrumentLevelBlurbs()[2] };
+            badge: badges()[0].querySelector('.picker-badge-stars').textContent.trim() };
+          badges()[0].click(); await w(40);
+          u.niveau3.gekozen = knoppen().map(b => b.classList.contains('selected'));
+          u.niveau3.zin = paneel().querySelector('.picker-level-blurb').textContent === instrumentLevelBlurbs()[2];
           knoppen()[3].click(); await w(60);
-          u.niveau4 = wspState.instrumentLevels.Gitaar;
+          u.niveau4 = { niveau: wspState.instrumentLevels.Gitaar, dicht: paneel().hidden };
+          badges()[0].click(); await w(40);
           // 4. De uitleg is een klapper in het paneel, geen tweede venster
           paneel().querySelector('.niveau-uitleg-knop').click(); await w(40);
           u.uitleg = { open: paneel().querySelectorAll('.niveau-uitleg p').length, modal: !!document.querySelector('#niveauInfoModal.visible') };
@@ -8945,10 +8949,10 @@ window.TT_STUB.fnAntwoord = {};
               and d76["naKeuze"]["badgeTekst"] == "Kies niveau" and d76["naKeuze"]["titel"] == "Niveau voor Gitaar", j76)
         check("de vijf keuzes zijn minstens 44px hoog en passen op 390px",
               d76["maat"]["minHoogte"] >= 44 and d76["maat"]["binnen"] and d76["maat"]["scrollBreed"], j76)
-        check("een niveau kiezen is één tik: het wordt gezet, het paneel blijft open, de badge toont de sterren, één zin legt het uit",
-              d76["niveau3"]["niveau"] == 3 and d76["niveau3"]["paneelOpen"] and d76["niveau3"]["gekozen"] == [False, False, True, False, False]
+        check("een niveau kiezen is één tik: het wordt gezet, het paneel klapt dicht (besluit Ronald 07-11-2026), de rij toont de sterren; open je hem weer, dan staat het niveau gekozen met één zin uitleg",
+              d76["niveau3"]["niveau"] == 3 and not d76["niveau3"]["paneelOpen"] and d76["niveau3"]["gekozen"] == [False, False, True, False, False]
               and d76["niveau3"]["badge"] == "★★★" and d76["niveau3"]["zin"], j76)
-        check("het niveau is te wijzigen met een tik", d76["niveau4"] == 4, j76)
+        check("het niveau is te wijzigen: tik op de rij, tik op een ander niveau, het paneel klapt dicht", d76["niveau4"] == {"niveau": 4, "dicht": True}, j76)
         check("de uitleg is een klapper in het paneel: vijf niveaus, geen tweede venster",
               d76["uitleg"]["open"] == 5 and not d76["uitleg"]["modal"] and d76["uitlegDicht"] == 0, j76)
         check("een tik op de badge sluit het paneel, nog een tik opent het met het gekozen niveau",
@@ -15310,6 +15314,19 @@ def blok_tt543_blok4():
                 kruisLucht: Math.round(R(gk[1].querySelector('.picker-badge-remove span') || gk[1].querySelector('.picker-badge-remove')).left - R(gk[1].querySelector('.picker-badge-label')).right) };
               $('wspGenreField').click(); await w(300);
               u.tegel.lijst = !!document.querySelector('.modal-overlay.visible');
+              // 28 A (besluit Ronald 07-11-2026): de genrelijst werkt als die van de instrumenten:
+              // alleen wat je nog niet koos, één tik voegt toe en sluit de lijst.
+              const items = [...document.querySelectorAll('#pickerListItems .picker-list-item')].map(e => e.textContent.trim());
+              u.a = { zonderGekozen: !items.includes('Rock') && !items.includes('Pop') && items.includes('Jazz') };
+              [...document.querySelectorAll('#pickerListItems .picker-list-item')].find(e => e.textContent.trim() === 'Jazz').click(); await w(300);
+              u.a.dicht = !$('pickerListModal').classList.contains('visible');
+              u.a.genres = wspState.genres.slice();
+              u.a.laatsteKnop = [...$('wspGenreBadgeRow').children].pop().id;
+              // 29: een niveau kiezen klapt het paneel dicht.
+              const rij0 = $('wspInstrumentBadgeRow').querySelector('.picker-badge'); rij0.click(); await w(100);
+              const pn = $('wspInstrumentBadgeRowNiveau'); u.a.paneelOpen = !pn.hidden;
+              pn.querySelectorAll('.level-choice')[1].click(); await w(100);
+              u.a.paneelNaNiveau = pn.hidden;
               document.querySelectorAll('.modal-overlay.visible').forEach(o => typeof sluitModal === 'function' ? sluitModal(o) : o.classList.remove('visible')); await w(200);
               // Zonder instrument: de foutregel onder het raster.
               wspState.instruments = []; renderInstrumentBadges('wsp'); await saveWatSpeelJe(); await w(200);
@@ -15382,6 +15399,9 @@ def blok_tt543_blok4():
               t["instrLaatste"] == "wspInstrumentField" and t["instrTekst"] == "Instrument" and t["genreLaatste"] == "wspGenreField" and t["genreTekst"] == "Genre"
               and t["kolomInstr"] == 1 and t["kolomGenre"] == 2 and t["instrBreed"] and t["instrHoog"] == 44 and t["maat"] == "15px/20px" and t["genreMaat"] == "15px"
               and t["links"] == 21 and t["sterRechts"] and t["genreCel"] and t["plus"] and t["stippel"] == "dashed" and t["toevoegHoog"] == 44, jb)
+        check(f"{breed}px 28 A: de genrelijst toont alleen wat je nog niet koos; één tik voegt toe en sluit de lijst; \"+ Genre\" blijft de laatste knop",
+              b["a"]["zonderGekozen"] and b["a"]["dicht"] and b["a"]["genres"][-1] == "Jazz" and b["a"]["laatsteKnop"] == "wspGenreField", jb)
+        check(f"{breed}px 29: een niveau kiezen klapt het paneel dicht", b["a"]["paneelOpen"] and b["a"]["paneelNaNiveau"], jb)
         check(f"{breed}px 22: een tik op \"+ Genre\" opent de lijst; zonder instrument staat de foutregel onder het raster",
               t["lijst"] and t["fout"] == ["Kies minimaal één instrument", "wspInstrumentBadgeRow"], jb)
         check(f"{breed}px F4 (8D): met gevulde schermen geen regelhoogte \"normal\" in Wat speel je, Je setlist en Je mediahoek, en in stap 2, 3 en 4; de bannerregel 16px",

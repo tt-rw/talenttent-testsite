@@ -139,6 +139,17 @@ function renderPickerListItems() {
   if (!cfg) return;
   const list = cfg.getList();
   const wrap = document.getElementById('pickerListItems');
+  // TT-543 blok 4 (besluit Ronald 07-11-2026, A: "ik wil 1 reactie voor beide
+  // schermen"): bij "+ Genre" werkt de lijst als die van "+ Instrument": alleen
+  // wat je nog niet koos, één tik voegt toe en sluit de lijst. Weghalen gaat met
+  // het kruisje op de keuze.
+  if (cfg.toevoegen) {
+    const over = cfg.options.filter(opt => !list.includes(opt));
+    wrap.innerHTML = over.length
+      ? over.map(opt => `<div class="picker-list-item" onclick="choosePickerListValue('${jsAttr(opt)}')">${pickerDisplayLabel(opt)}</div>`).join('')
+      : '<div class="picker-list-empty">Alles al gekozen</div>';
+    return;
+  }
   wrap.innerHTML = cfg.options.map(opt => {
     const isSelected = list.includes(opt);
     return `<div class="picker-list-item${isSelected ? ' selected' : ''}" onclick="choosePickerListValue('${jsAttr(opt)}')">${pickerDisplayLabel(opt)}${isSelected ? '<span class="picker-list-item-check" aria-hidden="true">✓</span>' : ''}</div>`;
@@ -149,6 +160,13 @@ function choosePickerListValue(value) {
   const cfg = PICKERS[activeListPickerId];
   if (!cfg) return;
   const list = cfg.getList();
+  if (cfg.toevoegen) { // TT-543 blok 4, A: toevoegen en de lijst sluiten
+    if (!list.includes(value)) list.push(value);
+    closePickerList();
+    renderPickerBadges(cfg);
+    if (cfg.onChange) cfg.onChange();
+    return;
+  }
   // Herzien 25-08-2026 (Ronald, UX-feedback): klikken op een al-gekozen item
   // zet het nu uit (toggle) i.p.v. het opnieuw toe te voegen — logisch nu het
   // item zichtbaar blijft staan met een vinkje.
@@ -327,10 +345,15 @@ function toggleNiveauUitleg(id) {
   renderInstrumentPaneel(id);
 }
 
+// TT-543 blok 4 (besluit Ronald 07-11-2026): een tik op een niveau kiest het en
+// klapt het paneel meteen dicht ("als je niveau aanklikt, dan moet dat (grote)
+// niveauscherm direct inklappen"). Wijzigen: tik op de rij van het instrument.
 function setInstrumentLevel(id, value) {
   const cfg = INSTRUMENT_PICKERS[id];
   if (!cfg.openInstrument) return;
   cfg.getLevels()[cfg.openInstrument] = value;
+  cfg.openInstrument = null;
+  cfg.uitlegOpen = false;
   renderInstrumentBadges(id);
   if (cfg.onChange) cfg.onChange(); // zie toelichting bij removePickerValue-patroon, 13-08-2026
 }
