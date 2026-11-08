@@ -14737,7 +14737,7 @@ def blok_tt543_blok2():
               u.stap1 = await scherm('#step0');
               u.stap1.zinOnderKop = (() => { const k = document.querySelector('#regAuthSection .hoofdstuk-kop'); const n = k.nextElementSibling; return n.id; })();
               u.stap1.zinnen = [...document.querySelectorAll('#regAuthSection p')].filter(e => e.offsetParent).length;
-              Object.assign(state, { instruments: ['Gitaar, elektrisch', 'Zang'], instrumentLevels: { 'Gitaar, elektrisch': 3, 'Zang': 2 }, genres: ['Rock', 'Indie'] });
+              Object.assign(state, { instruments: ['Elektrische gitaar', 'Zang'], instrumentLevels: { 'Elektrische gitaar': 3, 'Zang': 2 }, genres: ['Rock', 'Indie'] });
               goTo(1); renderInstrumentBadges('wizard'); renderPickerBadges(PICKERS.genre);
               u.stap2 = await scherm('#step1');
               u.stap2.iRand = Math.round(R(document.querySelector('#step1 .hoofdstuk-kop-rij .niveau-info-btn')).right - R($('instrumentPickerField')).right);
@@ -15280,7 +15280,7 @@ def blok_tt543_blok4():
                 && !el.classList.contains('scherm-titel') && getComputedStyle(el).lineHeight === 'normal').map(el => el.className + ' «' + el.textContent.trim().slice(0, 20) + '»');
               S.session = { user: { id: 'u1', email: 't@t.nl' } }; currentUser = { id: 'u1', email: 't@t.nl' }; myMusicianId = 'm1';
               Object.assign(m, { weergavenaam: 'Ronald Wever', zip: '2497', city: 'Den Haag', bio: 'Test', avatar_url: null,
-                musician_instruments: [{ instrument: 'Drums', niveau: 3 }, { instrument: 'Harmonica (mondharmonica)', niveau: null }],
+                musician_instruments: [{ instrument: 'Drums', niveau: 3 }, { instrument: 'Mondharmonica', niveau: null }],
                 musician_genres: [{ genre: 'Rock' }, { genre: 'Folk / Akoestisch' }, { genre: 'Pop' }],
                 musician_songs: [{ song_title: 'Enter Sandman', song_artist: 'Metallica', mastery_level: 'podium' }, { song_title: 'b', song_artist: 'Y', mastery_level: null }, { song_title: 'c', song_artist: 'Z', mastery_level: null }],
                 musician_media: [{ media_type: 'foto', url: 'https://x/a.jpg', in_banner: false }] });
@@ -15605,6 +15605,78 @@ def blok_tt543_blok4b():
     check("blok 137: geen fout in de pagina", not fouten, "; ".join(fouten)[:300])
 
 
+# Blok 138 — TT-543 blok 5 (besluiten Ronald sessie 88, 08-11-2026): de
+# instrumentlijst. Nieuw: Achtergrondzang, Akoestische gitaar, Elektrische
+# gitaar, Mondharmonica, Percussie overig. Weg: Gitaar, akoestisch · Gitaar,
+# elektrisch · Harmonica (mondharmonica). Achtergrondzang telt bij Zoeken niet
+# mee voor de grens van één instrument ("kan ook als extra optie naast 1
+# instrument"), net als Zang en Songwriting.
+NIEUWE_INSTRUMENTEN = [
+    "Achtergrondzang", "Akoestische gitaar", "Basgitaar", "Cello", "Conga / Bongo",
+    "DJ / Electronica", "Drums", "Elektrische gitaar", "Keyboard", "Mondharmonica",
+    "Percussie overig", "Piano", "Saxofoon", "Songwriting", "Tamboerijn", "Trompet",
+    "Ukulele", "Viool", "Zang",
+]
+OUDE_INSTRUMENTEN = ["Gitaar, akoestisch", "Gitaar, elektrisch", "Harmonica (mondharmonica)"]
+
+
+def blok_tt543_blok5():
+    print("\nBlok 138 — TT-543 blok 5: de instrumentlijst")
+    code = "".join(open(os.path.join(ROOT, f), encoding="utf-8").read()
+                   for f in ("index.html", "utils.js", "search.js", "bands.js", "modals-shared.js", "musicians.js", "wizard.js", "core.js"))
+    check("blok 5: geen oude instrumentnaam meer als waarde in de code van de app",
+          not [o for o in OUDE_INSTRUMENTEN if ("'%s'" % o) in code or ('"%s"' % o) in code], "")
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    fouten, uit = [], {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(viewport={"width": 390, "height": 844})
+        ctx.route("https://*.supabase.co/**", lambda r: r.abort())
+        page = ctx.new_page()
+        page.on("pageerror", lambda e: fouten.append(str(e)))
+        page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**"):
+            page.route(pat, lambda r: r.abort())
+        page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+        page.wait_for_timeout(400)
+        uit = page.evaluate("""async () => {
+          const w = ms => new Promise(r => setTimeout(r, ms)), u = {};
+          u.lijst = INSTRUMENTS.slice();
+          // De keuzelaag van de wizard toont de hele lijst, in deze volgorde.
+          const wid = Object.keys(INSTRUMENT_PICKERS)[0];
+          const bewaar = INSTRUMENT_PICKERS[wid].getInstruments().splice(0);
+          openInstrumentPicker(wid); await w(50);
+          u.keuzelaag = [...document.querySelectorAll('#instrumentPickItems .picker-list-item')].map(e => e.textContent.trim());
+          closeInstrumentPicker();
+          INSTRUMENT_PICKERS[wid].getInstruments().push(...bewaar);
+          // Zoeken: hooguit één instrument; Zang, Achtergrondzang en Songwriting komen erbij.
+          const kies = (id, v) => { openPickerList(id); choosePickerListValue(v); };
+          filterInstruments.length = 0;
+          ['Drums', 'Achtergrondzang', 'Zang', 'Basgitaar'].forEach(v => kies('filterInstruments', v));
+          u.muzikanten = filterInstruments.slice();
+          filterInstruments.length = 0;
+          if (typeof initSetlistSearchFilters === 'function') initSetlistSearchFilters();
+          filterSetlistInstruments.length = 0;
+          ['Elektrische gitaar', 'Achtergrondzang', 'Mondharmonica'].forEach(v => kies('filterSetlistInstruments', v));
+          u.setlist = filterSetlistInstruments.slice();
+          filterSetlistInstruments.length = 0;
+          return u;
+        }""")
+        browser.close()
+    httpd.shutdown()
+    j = json.dumps(uit, ensure_ascii=False)[:600]
+    check("blok 5: de lijst is de besloten lijst van 19 instrumenten, alfabetisch",
+          uit.get("lijst") == NIEUWE_INSTRUMENTEN, j)
+    check("blok 5: de keuzelaag bij Wat speel je toont dezelfde 19 instrumenten",
+          uit.get("keuzelaag") == NIEUWE_INSTRUMENTEN, j)
+    check("blok 5: Zoeken Muzikanten — Achtergrondzang blijft staan naast één instrument; een tweede instrument vervangt het eerste",
+          uit.get("muzikanten") == ["Achtergrondzang", "Zang", "Basgitaar"], j)
+    check("blok 5: Zoeken op setlist — dezelfde regel",
+          uit.get("setlist") == ["Achtergrondzang", "Mondharmonica"], j)
+    check("blok 138: geen fout in de pagina", not fouten, "; ".join(fouten)[:300])
+
+
 def main():
     print("The Talent Tent — vaste testset, laag 1 (TT-231)")
     _csp_vangnet()
@@ -15642,6 +15714,7 @@ def main():
     blok_tt543_blok3()
     blok_tt543_blok4()
     blok_tt543_blok4b()
+    blok_tt543_blok5()
     print("\nBlok 120 — TT-483b: de regel weigerde niets, in de hele testset")
     check("TT-483b: geen enkele weigering van de regel in alle browserblokken",
           not CSP_WEIGERINGEN, "; ".join(sorted(set(CSP_WEIGERINGEN)))[:800])

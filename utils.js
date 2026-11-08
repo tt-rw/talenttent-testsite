@@ -756,18 +756,19 @@ function renderTrackResults(ac, songs, q, artist, addFnName, existingList) {
 
 // 21-08-2026: "Anders" weggehaald. Zonder vrij tekstveld kan iemand toch
 // niet aangeven wélk instrument dat dan is — de optie voegde niets toe en
-// kostte wel eenduidigheid in de matching. Bestaande profielen met "Anders"
-// (indien aanwezig) blijven gewoon werken; zie de toelichting bij
-// PICKER_LABEL_BREAKS hieronder voor hetzelfde principe.
-// TT-124 (22-08-2026): alfabetisch, op Ronalds verzoek. Alleen de weergave-
-// volgorde wijzigt — instrumenten/genres worden als tekst opgeslagen, niet
-// als locatienummer in deze lijst, dus dit raakt geen bestaande profielen
-// of de matching.
+// kostte wel eenduidigheid in de matching.
+// TT-124 (22-08-2026): alfabetisch, op Ronalds verzoek. Instrumenten worden
+// als tekst opgeslagen, niet als plek in deze lijst.
+// TT-543 blok 5 (08-11-2026, besluiten Ronald): Achtergrondzang, Akoestische
+// gitaar, Elektrische gitaar, Mondharmonica en Percussie overig erbij;
+// Gitaar, akoestisch · Gitaar, elektrisch · Harmonica (mondharmonica) eruit.
+// Bestaande profielen, open rollen, invallers en bewaarde zoekopdrachten zijn
+// in de database omgezet naar de nieuwe namen (script van 08-11-2026).
 const INSTRUMENTS = [
-  'Basgitaar', 'Cello', 'Conga / Bongo', 'DJ / Electronica', 'Drums',
-  'Gitaar, akoestisch', 'Gitaar, elektrisch', 'Harmonica (mondharmonica)',
-  'Keyboard', 'Piano', 'Saxofoon', 'Songwriting', 'Tamboerijn', 'Trompet',
-  'Ukulele', 'Viool', 'Zang'
+  'Achtergrondzang', 'Akoestische gitaar', 'Basgitaar', 'Cello',
+  'Conga / Bongo', 'DJ / Electronica', 'Drums', 'Elektrische gitaar',
+  'Keyboard', 'Mondharmonica', 'Percussie overig', 'Piano', 'Saxofoon',
+  'Songwriting', 'Tamboerijn', 'Trompet', 'Ukulele', 'Viool', 'Zang'
 ];
 
 // "Anders" verwijderd (22-08-2026, Ronald) — zelfde reden als bij
