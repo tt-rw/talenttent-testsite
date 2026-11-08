@@ -15973,6 +15973,13 @@ def blok_tt543_onderdeel3():
                     u["bovenop"] = page.evaluate("""() => { const b = document.querySelector('.app-view.active .profiel-actie .btn'), r = b.getBoundingClientRect();
                       const nav = document.getElementById('appBottomNav').getBoundingClientRect();
                       return [b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)), r.bottom <= nav.top]; }""")
+                if wie == "ander":
+                    # TT-421: mag je deze muzikant geen bericht sturen, dan verbergt messages.js de knop;
+                    # dan neemt de plek onder de bio ook geen ruimte in.
+                    u["verborgen"] = page.evaluate("""() => { const a = document.getElementById('profielSchermActie'), b = a.querySelector('[data-bericht-id]');
+                      b.style.display = 'none'; const uit = [getComputedStyle(a).display];
+                      a.insertAdjacentHTML('afterbegin', '<button class="btn btn-ghost rol-uitnodig-knop">Uitnodigen voor Van Delft</button>');
+                      uit.push(getComputedStyle(a).display); a.querySelector('.rol-uitnodig-knop').remove(); b.style.display = ''; return uit; }""")
                 if wie == "mijn":
                     page.locator("#view-myprofile .profiel-actie .btn").click()
                     page.wait_for_timeout(400)
@@ -16059,6 +16066,8 @@ def blok_tt543_onderdeel3():
                   and u["raster"]["woordVideo"] == 0 and u["raster"]["speel"] == 1 and u["raster"]["link"] == [["Spotify", "15px", "700"]], json.dumps(u["raster"]))
             check(f"{n} (F1): geen tekst met regelhoogte 'normal'", not u["normaal"], json.dumps(u["normaal"], ensure_ascii=False)[:300])
             check(f"{n} (F2): geen opmaak in de regel in knop, raster, nummerrij, regel onder de naam en instrumenten", not u["stijl"], json.dumps(u["stijl"]))
+        check(f"{breedte}px ander (TT-421): is de berichtknop verborgen en staat er verder niets, dan neemt de plek geen ruimte; met een andere knop wel",
+              uit[(breedte, "ander")]["verborgen"] == ["none", "flex"], json.dumps(uit[(breedte, "ander")]["verborgen"]))
         check(f"{breedte}px mijn (1E): een tik op Profiel bewerken opent Profiel bewerken", uit[(breedte, "mijn")]["naTik"] == "view-profieltegels", uit[(breedte, "mijn")]["naTik"])
         b = uit[(breedte, "band")]
         check(f"{breedte}px bandpagina blijft tot onderdeel 6: kleine koppen in hoofdletters met een lijn, de knop in de vaste balk",
