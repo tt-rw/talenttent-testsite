@@ -1740,14 +1740,19 @@ function isTypveld(el) {
   // zien aan het zichtbare deel van het scherm: dat krimpt als het opkomt en
   // groeit terug als het weggaat. Groeit het terug terwijl er nog een veld de
   // focus heeft, dan haalt de app die focus weg; de balk komt terug (focusout).
+  // Besluit Ronald 09-11-2026 (vraag 7): bij het eerste teken dat het toetsenbord
+  // wegschuift (120px groei), niet pas als het scherm weer bijna vol is ("de
+  // onderbalk komt met een kleine vertraging terug"). Een strook met suggesties
+  // of emoji (tot circa 50px) telt niet als wegschuiven.
   const vv = window.visualViewport;
   if (!vv) return;
-  let volle = vv.height, gezien = false;
+  let volle = vv.height, laagste = vv.height;
   vv.addEventListener('resize', () => {
-    if (!document.body.classList.contains('toetsenbord-open')) { volle = vv.height; gezien = false; return; }
-    if (volle - vv.height > 150) { gezien = true; return; }   // het toetsenbord staat open
-    if (gezien && volle - vv.height < 50) {                    // en is weer weg
-      gezien = false;
+    const h = vv.height;
+    if (!document.body.classList.contains('toetsenbord-open')) { volle = laagste = h; return; }
+    if (h < laagste) { laagste = h; return; }               // het toetsenbord komt (nog) op
+    if (volle - laagste > 150 && h - laagste > 120) {        // het stond open en schuift weg
+      volle = laagste = h;
       if (isTypveld(document.activeElement)) document.activeElement.blur();
     }
   });
