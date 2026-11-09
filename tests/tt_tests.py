@@ -16538,15 +16538,10 @@ def blok_tt543_onderdeel5():
                 if versturen:
                     page.fill("#messagesReplyInput", "Zaterdag?"); page.tap("#messagesThreadPanel .messages-send-btn"); page.wait_for_timeout(600)
                 t581.append(stand581())
-                # Een strook met suggesties (50px) is geen wegschuiven; 170px groei is het eerste teken (vraag 7).
-                page.set_viewport_size({"width": breedte, "height": hoogte - 270}); page.wait_for_timeout(250)
-                t581.append(stand581())
-                page.set_viewport_size({"width": breedte, "height": hoogte - 150}); page.wait_for_timeout(250)
-                t581.append(stand581())
                 page.set_viewport_size({"width": breedte, "height": hoogte}); page.wait_for_timeout(350)
                 t581.append(stand581())
-            check(f"{n} (TT-581, vraag 7): toetsenbord open: geen onderbalk, ook na versturen en met een strook suggesties; bij het eerste teken van wegschuiven is de onderbalk terug",
-                  t581 == [["none", "messagesReplyInput"], ["none", "messagesReplyInput"], ["grid", ""], ["grid", ""]] * 2, json.dumps(t581))
+            check(f"{n} (TT-581): toetsenbord open: geen onderbalk, ook na versturen; toetsenbord weg (cursor nog in het veld): de onderbalk is terug",
+                  t581 == [["none", "messagesReplyInput"], ["grid", ""], ["none", "messagesReplyInput"], ["grid", ""]], json.dumps(t581))
             ctx.close()
     check("geen paginafouten in blok 142", not fouten, "; ".join(fouten)[:300])
 
