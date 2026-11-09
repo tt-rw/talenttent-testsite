@@ -16519,6 +16519,29 @@ def blok_tt543_onderdeel5():
             check(f"{n} (vraag 1): Melden: geen teller tot 800 tekens, dan '800/1000', 4px onder het veld; 20px tot de knoppen, met en zonder teller; dezelfde grijze kleur",
                   meld[0] == [False, 20] and meld[1][0] is False and meld[2][:3] == [True, "800/1000", 4] and meld[2][3] == 4 + 16 + 20
                   and meld[3][:2] == [True, "1000/1000"] and meld[3][4] == meld[2][4], json.dumps(meld))
+            # Vraag 5 (besluit Ronald 09-11-2026): het jaartal alleen bij een bericht van een ander jaar.
+            jaar = page.evaluate("""() => { const nu = new Date(), j = nu.getFullYear(), d = (y, m, dag) => new Date(y, m, dag, 12);
+              const oudIso = d(j - 1, 10, 6).toISOString();
+              return [dagLabel(d(j - 1, 10, 6)), dagLabel(d(j, 0, 2)), relativeMessageTime(oudIso), relativeMessageTime(d(j, 0, 2).toISOString()), j, nu < d(j, 0, 10)]; }""")
+            j5 = jaar[4]
+            check(f"{n} (vraag 5): jaartal alleen bij een ander jaar: '6 november {j5 - 1}' en '6 nov {j5 - 1}'; dit jaar zonder jaartal",
+                  jaar[0] == f"6 november {j5 - 1}" and jaar[1] == "2 januari" and jaar[2] == f"6 nov {j5 - 1}"
+                  and (jaar[3] == "2 jan" or jaar[5]), json.dumps(jaar))  # in de eerste dagen van januari is 2 januari nog "Gisteren" of een weekdag
+            # TT-581 (09-11-2026): wie het toetsenbord wegveegt, houdt de cursor in het veld; de onderbalk
+            # moet dan terugkomen. Het toetsenbord nagebootst met een lager scherm (het zichtbare deel krimpt).
+            page.evaluate(LAAD, [1, "Dylan de Vries", "", False])
+            stand581 = lambda: page.evaluate("[getComputedStyle(document.getElementById('appBottomNav')).display, document.activeElement.id || '']")
+            t581 = []
+            for versturen in (False, True):
+                page.tap("#messagesReplyInput"); page.wait_for_timeout(100)
+                page.set_viewport_size({"width": breedte, "height": hoogte - 320}); page.wait_for_timeout(250)
+                if versturen:
+                    page.fill("#messagesReplyInput", "Zaterdag?"); page.tap("#messagesThreadPanel .messages-send-btn"); page.wait_for_timeout(600)
+                t581.append(stand581())
+                page.set_viewport_size({"width": breedte, "height": hoogte}); page.wait_for_timeout(350)
+                t581.append(stand581())
+            check(f"{n} (TT-581): toetsenbord open: geen onderbalk, ook na versturen; toetsenbord weg (cursor nog in het veld): de onderbalk is terug",
+                  t581 == [["none", "messagesReplyInput"], ["grid", ""], ["none", "messagesReplyInput"], ["grid", ""]], json.dumps(t581))
             ctx.close()
     check("geen paginafouten in blok 142", not fouten, "; ".join(fouten)[:300])
 

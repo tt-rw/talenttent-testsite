@@ -1734,6 +1734,23 @@ function isTypveld(el) {
       if (!isTypveld(document.activeElement)) document.body.classList.remove('toetsenbord-open');
     }, 0);
   });
+  // TT-581 (09-11-2026, gemeld door Ronald op een Samsung met Opera): wie het
+  // toetsenbord wegveegt of de terugknop gebruikt, houdt de cursor in het veld.
+  // Dan kwam de onderbalk niet terug tot je ververste. Het toetsenbord zelf is te
+  // zien aan het zichtbare deel van het scherm: dat krimpt als het opkomt en
+  // groeit terug als het weggaat. Groeit het terug terwijl er nog een veld de
+  // focus heeft, dan haalt de app die focus weg; de balk komt terug (focusout).
+  const vv = window.visualViewport;
+  if (!vv) return;
+  let volle = vv.height, gezien = false;
+  vv.addEventListener('resize', () => {
+    if (!document.body.classList.contains('toetsenbord-open')) { volle = vv.height; gezien = false; return; }
+    if (volle - vv.height > 150) { gezien = true; return; }   // het toetsenbord staat open
+    if (gezien && volle - vv.height < 50) {                    // en is weer weg
+      gezien = false;
+      if (isTypveld(document.activeElement)) document.activeElement.blur();
+    }
+  });
 })();
 
 // ─── Leven bij een tik: indrukken (TT-517 fase 9, huisstijl §23, besluit Ronald 1A) ───

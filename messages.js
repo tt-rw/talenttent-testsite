@@ -258,7 +258,13 @@ function dagLabel(d) {
   const gisteren = new Date(); gisteren.setDate(gisteren.getDate() - 1);
   if (dag === new Date().toDateString()) return 'Vandaag';
   if (dag === gisteren.toDateString()) return 'Gisteren';
-  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+  // TT-543 onderdeel 5 (besluit Ronald 09-11-2026, vraag 5): het jaartal alleen
+  // als het bericht niet van dit jaar is: "6 november 2025".
+  return d.toLocaleDateString('nl-NL', anderJaar(d) ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'long' });
+}
+
+function anderJaar(d) {
+  return d.getFullYear() !== new Date().getFullYear();
 }
 
 // V-01 (12-08-2026): een gesprek opende bovenaan. Bij twintig berichten zag je
@@ -460,7 +466,8 @@ function relativeMessageTime(iso) {
   if (d.toDateString() === yesterday.toDateString()) return 'Gisteren';
   const diffDays = Math.floor(diffMs / 86400000);
   if (diffDays < 7) return d.toLocaleDateString('nl-NL', { weekday: 'short' });
-  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+  // Vraag 5 (besluit Ronald 09-11-2026): "6 nov 2025" als het niet van dit jaar is.
+  return d.toLocaleDateString('nl-NL', anderJaar(d) ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' });
 }
 
 
