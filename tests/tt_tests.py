@@ -16313,7 +16313,7 @@ def blok_tt543_onderdeel4():
                 l = u["lijst"]
                 check(f"{n} (voorstel 5): de lijst 'Band · Nummer', op band en dan nummer, rijen van 44px, hoogstens 240px, dan scrollen; 8px onder de knop",
                       l["rijen"] == ["Oasis · Wonderwall", "Pearl Jam · Alive", "Pearl Jam · Black", "Radiohead · Creep", "The Cranberries · Zombie"]
-                      and all(h >= 44 for h in l["hoog"]) and l["max"] == "240px" and l["overflow"] == "auto" and l["onder"] == 8, json.dumps(l, ensure_ascii=False))
+                      and all(h == 44 for h in l["hoog"]) and l["max"] == "240px" and l["overflow"] == "auto" and l["onder"] == 8, json.dumps(l, ensure_ascii=False))
                 check(f"{n} (voorstel 5): kiezen voegt het nummer toe en de lijst blijft open; gekozen: vlak, warmgele streep links, vinkje 16px; het nummer gedempt",
                       l["open"] and l["gekozenRijen"] == ["Pearl Jam|Black", "Radiohead|Creep"] and l["gekozen"] == ["Pearl Jam · Black", "Radiohead · Creep"]
                       and l["streep"] == ["3px", True] and l["vink"] == ["✓", "16px"], json.dumps(l, ensure_ascii=False))

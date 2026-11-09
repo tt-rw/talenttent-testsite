@@ -3801,7 +3801,9 @@
     border-radius: 8px;
   }
   .mm-setlijst[hidden] { display: none; }
-  .mm-setlijst .picker-list-item { line-height: 20px; }
+  /* Rij 44px, zoals de keuzelijst (`.ac-item`), de lijn ertussen meegeteld: de
+     tekst staat in het midden van de vaste hoogte (besluit Ronald 09-11-2026). */
+  .mm-setlijst .picker-list-item { line-height: 20px; padding-top: 0; padding-bottom: 0; height: 44px; }
   .mm-setlijst-tekst { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mm-setlijst-nummer { color: var(--muted); }
   /* Het ✕ in een rij: het teken op de rechterlijn van de tekst rechts in de
