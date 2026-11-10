@@ -3120,6 +3120,9 @@
      ouders hun z-index in eigen regels dragen, soms later in dit bestand.
      Een modal krijgt deze klasse nooit: die ligt al bovenaan (TT-229). */
   .menu-drager { z-index: 240 !important; }
+  /* <main> gaat niet omhoog maar verliest zijn eigen stapellaag (TT-543
+     draaiwielen deel 2, 8D 10-11-2026): omhoog stond de pagina boven de kop. */
+  .menu-drager-plat { z-index: auto !important; }
 
   /* TT-63 (09-08-2026): documentweergaven (privacy/voorwaarden/gedragscode) */
   .doc-view h2 {

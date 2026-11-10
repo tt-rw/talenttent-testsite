@@ -16937,6 +16937,13 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
               u.wGenre.balkNa = meet({ veld: 'genrePickerField', menu: 'genrePickerFieldMenu' }).boven;
               sluitAlleMenus(); await w();
               u.wGenre.ruimteWeg = document.body.style.minHeight;
+              // 8D (10-11-2026): met een open menu ligt de laag over de kop, en staat er geen inhoud van de pagina over de kop.
+              window.scrollTo(0, 120); await w(100); tik('genrePickerField'); await w();
+              u.kop = (() => { const k = [...document.querySelectorAll('.app-topbar')].find(x => x.getClientRects().length).getBoundingClientRect();
+                const e = document.elementsFromPoint(20, k.top + k.height / 2);
+                return [scrollY > 0, e[0].classList.contains('menu-laag'), !!(e[1] && e[1].closest('.app-topbar')), document.querySelectorAll('main.menu-drager').length]; })();
+              sluitAlleMenus(); await w();
+              u.kop.push(document.querySelectorAll('.menu-drager, .menu-drager-plat').length);
               window.scrollTo(0, 0); await w(100);
               tik('instrumentPickerField'); await w();
               u.wInstr = meet({ veld: 'instrumentPickerField', menu: 'instrumentPickerFieldMenu' });
@@ -17030,6 +17037,8 @@ window.TT_STUB.data.musicians.forEach(m => Object.assign(m, { musician_instrumen
             check(f"{n}: 1B: een tik voegt toe en het menu blijft open met de nieuwe pil; een tik op een gekozen genre haalt het weg; het menu blijft boven de balk; dicht is de ruimte weg",
                   u["wGenre"]["naTik"][0] == ["Rock", "Indie", "Jazz"] and u["wGenre"]["naTik"][1] and "Jazz" in u["wGenre"]["naTik"][2]
                   and u["wGenre"]["weg"] == ["Indie", "Jazz"] and u["wGenre"]["balkNa"] >= 0 and u["wGenre"]["ruimteWeg"] == "", j(u["wGenre"]))
+            check(f"{n}: 8D: met een open menu op een gescrolde pagina ligt de laag over de kop en staat de kop direct daaronder, niet de pagina; dicht is alles terug",
+                  u["kop"] == [True, True, True, 0, 0], j(u["kop"]))
             check(f"{n}: Profiel aanmaken \"+ Instrument\": het keuzemenu, 3/4 in het midden, 19 instrumenten",
                   menu_ok(u["wInstr"], 19) and u["wInstr"]["gekozen"] == ["Elektrische gitaar"], j(u["wInstr"]))
             check(f"{n}: vraag 5: het niveau opent pas als het menu dicht is, onder het eerste nieuwe instrument; zonder nieuw instrument opent niets",
