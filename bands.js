@@ -800,14 +800,14 @@ async function bandUitPubliek(id) {
   };
 }
 
-// De bezetting per rol (TT-543 onderdeel 6, besluiten Ronald 10-11-2026, 12:
-// "naam vet en functie kleiner eronder", en 11-11-2026, B2-1 en B2-5): elke rol
-// een rij, op naam van het bandlid en binnen één lid op alfabet. Een lid met
-// twee rollen staat er dus twee keer. Een lid zonder rol staat er als "Lid".
-function bezettingRollen(leden) {
-  const rijen = [];
-  leden.forEach(l => (l.rollen.length ? l.rollen : [roleLabel('Lid')]).forEach(r => rijen.push([l, r])));
-  return rijen.sort((x, y) => x[0].naam.localeCompare(y[0].naam, 'nl') || x[1].localeCompare(y[1], 'nl'));
+// De bezetting (TT-543 onderdeel 6, besluiten Ronald 10-11-2026, 12: "naam vet
+// en functie kleiner eronder", en 11-11-2026, B2-12, "2A"): één rij per
+// persoon, op naam, met de rollen op alfabet achter elkaar ("Basgitaar · Drums"),
+// zoals het blok Bands en Onze bezetting. Een lid zonder rol staat er als "Lid".
+// (Was één rij per rol, B2-1.)
+function bezettingRijen(leden) {
+  return [...leden].sort((x, y) => x.naam.localeCompare(y.naam, 'nl'))
+    .map(l => [l, l.rollen.length ? [...l.rollen].sort((x, y) => x.localeCompare(y, 'nl')).join(' · ') : roleLabel('Lid')]);
 }
 
 // Eén rij in de bezetting: dezelfde rij als in Onze bezetting en op het
@@ -1008,8 +1008,8 @@ function bandPaginaHTML(b, kijker) {
   const uitgenodigd = (kijker === 'lid' || beheer) ? (b.uitgenodigd || []) : [];
   if (b.leden.length || uitgenodigd.length || b.wanted.length || b.invallers.length) {
     h += bandSectieHTML('Bezetting', `<div class="bezetting">${
-      bezettingRollen(b.leden).map(([l, r]) => bezettingLidHTML(l, r, false)).join('') +
-      bezettingRollen(uitgenodigd).map(([l, r]) => bezettingLidHTML(l, r, true)).join('') +
+      bezettingRijen(b.leden).map(([l, r]) => bezettingLidHTML(l, r, false)).join('') +
+      bezettingRijen(uitgenodigd).map(([l, r]) => bezettingLidHTML(l, r, true)).join('') +
       b.wanted.map(w => bezettingOpenHTML('Gezocht', w)).join('') +
       b.invallers.map(v => bezettingOpenHTML('Invaller', v.instrument)).join('')
     }</div>`);
@@ -1017,12 +1017,10 @@ function bandPaginaHTML(b, kijker) {
   // Eigen nummers.
   const nummers = b.nummers.map(n => bandNummerHTML(n, b.avatar_url)).join('');
   if (nummers) h += bandSectieHTML('Onze nummers', nummers);
-  // 1e: foto's, video's en links in één raster van drie, zoals bij de muzikant.
-  // profielMediaHTML() geeft niets terug als er niets te tonen is.
-  const media = profielMediaHTML(b.media, b.avatar_url);
-  if (media) h += media;
-  // Covers, op dezelfde volgorde als het repertoire van een muzikant. 1f: de
-  // kop zonder aantal; het aantal staat in "Alle 9 nummers".
+  // Covers, op dezelfde volgorde als het repertoire van een muzikant, en op
+  // dezelfde plek: na de nummers, voor de foto's (besluit Ronald 11-11-2026,
+  // B2-11: wie → nummers → foto's, video's en links). 1f: de kop zonder
+  // aantal; het aantal staat in "Alle 9 nummers".
   if (b.covers.length) {
     const rijen = [...b.covers].sort((x, y) => compareArtistTitle(x.song_artist, x.song_title, y.song_artist, y.song_title))
       // TT-528: elke cover in één tik in je eigen repertoire, zoals bij een muzikant.
@@ -1030,6 +1028,10 @@ function bandPaginaHTML(b, kijker) {
     // Meer dan zeven covers: ingeklapt, zoals het repertoire (nummerLijstHTML() in utils.js).
     h += bandSectieHTML('Covers', nummerLijstHTML(rijen));
   }
+  // 1e: foto's, video's en links in één raster van drie, zoals bij de muzikant.
+  // profielMediaHTML() geeft niets terug als er niets te tonen is.
+  const media = profielMediaHTML(b.media, b.avatar_url);
+  if (media) h += media;
   // De balk staat onderaan, zoals op Mijn Profiel; alleen de beheerder ziet
   // hem (besluit Ronald, j).
   if (voortgang) h += voortgangsBalkHTML(voortgang.pct);

@@ -6208,20 +6208,20 @@ window.TT_STUB.fnAntwoord = {};
         g57, bz57, lid57, bh57 = d57["gast"], d57["bezoeker"], d57["lid"], d57["beheerder"]
         # TT-543 onderdeel 6 (besluiten Ronald 10-11-2026, 1b, 1e, 1f, 13): Wie zijn we en Volg
         # ons zonder kop, boven de bezetting; één blok voor foto's, video's en links; Covers zonder aantal.
-        check("gast: de blokken staan in de volgorde van de besluiten (TT-543 onderdeel 6)",
-              g57["titels"] == ["Bezetting", "Onze nummers", "Foto's, video's en links", "Covers"], json.dumps(g57))
+        check("gast: de blokken staan in de volgorde van de besluiten (TT-543 onderdeel 6; B2-11: wie, nummers, dan foto's, zoals het muzikantprofiel)",
+              g57["titels"] == ["Bezetting", "Onze nummers", "Covers", "Foto's, video's en links"], json.dumps(g57))
         check("gast: twee regels, de genres en dan wat voor band met de ervaring (de band zoekt); geen Zoekend (1a)",
               g57["tags"][0] == "Indie" and g57["tags"][1].startswith("Eigen nummers en covers · Ervaring") and len(g57["tags"]) == 2, json.dumps(g57))
         check("gast, afgeschermd: geen banner, de media één wazig vlak, het nummer wazig zonder knop (TT-517 fase 7)",
               g57["balk"] == 0 and g57["tegelT"] == 1 and g57["nummerKnop"] == 0 and g57["nummerDicht"] == 1, json.dumps(g57))
         gf57 = d57["gastFoto"]
         check("gast, afgeschermd met bandfoto: de hoes wazig zonder knop; een lid met foto wazig, zonder foto de schijnwerper; nummer en vlak wazig (TT-517 fase 7)",
-              gf57["hoes"] == 1 and gf57["hoesKnop"] == 0 and gf57["leden"] == ["wazig", "wazig", "leeg"]
+              gf57["hoes"] == 1 and gf57["hoesKnop"] == 0 and gf57["leden"] == ["wazig", "leeg"]
               and gf57["nummer"] == [True] and gf57["vlak"] == 1, json.dumps(gf57))
         check("gast, afgeschermd: de socials gedempt, zonder link (besluit f)",
               g57["socialDicht"] == 2 and g57["socialLink"] == 0, json.dumps(g57))
-        check("gast: gebruikersnamen, een rij per rol (jesse speelt gitaar en zingt: twee rijen), de T zonder foto; 'Gezocht' en 'Invaller' vet met het instrument eronder, zonder knop (blok 2, 12)",
-              g57["namen"] == ["jesse", "jesse", "sam"] and g57["gezichtenT"] == 3 and len(g57["open"]) == 2
+        check("gast: gebruikersnamen, een rij per persoon (jesse speelt gitaar en zingt: één rij, B2-12), de T zonder foto; 'Gezocht' en 'Invaller' vet met het instrument eronder, zonder knop (blok 2, 12)",
+              g57["namen"] == ["jesse", "sam"] and g57["gezichtenT"] == 2 and len(g57["open"]) == 2
               and g57["open"] == ["? Gezocht Basgitaar", "? Invaller Drums"] and g57["openKnop"] == 0, json.dumps(g57))
         check("gast: elk lid in de bezetting is een knop die het profiel opent (TT-434)",
               g57["ledenKnop"] == len(g57["namen"]) and g57["ledenKnop"] > 0, json.dumps(g57))
@@ -17264,8 +17264,8 @@ def blok_tt543_onderdeel6():
         check(f"{n} 1d: beheerder geen ⋯, wel het deelicoon; een omlijnde knop Bandprofiel bewerken die het overzicht opent",
               bh["menu"] == 0 and bh["deel"] == 1 and bh["knop"] == [["Bandprofiel bewerken", "omlijnd", "static"]]
               and u["naBewerken"] == ["view-profieltegels", "overview", "b9"], json.dumps([bh["knop"], u["naBewerken"]], ensure_ascii=False))
-        check(f"{n} 1e, 1f: blokken Bezetting, Onze nummers, Foto's, video's en links (één raster), Covers zonder aantal",
-              bz["titels"] == ["Bezetting", "Onze nummers", "Foto's, video's en links", "Covers"] and bz["raster"] == 2, json.dumps(bz["titels"], ensure_ascii=False))
+        check(f"{n} 1e, 1f, B2-11: blokken Bezetting, Onze nummers, Covers zonder aantal, dan Foto's, video's en links (één raster)",
+              bz["titels"] == ["Bezetting", "Onze nummers", "Covers", "Foto's, video's en links"] and bz["raster"] == 2, json.dumps(bz["titels"], ensure_ascii=False))
         check(f"{n} F1: \"SoundCloud\" breekt bij de hoofdletter (Sound / Cloud), op twee regels",
               bz["platform"] == ["Sound<wbr>Cloud", 2], json.dumps(bz["platform"]))
         m = u["mijn"]
@@ -17408,11 +17408,11 @@ def blok_tt543_onderdeel6_blok2():
     httpd.shutdown()
     for n, u in uit.items():
         j = lambda k: json.dumps(u[k], ensure_ascii=False)
-        check(f"{n} bandpagina (12, B2-1, B2-5, TT-580): een rij per rol, op naam en binnen een lid op alfabet; een lid zonder rol 'Lid'; een lid ziet de uitnodiging half doorzichtig; 'Gezocht' en 'Invaller' vet met het instrument eronder",
-              u["lid"] == [["Dylan", "Achtergrondzang", ""], ["Dylan", "Elektrische gitaar", ""], ["Jesse", "Drums", ""], ["Sanne", "Lid", ""],
+        check(f"{n} bandpagina (12, B2-12, TT-580): één rij per persoon, op naam, de rollen op alfabet achter elkaar; een lid zonder rol 'Lid'; een lid ziet de uitnodiging half doorzichtig; 'Gezocht' en 'Invaller' vet met het instrument eronder",
+              u["lid"] == [["Dylan", "Achtergrondzang · Elektrische gitaar", ""], ["Jesse", "Drums", ""], ["Sanne", "Lid", ""],
                            ["Noor", "Basgitaar · uitgenodigd", "0.55"], ["Gezocht", "Basgitaar", ""], ["Invaller", "Toetsen", ""]], j("lid"))
         check(f"{n} bandpagina: een bezoeker ziet de uitnodiging niet (TT-580)",
-              [r[0] for r in u["bezoeker"]] == ["Dylan", "Dylan", "Jesse", "Sanne", "Gezocht", "Invaller"], j("bezoeker"))
+              [r[0] for r in u["bezoeker"]] == ["Dylan", "Jesse", "Sanne", "Gezocht", "Invaller"], j("bezoeker"))
         check(f"{n} Onze bezetting (B2-6): een rij per lid, op naam, de rollen eronder; Rollen wijzigen bij elk lid, ook de beheerder; Uit de band niet bij de beheerder",
               u["leden"] == [["Dylan", "Achtergrondzang · Elektrische gitaar", "Rollen wijzigen|Uit de band"], ["Jesse (jij)", "Drums · beheerder", "Rollen wijzigen"],
                              ["Sanne", "Lid", "Rollen wijzigen|Uit de band"]] and u["opslaanVoor"], j("leden"))
