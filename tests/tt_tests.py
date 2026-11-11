@@ -3754,14 +3754,13 @@ window.TT_STUB.session = { user: { id: 'u1', email: 'test@talenttent.org' } };
         check("K2: Account verwijderen is omlijnd in rood, geen vlak (§5)",
               rood == ["rgba(0, 0, 0, 0)", "rgb(229, 83, 61)", "rgb(229, 83, 61)", "solid"], json.dumps(rood))
 
-        # K6 — één gestippelde vorm (de bio-voorzet is vervallen, 08-10-2026).
-        # TT-543 onderdeel 6: de gestippelde knop staat alleen nog als uitnodiging
-        # op de privé bandpagina (bandUitnodigingHTML()).
-        stip = page.evaluate("""() => { const plek = document.createElement('div'); document.getElementById('appRoot').appendChild(plek);
-            plek.innerHTML = bandUitnodigingHTML('+ Vertel wie jullie zijn', 'b9'); const e = plek.querySelector('.add-link-btn'); const cs = getComputedStyle(e);
-            const u = [cs.borderTopStyle, cs.borderTopLeftRadius, cs.minHeight, document.querySelectorAll('.bio-prompt-chip').length]; plek.remove(); return u; }""")
-        check("K6: een uitnodiging (+ …) is gestippeld, een pil (TT-517 fase 11, B), 44px; er is nergens meer een bio-voorzet",
-              stip == ["dashed", "999px", "44px", 0], json.dumps(stip))
+        # K6 — de bio-voorzet is vervallen (08-10-2026); de laatste gebruiker van
+        # de gestippelde .add-link-btn, de uitnodiging op de privé bandpagina, is
+        # ook weg (besluit Ronald 11-11-2026, B2-10: wat leeg is, vervalt).
+        stip = page.evaluate("""() => [typeof bandUitnodigingHTML, document.querySelectorAll('.add-link-btn, .bio-prompt-chip').length,
+            [...document.styleSheets].some(sh => { try { return [...sh.cssRules].some(r => (r.cssText || '').includes('add-link-btn')); } catch (e) { return false; } })]""")
+        check("K6: geen bio-voorzet en geen gestippelde uitnodiging meer, ook niet in de stijl (dode code weg, B2-10)",
+              stip == ["undefined", 0, False], json.dumps(stip))
 
         wb = page.evaluate("""() => { const v = document.getElementById('bio'); return [v.classList.contains('bio-voorbeeld'), v.placeholder.startsWith('Hoi allemaal! Ik ben Kevin.'),
             getComputedStyle(v, '::placeholder').fontStyle, v.closest('.field').querySelectorAll('button').length]; }""")
@@ -6303,6 +6302,7 @@ window.TT_STUB.fnAntwoord = {};
           // 1. De privé bandpagina, net aangemaakt: alles is een uitnodiging, 15%.
           await openBandScherm('b9'); await w();
           u.leeg = { uitnodigingen: [...vak().querySelectorAll('.add-link-btn')].map(b => b.textContent),
+            koppen: [...vak().querySelectorAll('.profile-media-title')].map(e => e.textContent), socials: vak().querySelectorAll('.socials').length,
             pct: vak().querySelector('.completeness-pct')?.textContent,
             balkLaatst: vak().lastElementChild?.classList.contains('completeness-wrap'),
             menu: [...vak().querySelectorAll('.profiel-knoppen .nav-menu-item')].map(b => b.textContent),
@@ -6322,8 +6322,8 @@ window.TT_STUB.fnAntwoord = {};
           vak().querySelector('.deel-knop').click(); await w(50);
           u.deelblad = [document.getElementById('bandDeelModal').classList.contains('visible'), document.getElementById('bandDeelTekst').textContent];
           sluitBandDeelBlad();
-          // 2. Een uitnodiging opent het tegeloverzicht (TT-449); daarna kies je de tegel.
-          [...vak().querySelectorAll('.add-link-btn')].find(b => b.textContent.includes('Vertel wie')).click(); await w(400);
+          // 2. Bandprofiel bewerken opent het tegeloverzicht; daarna kies je de tegel.
+          vak().querySelector('.profiel-actie button').click(); await w(400);
           u.uitnodigingOpent = [document.querySelector('.app-view.active').id, activeTegelScreen, bewerkBandId, history.state && history.state.band];
           openTegelScreen('bandWie'); await w(200);
           // 3. Wie zijn we: fouten bij het veld, opslaan, "Terug zonder opslaan?".
@@ -6510,9 +6510,8 @@ window.TT_STUB.fnAntwoord = {};
           S.data.bands = w.bands; S.data.band_members = w.members; S.data.band_wanted = w.wanted;
           S.data.band_media = []; S.data.band_nummers = []; S.data.band_covers = []; S.data.band_invallers = []; showView('about'); }""")
         j58 = lambda k: json.dumps(d58[k], ensure_ascii=False)
-        check("privé: elke lege plek is een uitnodiging, in de volgorde van de pagina (TT-543 onderdeel 6); de balk staat onderaan op 15%",
-              d58["leeg"]["uitnodigingen"] == ["+ Vertel wie jullie zijn", "+ Instagram, TikTok of YouTube", "+ Wie spelen er in de band?",
-                                               "+ Laat horen hoe jullie klinken", "+ Foto's en video's toevoegen", "+ Welke covers spelen jullie?"]
+        check("privé: wat leeg is, vervalt, net als op het muzikantprofiel (B2-10): geen uitnodigingen, geen lege blokken, geen lege rij logo's; alleen de bezetting; de balk staat onderaan op 15%",
+              d58["leeg"]["uitnodigingen"] == [] and d58["leeg"]["koppen"] == ["Bezetting"] and d58["leeg"]["socials"] == 0
               and d58["leeg"]["pct"] == "15%" and d58["leeg"]["balkLaatst"], j58("leeg"))
         check("privé: geen ⋯ meer; een omlijnde knop Bandprofiel bewerken (1d); zonder bandfoto de knop \"Voeg een foto toe\" (TT-517 fase 6)",
               d58["leeg"]["menu"] == [] and d58["leeg"]["knop"] == [["Bandprofiel bewerken", "btn btn-ghost"]] and d58["leeg"]["fotoKnop"], j58("leeg"))
@@ -6521,7 +6520,7 @@ window.TT_STUB.fnAntwoord = {};
         check("delen van een pagina die nog niet af is: het deelblad noemt wat mist (besluit g)",
               d58["deelblad"][0] and d58["deelblad"][1].startswith("Nog niet op je pagina: een bandfoto, Wie zijn we,")
               and d58["deelblad"][1].endswith(" en wat voor band jullie zijn."), j58("deelblad"))
-        check("een uitnodiging opent het tegeloverzicht, en de stap onthoudt de band",
+        check("Bandprofiel bewerken opent het tegeloverzicht, en de stap onthoudt de band",
               d58["uitnodigingOpent"] == ["view-profieltegels", "overview", "b9", "b9"], j58("uitnodigingOpent"))
         check("Wie zijn we: de fout staat bij het veld, terug vraagt eerst, opslaan bewaart",
               d58["wieFout"] == ["Vul een bandnaam in"] and d58["wieGewijzigd"] and d58["wieGewapend"] == [True, "bandWie"]
@@ -11754,7 +11753,7 @@ def blok_tt517_fase2():
               r.knoppen = knoppen.length;
               r.geenPil = knoppen.filter(b => getComputedStyle(b).borderTopLeftRadius !== '999px').map(b => b.textContent.trim()).slice(0, 5);
               r.keuze = {};
-              for (const k of ['tag', 'segmented-btn', 'search-mode-tab', 'level-choice', 'add-link-btn']) { // TT-543 onderdeel 6: .media-tab is weg
+              for (const k of ['tag', 'segmented-btn', 'search-mode-tab', 'level-choice']) { // TT-543 onderdeel 6: .media-tab is weg; B2-10: .add-link-btn is weg
                 const e = document.createElement('button'); e.className = k; proef.appendChild(e);
                 r.keuze[k] = getComputedStyle(e).borderTopLeftRadius;
               }

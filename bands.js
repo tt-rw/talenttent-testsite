@@ -835,14 +835,6 @@ function bezettingOpenHTML(kop, instrument) {
   return `<div class="bb-rij bezetting-open"><span class="bb-foto bezetting-open-rondje" aria-hidden="true">?</span><span class="bb-tekst"><span class="bb-naam">${kop}</span><span class="bb-sub">${escHtml(instrument)}</span></span></div>`;
 }
 
-// Een lege plek op je eigen bandpagina is een uitnodiging, geen leeg vak
-// (TT-385 punt 2). Een tik opent het tegelscherm, niet de tegel zelf: terug
-// gaat dan een stap omhoog naar de bandpagina, niet naar een scherm dat je
-// nooit hebt geopend (TT-449).
-function bandUitnodigingHTML(tekst, bandId) {
-  return `<button type="button" class="add-link-btn" onclick="openBandTegels('${jsAttr(bandId)}')">${escHtml(tekst)}</button>`;
-}
-
 function bandSectieHTML(titel, inhoud) {
   return `<div class="profile-media"><div class="profile-media-title">${titel}</div>${inhoud}</div>`;
 }
@@ -973,7 +965,9 @@ function bandPaginaHTML(b, kijker) {
   const deelActie = voortgang && voortgang.pct < 100 ? `openBandDeelBlad('${jsAttr(b.id)}')` : null;
   // Een lege plek is voor de beheerder een uitnodiging (TT-385 punt 2); voor
   // iedereen anders staat er niets.
-  const uitnodiging = tekst => beheer ? bandUitnodigingHTML(tekst, b.id) : '';
+  // Wat leeg is, vervalt, ook voor de beheerder, net als op het muzikantprofiel
+  // (besluit Ronald 11-11-2026, B2-10; was een uitnodiging per lege plek,
+  // TT-385 punt 2). De balk onderaan en het deelblad noemen wat nog mist.
 
   // 1c en 1d: één knop onder Wie zijn we, die meescrolt (zoals F3 B en 1E van
   // onderdeel 3). Een bezoeker stuurt de band een bericht (aan de
@@ -1004,10 +998,9 @@ function bandPaginaHTML(b, kijker) {
   // 1b: Wie zijn we direct onder de regels, zonder kop, zoals de bio
   // (wijzigt besluit (c) van TT-385: "direct onder de bezetting").
   if (b.description) h += `<p class="profile-bio">${tekstMetMeerHTML(b.description)}</p>`;
-  else h += uitnodiging('+ Vertel wie jullie zijn');
   // 13 (besluit Ronald 10-11-2026, A): de logo's van Volg ons als één rij
   // direct onder Wie zijn we, zonder kop, boven de knop.
-  h += bandSocialsHTML(b) || uitnodiging('+ Instagram, TikTok of YouTube');
+  h += bandSocialsHTML(b) || '';
   if (actie) h += `<div class="profiel-actie">${actie}</div>`;
 
   // De bezetting, een rij per rol. Een uitnodiging zien alleen leden en de
@@ -1019,17 +1012,15 @@ function bandPaginaHTML(b, kijker) {
       bezettingRollen(uitgenodigd).map(([l, r]) => bezettingLidHTML(l, r, true)).join('') +
       b.wanted.map(w => bezettingOpenHTML('Gezocht', w)).join('') +
       b.invallers.map(v => bezettingOpenHTML('Invaller', v.instrument)).join('')
-    }</div>${voortgang && !voortgang.af.bezetting ? uitnodiging('+ Wie spelen er in de band?') : ''}`);
+    }</div>`);
   }
   // Eigen nummers.
   const nummers = b.nummers.map(n => bandNummerHTML(n, b.avatar_url)).join('');
   if (nummers) h += bandSectieHTML('Onze nummers', nummers);
-  else if (beheer && voortgang.telt.nummers) h += bandSectieHTML('Onze nummers', uitnodiging('+ Laat horen hoe jullie klinken'));
   // 1e: foto's, video's en links in één raster van drie, zoals bij de muzikant.
   // profielMediaHTML() geeft niets terug als er niets te tonen is.
   const media = profielMediaHTML(b.media, b.avatar_url);
   if (media) h += media;
-  else if (beheer) h += bandSectieHTML("Foto's, video's en links", uitnodiging("+ Foto's en video's toevoegen"));
   // Covers, op dezelfde volgorde als het repertoire van een muzikant. 1f: de
   // kop zonder aantal; het aantal staat in "Alle 9 nummers".
   if (b.covers.length) {
@@ -1038,8 +1029,6 @@ function bandPaginaHTML(b, kijker) {
       .map(c => `<div class="profile-song-row"><span><strong>${escHtml(c.song_artist)}</strong> — <span class="profile-song-titel">${escHtml(c.song_title)}</span></span><span class="nummer-rechts">${overneemKnopHTML(c.song_title, c.song_artist)}</span></div>`);
     // Meer dan zeven covers: ingeklapt, zoals het repertoire (nummerLijstHTML() in utils.js).
     h += bandSectieHTML('Covers', nummerLijstHTML(rijen));
-  } else if (beheer && voortgang.telt.covers) {
-    h += bandSectieHTML('Covers', uitnodiging('+ Welke covers spelen jullie?'));
   }
   // De balk staat onderaan, zoals op Mijn Profiel; alleen de beheerder ziet
   // hem (besluit Ronald, j).
