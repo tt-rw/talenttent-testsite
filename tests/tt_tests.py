@@ -17442,6 +17442,94 @@ def blok_tt543_onderdeel6_blok2():
     check("blok 147: geen paginafouten", not fouten, "; ".join(fouten)[:300])
 
 
+def blok_tt543_b29():
+    print("\nBlok 149 — TT-543 blok 2, B2-9: een open rol gaat weg zodra een lid die rol krijgt")
+    bron = open(os.path.join(ROOT, "bands.js"), encoding="utf-8").read()
+    i_rol, i_open = bron.find(".update({ rollen })"), bron.find("db.rpc('tt_save_band_wanted'")
+    check("Opslaan: eerst de rollen, dan de open rollen (de database haalt bij een nieuwe rol de open rol weg; daarna zet de app precies wat je ziet)",
+          0 < i_rol < i_open, f"{i_rol} {i_open}")
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    fouten = []
+    uit = {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark")
+        ctx.route("https://*.supabase.co/**", lambda r: r.abort())
+        page = ctx.new_page()
+        page.on("pageerror", lambda e: fouten.append(str(e)))
+        page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**", "**/img.youtube.com/**", "**/x.test/**"):
+            page.route(pat, lambda r: r.abort())
+        page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+        page.wait_for_timeout(500)
+        page.evaluate(BLOK146_DATA)
+        uit = page.evaluate(r"""async () => {
+          const w = (n = 300) => new Promise(r => setTimeout(r, n)), $ = id => document.getElementById(id), u = {}, S = window.TT_STUB;
+          const toast = () => ($('appToast') || {}).textContent || '';
+          S.data.musicians.find(m => m.id === 'm1').weergavenaam = 'Jesse';
+          S.data.band_members.find(m => m.band_id === 'b9' && m.musician_id === 'm1').rollen = ['Drums'];
+          S.data.band_members.find(m => m.band_id === 'b9' && m.musician_id === 'm2').rollen = ['Elektrische gitaar'];
+          S.data.band_members.find(m => m.band_id === 'b9' && m.musician_id === 'm4').rollen = ['Basgitaar'];
+          // Open rollen: Basgitaar, en Drums die Jesse al speelt (een oude dubbeling).
+          S.data.band_wanted = [{ band_id: 'b9', instrument: 'Basgitaar' }, { band_id: 'b9', instrument: 'Drums' }];
+          myMusicianId = 'm1'; openBandTegels('b9'); await w(300); openTegelScreen('bandBezetting'); await w(500);
+          const rij = id => document.querySelector(`#bbLeden .bb-rij[data-lid="${id}"]`);
+          const open = () => [...document.querySelectorAll('#bbOpen .bb-rij .bb-sub')].map(x => x.textContent);
+          const menu = async id => { rij(id).querySelector('.nav-menu-btn').click(); await w(100);
+            [...rij(id).querySelectorAll('.nav-menu-item')].find(b => b.textContent === 'Rollen wijzigen').click(); await w(600); };
+          const kies = t => [...$('bbRollenMenu').querySelectorAll('.choice-option')].find(x => x.textContent.trim() === t).click();
+          u.start = open();
+          // 1. Dylan krijgt Basgitaar: de open rol gaat weg, met een melding.
+          await menu('m2'); $('appToast').textContent = ''; kies('Basgitaar'); await w(150);
+          u.erbij = [open(), toast(), rij('m2').querySelector('.bb-sub').textContent];
+          // 2. Weer uit: de open rol komt terug.
+          kies('Basgitaar'); await w(150);
+          u.weerUit = open();
+          // 3. Weer aan, en opslaan.
+          kies('Basgitaar'); await w(150); sluitAlleMenus(); await w(400);
+          // 4. Jesse speelde Drums al: uit en weer aan laat de open rol Drums staan (alleen een nieuwe rol telt).
+          await menu('m1'); kies('Zang'); await w(100); kies('Drums'); await w(100); $('appToast').textContent = ''; kies('Drums'); await w(150);
+          u.alGespeeld = [open(), toast()]; sluitAlleMenus(); await w(400);
+          const voor = S.calls.length;
+          await saveBandBezetting(); await w(500);
+          const na = S.calls.slice(voor);
+          u.volgorde = na.filter(c => (c.kind === 'table' && c.table === 'band_members' && c.op === 'update') || (c.kind === 'rpc' && c.name === 'tt_save_band_wanted'))
+            .map(c => c.kind === 'rpc' ? 'open rollen' : 'rollen');
+          u.opgeslagen = [S.data.band_wanted.filter(x => x.band_id === 'b9').map(x => x.instrument),
+            S.data.band_members.find(x => x.band_id === 'b9' && x.musician_id === 'm2').rollen,
+            S.data.bands.find(b => b.id === 'b9').status];
+          // 5. Opnieuw open: niets gewijzigd, Opslaan uit.
+          openTegelScreen('bandBezetting'); await w(500);
+          u.opnieuw = [open(), $('bandBezettingScreen').querySelector('.wizard-action-bar .btn-primary').disabled];
+          // 6. Dylan krijgt Keyboard (open rol weg) en gaat daarna uit de band: de open rol komt terug.
+          S.data.band_wanted.push({ band_id: 'b9', instrument: 'Keyboard' });
+          openTegelScreen('bandBezetting'); await w(500);
+          await menu('m2'); kies('Keyboard'); await w(150); sluitAlleMenus(); await w(400);
+          u.voorWeg = open();
+          S.data.band_members = S.data.band_members.filter(x => !(x.band_id === 'b9' && x.musician_id === 'm2'));
+          await bbLaadLeden(); await w(200);
+          u.naWeg = open();
+          return u; }""")
+        ctx.close()
+        browser.close()
+    httpd.shutdown()
+    u = uit
+    j = lambda k: json.dumps(u[k], ensure_ascii=False)
+    check("start: de open rollen Basgitaar en Drums", u["start"] == ["Basgitaar", "Drums"], j("start"))
+    check("een lid krijgt Basgitaar: de open rol Basgitaar gaat meteen weg, met 'Open rol Basgitaar weg: Dylan speelt dit nu.'",
+          u["erbij"] == [["Drums"], "Open rol Basgitaar weg: Dylan speelt dit nu.", "Basgitaar · Elektrische gitaar"], j("erbij"))
+    check("de rol weer uit: de open rol komt terug", sorted(u["weerUit"]) == ["Basgitaar", "Drums"], j("weerUit"))
+    check("een rol die het lid al had, haalt geen open rol weg (net als de database)", u["alGespeeld"] == [["Drums"], ""], j("alGespeeld"))
+    check("Opslaan: eerst de rollen, dan de open rollen; Basgitaar is weg, Drums blijft, de band blijft zoekend",
+          u["volgorde"] == ["rollen", "rollen", "open rollen"] and u["opgeslagen"] == [["Drums"], ["Basgitaar", "Elektrische gitaar"], "zoekend"],
+          json.dumps([u["volgorde"], u["opgeslagen"]], ensure_ascii=False))
+    check("opnieuw open: alleen Drums, Opslaan uit", u["opnieuw"] == [["Drums"], True], j("opnieuw"))
+    check("een lid dat een open rol vervulde en uit de band gaat voor Opslaan: de open rol komt terug",
+          u["voorWeg"] == ["Drums"] and sorted(u["naWeg"]) == ["Drums", "Keyboard"], json.dumps([u["voorWeg"], u["naWeg"]], ensure_ascii=False))
+    check("blok 149: geen paginafouten", not fouten, "; ".join(fouten)[:300])
+
+
 def blok_tt590():
     print("\nBlok 148 — TT-590: het menu van \"+ Toevoegen\" is in het donkere thema geel gestippeld")
     stub_js = open(STUB, encoding="utf-8").read()
@@ -17539,6 +17627,7 @@ BLOKKEN = [
     blok_tt543_onderdeel6,
     blok_tt543_onderdeel6_blok2,
     blok_tt590,
+    blok_tt543_b29,
 ]
 
 

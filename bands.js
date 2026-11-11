@@ -1520,6 +1520,7 @@ let bbUitgenodigd = [];    // uitgenodigd, nog geen antwoord
 let bbRollenBewerkt = {};  // id -> rollen die nog niet zijn opgeslagen (gaat mee met Opslaan)
 let bbRollenLid = null;    // het lid waarvan het menu Rollen wijzigen openstaat
 let bbWanted = [];         // open rollen (gaat mee met Opslaan)
+let bbWantedVervuld = {};  // id -> rollen waarvan de open rol wegging doordat dit lid ze kreeg (B2-9)
 let bbInvallers = [];      // { id, instrument } (gaat mee met Opslaan)
 let bbInvalLijst = [];     // de instrumenten van bbInvallers, voor het keuzemenu
 let bbContact = '';
@@ -1528,7 +1529,7 @@ let bbSnapshot = null;
 
 function bbFieldSnapshot() {
   return JSON.stringify({
-    wanted: bbWanted,
+    wanted: [...bbWanted].sort(), // B2-9: een open rol die terugkomt, staat achteraan
     invallers: bbInvallers.map(v => [v.id || null, v.instrument]),
     rollen: Object.keys(bbRollenBewerkt).sort().map(id => [id, bbRollenBewerkt[id]]),
     contact: bbContact || null
@@ -1540,6 +1541,7 @@ async function openBandBezetting() {
   if (!b) return;
   bbBeheerderId = b.founder_id;
   bbRollenBewerkt = {};
+  bbWantedVervuld = {};
   bbWanted = (b.band_wanted || []).map(w => w.instrument);
   bbInvallers = bbInvallersUit(b.band_invallers);
 
@@ -1632,6 +1634,13 @@ async function bbLaadLeden(contactStart) {
   bbUitgenodigd = (data || []).filter(m => m.status === 'aangevraagd').map(naarLid).sort(opNaam);
   // Een lid dat er niet meer is, heeft ook geen rollen meer om op te slaan.
   Object.keys(bbRollenBewerkt).forEach(x => { if (!bbLeden.some(l => l.id === x)) delete bbRollenBewerkt[x]; });
+  // Wie weg is, speelt die rol niet meer: de open rol komt terug.
+  Object.keys(bbWantedVervuld).forEach(x => {
+    if (bbLeden.some(l => l.id === x)) return;
+    bbWanted.push(...bbWantedVervuld[x]);
+    delete bbWantedVervuld[x];
+    bbRenderOpen();
+  });
   // De contactpersoon is een bevestigd lid; anders de beheerder.
   const gewenst = contactStart !== undefined ? contactStart : bbContact;
   bbContact = bbLeden.some(l => l.id === gewenst) ? gewenst : bbBeheerderId;
@@ -1730,12 +1739,31 @@ function bbRolWissel(rol) {
   const l = bbLeden.find(x => x.id === bbRollenLid);
   if (!l) return;
   let nieuw = bbRollenVan(l.id).slice();
+  const vervuld = bbWantedVervuld[l.id] || [];
   if (nieuw.includes(rol)) {
     if (nieuw.length === 1) { showToast('Kies minstens één rol.'); return; }
     nieuw = nieuw.filter(r => r !== rol);
+    // Weer uitgezet: de open rol die daardoor wegging, komt terug.
+    if (vervuld.includes(rol)) {
+      vervuld.splice(vervuld.indexOf(rol), 1);
+      bbWanted.push(rol);
+      bbRenderOpen();
+    }
   } else {
     nieuw.push(rol);
+    // Een open rol gaat weg zodra een lid die rol krijgt (besluit Ronald
+    // 11-11-2026, B2-9: "A"). De database doet hetzelfde (tt_open_rol_vervuld);
+    // alleen voor een rol die nieuw is, want alleen daar haalt die hem weg.
+    const plek = bbWanted.indexOf(rol);
+    if (plek >= 0 && !l.rollen.includes(rol)) {
+      bbWanted.splice(plek, 1);
+      vervuld.push(rol);
+      bbRenderOpen();
+      showToast(`Open rol ${rol} weg: ${l.naam} speelt dit nu.`);
+    }
   }
+  if (vervuld.length) bbWantedVervuld[l.id] = vervuld;
+  else delete bbWantedVervuld[l.id];
   nieuw.sort((x, y) => x.localeCompare(y, 'nl'));
   if (nieuw.join('\n') === l.rollen.join('\n')) delete bbRollenBewerkt[l.id];
   else bbRollenBewerkt[l.id] = nieuw;
@@ -1810,16 +1838,18 @@ async function saveBandBezetting() {
   const id = bewerkBandId;
   if (!id) return;
   try {
-    // TT-281: de open rollen in één transactie, zoals voorheen.
-    const { error: wErr } = await db.rpc('tt_save_band_wanted', { p_band_id: id, p_instruments: bbWanted });
-    if (wErr) throw wErr;
     // De rollen per lid (besluit Ronald 10-11-2026, 12). Alleen de beheerder
-    // mag ze wijzigen; de database bewaakt dat ook (tt_rollen_bewaken).
+    // mag ze wijzigen; de database bewaakt dat ook (tt_rollen_bewaken). Eerst
+    // de rollen: de database haalt dan de open rol van een nieuwe rol weg
+    // (B2-9), en de open rollen hieronder zetten daarna precies wat je ziet.
     for (const [lid, rollen] of Object.entries(bbRollenBewerkt)) {
       const { error } = rijenGeraakt(await db.from('band_members').update({ rollen })
         .eq('band_id', id).eq('musician_id', lid).select('musician_id'));
       if (error) throw error;
     }
+    // TT-281: de open rollen in één transactie, zoals voorheen.
+    const { error: wErr } = await db.rpc('tt_save_band_wanted', { p_band_id: id, p_instruments: bbWanted });
+    if (wErr) throw wErr;
     // Invallers: alleen wat wegging weghalen en wat nieuw is toevoegen. Zo
     // gaat er bij een fout halverwege nooit een bestaande invaller verloren.
     const eerder = JSON.parse(bbSnapshot).invallers.map(v => v[0]).filter(Boolean);
@@ -1850,6 +1880,7 @@ async function saveBandBezetting() {
     // De rollen staan nu in de database; de leden opnieuw, met hun rollen.
     if (Object.keys(bbRollenBewerkt).length) {
       bbRollenBewerkt = {};
+      bbWantedVervuld = {};
       await bbLaadLeden();
     }
     bbSnapshot = bbFieldSnapshot();
