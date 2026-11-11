@@ -2474,6 +2474,15 @@
   .choice-menu.media-toevoegen-menu.naar-boven { top: auto; bottom: 0; }
   .choice-menu.media-toevoegen-menu.naar-links { left: auto; right: calc(100% + 8px); transform-origin: right bottom; }
   .choice-menu.media-toevoegen-menu.naar-rechts { right: auto; left: calc(100% + 8px); transform-origin: left bottom; }
+  /* TT-590 (besluit Ronald 11-11-2026: "B"): in het donkere thema krijgt het
+     menu de gele stippellijn van het vak "+ Toevoegen"; donkergrijs viel weg
+     tegen de donkere pagina (Samsung). Het menu Beheersing in Je setlist
+     blijft zoals het was (besluit Ronald: "ad 2. nu"). */
+  :root:not([data-theme="licht"]) .choice-menu.media-toevoegen-menu { border: 2px dashed var(--merk); }
+  /* TT-590 (besluit Ronald 11-11-2026: "het keuzemenu is nu lichter dan de knop
+     met +. geef het keuzemenu dezelfde kleur."): in het lichte thema het vlak
+     van het open vak "+ Toevoegen". */
+  :root[data-theme="licht"] .choice-menu.media-toevoegen-menu { background: var(--bg); }
 
   /* ── Het mediascherm ──────────────────────────────────────────────────── */
   .media-speler-box {
@@ -2582,6 +2591,8 @@
   .uitnodig-blok .hoofdstuk-kop { margin-top: 0; overflow-wrap: anywhere; }
   /* Het berichtvak toont de hele voorbeeldtekst, ook op 320px (drie regels). */
   .uitnodig-blok textarea { min-height: 88px; }
+  /* Blok 2 (TT-543 onderdeel 6, B2-7): het veld Rol boven het berichtvak, de vaste ruimte tussen twee velden (TT-582). */
+  .uitnodig-blok .field + .field { margin-top: var(--ruimte-velden); }
   .uitnodig-knoppen { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
   .profiel-wat { display: flow-root; margin-bottom: 20px; } /* flow-root: ook leeg houdt het blok zijn 20px, zoals de tags ervoor */
   .profiel-wat-regel { font-size: 12px; line-height: 18px; color: var(--muted); overflow-wrap: anywhere; }
@@ -4105,6 +4116,8 @@
   .bb-foto-leeg { background: var(--podium); overflow: hidden; } /* TT-517 fase 6: zonder foto de schijnwerper; fase 7: het vak snijdt het wazige beeld af */
   .bb-foto.bezetting-open-rondje { font-size: 18px; }
   .bb-wacht { opacity: .55; }
+  /* TT-580 (besluit Ronald 10-11-2026, 2): een uitnodiging op de bandpagina, naam half doorzichtig. */
+  .bezetting-uitgenodigd .bb-naam { opacity: .55; }
   .bb-tekst { flex: 1; min-width: 0; }
   /* Een naam in een lijst is 16px, vet (§2). */
   .bb-naam { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
@@ -4123,7 +4136,8 @@
   .hoofdstuk-kop + .bb-hint { margin-bottom: 8px; }
   .picker-field.toevoegen-breed, .menu-anchor.toevoegen-breed { margin-top: 8px; }
   .bb-lijst:not(:empty) + .bb-hint { margin-top: 8px; }
-  .bb-inval-form { margin-top: 12px; }
+  /* Rollen wijzigen (TT-543 onderdeel 6, blok 2): het anker van het menu onder de rij van een lid; neemt geen ruimte in. */
+  .bb-rollen-veld { height: 0; }
   /* TT-385 punt 17: je bands op je muzikantprofiel. Dezelfde rij als in Onze
      bezetting, als knop; de bandfoto is vierkant, zoals overal. */
   .bb-foto-vierkant { border-radius: 8px; }
