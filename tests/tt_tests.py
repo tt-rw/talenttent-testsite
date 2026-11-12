@@ -7966,7 +7966,7 @@ window.TT_STUB.fnAntwoord = {};
         check("TT-433: de bandkaart heeft voor de beheerder en voor een lid geen ⋯-menu en geen knop",
               d72["beheerderKaart"] == 0 and d72["lidKaart"] == 0, j72)
         check("blok 3 (7d): Beheer overdragen is een tegel met de regel van Ronald; een tik opent een venster met kop en één zin, zonder kruisje",
-              d72["tegelVoor"][1] == "draag het beheer van dit bandprofiel over aan een bandlid"
+              d72["tegelVoor"][1] == "draag het beheer over aan een bandlid"
               and d72["venster"] == {"open": True, "kop": "Beheer overdragen", "tekst": "Wie neemt Van Delft over? Zolang niemand heeft geaccepteerd, blijf jij de beheerder.", "kruisje": False}, j72)
         check("TT-432: de beheerder kiest uit de bevestigde leden, op naam; een uitgenodigd lid staat er niet bij",
               d72["keuze"] == ["Dylan", "sanne"], j72)
@@ -7977,7 +7977,7 @@ window.TT_STUB.fnAntwoord = {};
         check("blok 3 (B3-3): een tik op de tegel vraagt of je de vraag intrekt; daarna is het verzoek weg en krijgt het lid een bericht",
               d72["intrekVraag"] == ["Je vraag aan Dylan over het beheer van Van Delft vervalt dan.", "Vraag intrekken", "Annuleren"]
               and d72["naIntrekken"] == {"aanbod": False, "bericht": "m1>m2: Ik trek mijn vraag over het beheer van Van Delft in.",
-                                         "tegel": "draag het beheer van dit bandprofiel over aan een bandlid"}, j72)
+                                         "tegel": "draag het beheer over aan een bandlid"}, j72)
         check("TT-432: het gekozen lid ziet het verzoek op zijn kaart, met twee knoppen; een tik in de melding opent de bandpagina niet",
               d72["gekozen"]["melding"] and d72["gekozen"]["kop"] == "beheerder vraagt of jij Van Delft overneemt"
               and d72["gekozen"]["tekst"] == "Je wordt dan beheerder. beheerder blijft lid van de band." 
@@ -17635,6 +17635,21 @@ def blok_tt543_onderdeel6_blok3():
           // 7. Met een ander lid staat Beheer overdragen er; zonder niet (B3-2).
           openBandTegels('b9'); await w(500);
           u.metLid = [...$('bandBeheerBlok').querySelectorAll('.tile-title')].map(t => t.textContent);
+          // 8D blok 3 (12-11-2026): een bandnaam van één lang woord blijft in de tegel, het venster en de vraag (huisstijl §2.2).
+          const b9 = S.data.bands.find(b => b.id === 'b9'), echteNaam = b9.name;
+          b9.name = 'LANGWOORD' + 'abcdefghij'.repeat(6);
+          openBandTegels('b9'); await w(500);
+          const binnen = (el, vak) => { const r = el.getBoundingClientRect(), v = vak.getBoundingClientRect(); return r.right <= v.right + 0.5 && r.left >= v.left - 0.5; };
+          u.lang = { tegels: [...$('bandBeheerBlok').querySelectorAll('.tile')].every(t => binnen(t.querySelector('.tile-sub'), t)) };
+          await openOverdragen(); await w(300);
+          const doos = $('overdragenModal').querySelector('.modal-box');
+          u.lang.venster = binnen($('overdragenTekst'), doos) && $('overdragenTekst').scrollWidth <= $('overdragenTekst').clientWidth;
+          sluitOverdragen(); await w(200);
+          await vraagBandVerwijderen(); await w(200);
+          const vdoos = $('confirmModal').querySelector('.modal-box');
+          u.lang.vraag = binnen($('confirmKop'), vdoos) && $('confirmMessage').scrollWidth <= $('confirmMessage').clientWidth;
+          $('confirmModal').classList.remove('visible');
+          b9.name = echteNaam; openBandTegels('b9'); await w(400);
           // 8. Bandprofiel verwijderen: de vraag met kop en de namen; daarna een bericht aan elk lid.
           S.rpcResults.tt_dissolve_band = (pp) => { S.data.bands = S.data.bands.filter(b => b.id !== pp.p_band_id);
             S.data.band_members = S.data.band_members.filter(m => m.band_id !== pp.p_band_id); return null; };
@@ -17659,7 +17674,7 @@ def blok_tt543_onderdeel6_blok3():
     httpd.shutdown()
     j = lambda k: json.dumps(d.get(k), ensure_ascii=False)
     check("Bandbeheer: een hoofdstukkop en drie tegels met de regels van Ronald (7, 7d)",
-          d["kop"] == "Bandbeheer" and d["tegels"] == [["Bandstatus", "Actief"], ["Beheer overdragen", "draag het beheer van dit bandprofiel over aan een bandlid"],
+          d["kop"] == "Bandbeheer" and d["tegels"] == [["Bandstatus", "Actief"], ["Beheer overdragen", "draag het beheer over aan een bandlid"],
                                                         ["Bandprofiel verwijderen", "permanent verwijderen van Nachtploeg"]], j("tegels"))
     check("Bandstatus: het keuzemenu onder de tegel, tekst links, drie standen met hun gevolg (7b, variant vindbaar); Actief gekozen",
           d["menu"] == {"open": True, "regels": ["Actief", "Tijdelijk niet beschikbaar (blijft vindbaar)", "Inactief (niet vindbaar)"], "gekozen": 0, "tekstLinks": True}, j("menu"))
@@ -17673,6 +17688,8 @@ def blok_tt543_onderdeel6_blok3():
           d["antwoorden"] == ["m4>m1: Ja, ik doe mee met Nachtploeg!", "m3>m1: Bedankt voor de uitnodiging, maar ik doe niet mee met Nachtploeg."], j("antwoorden"))
     check("met een ander lid staat Beheer overdragen tussen Bandstatus en Bandprofiel verwijderen",
           d["metLid"] == ["Bandstatus", "Beheer overdragen", "Bandprofiel verwijderen"], j("metLid"))
+    check("8D blok 3: een bandnaam van één lang woord loopt niet uit de tegels van Bandbeheer, het venster Beheer overdragen of de vraag (huisstijl §2.2)",
+          d["lang"] == {"tegels": True, "venster": True, "vraag": True}, j("lang"))
     check("Bandprofiel verwijderen: kop met de vraag, het gevolg met de naam van het lid, Annuleren en rood omlijnd Bandprofiel verwijderen",
           d["vraag"] == ["Bandprofiel van Nachtploeg verwijderen?", False, "Het profiel verdwijnt dan voor Noor, met de foto's, nummers en covers. Dat is niet terug te draaien.",
                          "Bandprofiel verwijderen", "Annuleren", True], j("vraag"))

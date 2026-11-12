@@ -1358,7 +1358,8 @@ function renderBandTegels() {
 // Instellingen. Bandstatus kiest één van drie standen in het keuzemenu onder
 // de tegel (tekst links, huisstijl §7.1); Beheer overdragen alleen als er een
 // ander lid is; Bandprofiel verwijderen in plaats van Band opheffen. Delen
-// via link is weg (7c).
+// via link is weg (7c). De regel onder Beheer overdragen is korter, zodat hij
+// op één regel past (besluit Ronald 12-11-2026, B3-9).
 const BAND_STANDEN = [
   { waarde: 'actief', label: 'Actief', menu: 'Actief' },
   { waarde: 'tijdelijk', label: 'Tijdelijk niet beschikbaar', menu: 'Tijdelijk niet beschikbaar (blijft vindbaar)' },
@@ -1407,7 +1408,7 @@ async function renderBandBeheer() {
           <div class="tile-sub">gevraagd aan ${escHtml(opsommingNL(gevraagd))} · wacht op antwoord</div></div></div>`
       : `<div class="tile" onclick="openOverdragen()">
           <div style="flex:1;"><div class="tile-title">Beheer overdragen</div>
-          <div class="tile-sub">draag het beheer van dit bandprofiel over aan een bandlid</div></div></div>`;
+          <div class="tile-sub">draag het beheer over aan een bandlid</div></div></div>`;
     el.innerHTML = `
       <h2 class="hoofdstuk-kop">Bandbeheer</h2>
       <div class="menu-anchor">
