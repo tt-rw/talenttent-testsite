@@ -1553,6 +1553,12 @@
      Instellingen (.tile, 16px). */
   #confirmKeuzes:not(:empty) { margin-bottom: 24px; }
   #confirmKeuzes > .menu-anchor:last-child .tile { margin-bottom: 0; }
+  /* 8D onderdeel 7 (12-11-2026, blok 124): een naam van één lang woord blijft in
+     zijn tegel. De regel onder Account verwijderen zoals in Bandbeheer (één
+     regel, "…"); de bandnaam en de keuze in de vraag breken (huisstijl §2.2). */
+  #confirmKeuzes .tile > div, #view-instellingen .tile > div:has(> #accountVerwijderRegel) { min-width: 0; }
+  #accountVerwijderRegel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #confirmKeuzes .tile-title, #confirmKeuzes .tile-sub { overflow-wrap: anywhere; }
   .overdragen-lijst { margin-bottom: 20px; }
   .profile-songs-title {
     font-size: 12px;

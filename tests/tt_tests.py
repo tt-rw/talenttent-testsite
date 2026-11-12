@@ -17803,6 +17803,27 @@ def blok_tt543_onderdeel7():
           const m0 = [...$('accountBandMenu0').querySelectorAll('.choice-option')];
           m0[m0.length - 1].click(); await w(300);
           u.naTwee = { regels: tegels.map(t => t.querySelector('.wheel-field-label').textContent), uit: ja.disabled };
+          // 8D (blok 124): een bandnaam en een ledennaam van één lang woord blijven in hun tegel; de regel in Instellingen ook.
+          const lang = 'LANGWOORD' + 'abcdefghij'.repeat(6);
+          const bandK = S.data.bands.find(b => b.id === 'b6'), lidK = S.data.musicians.find(m => m.id === 'm3'), ikK = S.data.musicians.find(m => m.id === 'm1');
+          const oud = [bandK.name, lidK.weergavenaam, ikK.weergavenaam];
+          bandK.name = lang; lidK.weergavenaam = lang; ikK.weergavenaam = lang;
+          const binnen = (el, vak) => { const a = r(el), v = r(vak); return a.right <= v.right + 0.5 && a.left >= v.left - 0.5; };
+          await vraagAccountVerwijderen(); await w(300);
+          const alleT = [...$('confirmKeuzes').querySelectorAll('.tile')];
+          const lt = alleT.find(t => t.textContent.includes('LANGWOORD'));
+          CHOICE_FIELDS['account-band-' + alleT.indexOf(lt)].kies(0);  // het lid met de lange naam wordt beheerder
+          const doos = $('confirmModal').querySelector('.modal-box');
+          u.langVraag = { titel: binnen(lt.querySelector('.tile-title'), lt), keuze: binnen(lt.querySelector('.tile-sub'), lt), kop: binnen($('confirmKop'), doos) };
+          $('confirmModal').classList.remove('visible');
+          showView('instellingen'); await w(500);
+          const regelL = $('accountVerwijderRegel');
+          u.langRegel = { binnen: binnen(regelL, regelL.closest('.tile')), eenRegel: regelL.scrollHeight <= 20 };
+          [bandK.name, lidK.weergavenaam, ikK.weergavenaam] = oud;
+          await vraagAccountVerwijderen(); await w(300);
+          tegels.splice(0, tegels.length, ...$('confirmKeuzes').querySelectorAll('.tile'));
+          CHOICE_FIELDS['account-band-0'].kies(CHOICE_FIELDS['account-band-0'].rijen().length - 1);  // Kelderband: Bandprofiel verwijderen
+          CHOICE_FIELDS['account-band-1'].kies(0);                                              // Nachtploeg: Dylan
           // Verwijderen: één databasefunctie met de keuzes en de berichten (punt 4), daarna uitloggen.
           S.rpcResults.tt_delete_own_profile = () => null;
           const oudFn = db.functions; db.functions = { invoke: async () => ({ error: null }) };
@@ -17883,6 +17904,8 @@ def blok_tt543_onderdeel7():
                        "p_band_keuzes": [{"band_id": "b6", "keuze": "delete", "berichten": [{"aan": "m3", "tekst": "Het profiel van Kelderband is verwijderd. De band bestaat niet meer in deze app."}]},
                                          {"band_id": "b9", "keuze": "m2", "berichten": [{"aan": "m2", "tekst": "Je bent nu beheerder van Nachtploeg."}]}],
                        "p_solo_bands": ["b7"]}, j("rpc"))
+    check("8D (blok 124): een bandnaam en een ledennaam van één lang woord blijven in hun tegel en de kop in de vraag; de regel in Instellingen blijft één regel binnen de tegel",
+          d["langVraag"] == {"titel": True, "keuze": True, "kop": True} and d["langRegel"] == {"binnen": True, "eenRegel": True}, j("langVraag") + j("langRegel"))
     check("na verwijderen: uitgelogd en de melding 'Je account is verwijderd.'", d["uitgelogd"] is True and d["toast"] == "Je account is verwijderd.", j("toast"))
     check("zonder band met andere leden: geen tegel, de knop werkt meteen, zin tot knoppen 24px", d["zonder"] == {"tegels": 0, "uit": False, "zinKnop": 24}, j("zonder"))
     check("een storing bij je bands: de foutstaat met opnieuw proberen, de knop blijft dicht (TT-561)", d["storing"] == {"fout": True, "uit": True}, j("storing"))
