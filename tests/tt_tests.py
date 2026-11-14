@@ -18655,6 +18655,10 @@ def blok_tt595_tt596():
     dood += [x for x in ('id="appNav"', 'class="nav-btn"', 'id="navLogin"', 'id="unreadBadge"') if x in html]
     dood += [x for x in ("'navLogin'", "'.nav-btn'", "'unreadBadge'") if any(x in t for t in js.values())]
     check("TT-595: de verborgen bovenbalk en de overschreven regels zijn weg", not dood, str(dood))
+    # De titel in een scherm staat er alleen voor de schermlezer (.app-view .scherm-titel, marge 0 !important):
+    # een stijl in de regel erop doet niets en is dode code (gevonden bij de meting in test, 14-11-2026).
+    f = re.findall(r'class="[^"]*scherm-titel[^"]*"\s+style="[^"]*"', html)
+    check("TT-595: geen stijl in de regel op een schermtitel (die doet niets)", not f, str(f))
     regel = lambda sel: (re.search(r"(?:^|\n)\s*" + re.escape(sel) + r"\s*\{([^}]*)\}", zonder) or [None, None])[1]
     check("TT-595: .profile-songs en .profile-media hebben geen eigen regel meer (de regel op .profiel-pagina gold altijd)",
           regel(".profile-songs") is None and regel(".profile-media") is None, "")
