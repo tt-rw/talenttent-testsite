@@ -14599,8 +14599,9 @@ def blok_tt543():
           u["omzetting"] == [0, 1, 2, 2, 3, 0, 3, 0], json.dumps(u["omzetting"]))
     privacy = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
     privacy = privacy[privacy.index('id="view-privacy"'):privacy.index('id="view-terms"')]
-    check("de privacyverklaring noemt geen doel of ambitie meer (besluit Ronald 06-11-2026); bijgewerkt op 13 november 2026 (TT-543 onderdeel 9)",
-          not re.search(r"\bdoel\b|ambitie", privacy, re.I) and "Laatst bijgewerkt: 13 november 2026" in privacy, "")
+    # De datum volgt de laatste wijziging (bundel 1, 14-11-2026: de mail na het verwijderen van een account, TT-72).
+    check("de privacyverklaring noemt geen doel of ambitie meer (besluit Ronald 06-11-2026); bijgewerkt op 14 november 2026 (bundel 1, TT-72; daarvoor 13 november, TT-543 onderdeel 9)",
+          not re.search(r"\bdoel\b|ambitie", privacy, re.I) and "Laatst bijgewerkt: 14 november 2026" in privacy, "")
     check("geen paginafouten in blok 131", not fouten, "; ".join(fouten)[:300])
 
 
@@ -19252,6 +19253,47 @@ def blok_tt613():
     check("Blok 159: geen JS-fouten", not fouten, "; ".join(fouten)[:500])
 
 
+def blok_bundel1_mails():
+    print("\nBlok 160 — bundel 1 (14-11-2026): de privacyverklaring noemt de mail na het verwijderen (TT-72); de niveautabel achter de i-knop noemt geen instrument (TT-572)")
+    privacy = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+    privacy = privacy[privacy.index('id="view-privacy"'):privacy.index('id="view-terms"')]
+    check("TT-72: de privacyverklaring noemt \"een bevestiging als je je account verwijdert\" bij de e-mails (besluit Ronald 14-11-2026, \"ja\")",
+          "een nieuw wachtwoord als je dat vraagt, een bevestiging als je je account verwijdert, en een overzicht" in privacy, "")
+    stub_js = open(STUB, encoding="utf-8").read()
+    httpd, port = serve()
+    fouten = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark", is_mobile=True, has_touch=True)
+        ctx.route("https://*.supabase.co/**", lambda r: r.abort())
+        page = ctx.new_page()
+        page.on("pageerror", lambda e: fouten.append(str(e)))
+        page.route("**/supabase.js*", lambda r: r.fulfill(status=200, content_type="application/javascript", body=stub_js))
+        for pat in ("**/fonts.googleapis.com/**", "**/fonts.gstatic.com/**", "**/api.pdok.nl/**", "**/itunes.apple.com/**", "**/img.youtube.com/**", "**/x.test/**"):
+            page.route(pat, lambda r: r.abort())
+        page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
+        page.wait_for_timeout(500)
+        u = page.evaluate("""async () => {
+          openMusicianNiveauInfoModal(); await new Promise(r => setTimeout(r, 300));
+          const t = document.querySelector('#niveauInfoModalContent .niveau-info-table');
+          const rijen = [...t.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent));
+          return { koppen: [...t.querySelectorAll('thead th')].map(th => th.textContent), rijen, zinnen: instrumentLevelBlurbs(),
+                   labels: instrumentLevelLabels(), tekst: document.getElementById('niveauInfoModalContent').textContent,
+                   open: document.getElementById('niveauInfoModal').classList.contains('visible') }; }""")
+        browser.close()
+    httpd.shutdown()
+    check("TT-572: het venster opent met 5 kolommen en 5 niveaus",
+          u["open"] and len(u["koppen"]) == 5 and len(u["rijen"]) == 5 and all(len(r) == 5 for r in u["rijen"]), json.dumps(u["koppen"]))
+    check("TT-572: de kolom Technische beheersing is per niveau de zin onder de niveaukeuze (één bron, NIVEAU_ZINNEN)",
+          [r[1] for r in u["rijen"]] == u["zinnen"] and u["koppen"][1] == "Technische beheersing", json.dumps([r[1] for r in u["rijen"]]))
+    check("TT-572: de eerste kolom is de naam van het niveau, gelijk aan de keuze (Beginner tot en met Professioneel)",
+          [r[0] for r in u["rijen"]] == [f"{i + 1}. {n}" for i, n in enumerate(u["labels"])], json.dumps([r[0] for r in u["rijen"]]))
+    woorden = re.findall(r"drum|akkoord|\bfills?\b|ademsteun|\btabs\b|internettab|chord|barré|riff", u["tekst"], re.I)
+    check("TT-572 (D7): het venster noemt geen instrument meer: geen drums, akkoorden, fills, ademsteun, tabs, chord charts, barré of riffs",
+          not woorden, json.dumps(woorden))
+    check("Blok 160: geen JS-fouten", not fouten, "; ".join(fouten)[:500])
+
+
 BLOKKEN = [
     blok1_statisch,
     blok_tt517_fase1,
@@ -19309,6 +19351,7 @@ BLOKKEN = [
     blok_bundel_133,
     blok_bundel_135,
     blok_tt613,
+    blok_bundel1_mails,
 ]
 
 
