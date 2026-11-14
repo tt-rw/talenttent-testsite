@@ -9309,7 +9309,7 @@ window.TT_STUB.fnAntwoord = {};
         j81 = json.dumps(d81, ensure_ascii=False)
         check("TT-451: Talent Tent staat als gesprek in de inbox, met de kernzin als voorbeeld en het aantal ongelezen",
               [r["naam"] for r in d81["inbox"]] == ["TalentTent"] and d81["inbox"][0]["ongelezen"] and d81["inbox"][0]["badge"] == "1"
-              and d81["inbox"][0]["voorbeeld"] == "Er zijn 5 nieuwe matches bij jou in de buurt", j81)
+              and d81["inbox"][0]["voorbeeld"] == "Er zijn 5 nieuwe matches bij jou in de buurt.", j81)
         check("TT-451: een ongelezen bericht van Talent Tent geeft een getal op Berichten in de onderbalk (de bovenbalk is weg, TT-595)",
               d81["getalOngelezen"]["onder"] != "none" and d81["getalOngelezen"]["tekst"] == "1", j81)
         check("TT-451: een bericht van een muzikant en een van Talent Tent tellen samen in één getal",
@@ -9317,7 +9317,7 @@ window.TT_STUB.fnAntwoord = {};
         check("TT-451: het gesprek toont één bericht per digestrun, oud naar nieuw, met dag-scheiding",
               d81["draad"]["n"] == 1 and len(d81["draad"]["dagen"]) == 1 and d81["draad"]["dagen"][0] == "Vandaag", j81)
         check("TT-451: de kernzin telt alleen wat je ziet (een geblokkeerde en een verwijderde match tellen niet, \"en nog\" wel)",
-              d81["draad"]["tekst"] == ["Er zijn 4 nieuwe matches bij jou in de buurt"], j81)
+              d81["draad"]["tekst"] == ["Er zijn 4 nieuwe matches bij jou in de buurt."], j81)
         check("TT-451: elke match is een tikbare rij met naam, plaats, afstand en instrumenten; een band met wat hij zoekt",
               [r["naam"] for r in d81["draad"]["rijen"]] == ["Dylan", "Van Delft"]
               and d81["draad"]["rijen"][0]["subs"] == ["Delft · 9 km", "Gitaar · Bas"]
@@ -17746,8 +17746,8 @@ def blok_bundel_133():
     check("TT-573: Annuleren laat alles staan", c["annuleren"] == {"vraag": False, "view": "register", "naam": "Sam"}, json.dumps(c["annuleren"]))
     check("TT-573: een aanmelding van 8 dagen oud is gewist; een van 2 dagen blijft; een zonder tijd krijgt er een; de route met een ouder wordt niet gewist",
           c["oud"] == [None, None] and c["jong"] == "Jong" and c["zonderTijd"] == ["Zonder", True] and c["ouderRoute"] == "Ouder", json.dumps(c))
-    check("TT-572: de zin onder de niveaukeuze is algemeen, de vijf teksten van het besluit (14-11-2026, \"akkoord\")",
-          uit["572"] == ["Je speelt je eerste nummers en oefent nog met tutorials.", "Je speelt hele nummers uit en zoekt ze zelf uit.",
+    check("TT-572: de zin onder de niveaukeuze is algemeen, de vijf teksten van het besluit (14-11-2026, \"akkoord\"; niveau 2 aangevuld, besluit Ronald 14-11-2026, sessie 138)",
+          uit["572"] == ["Je speelt je eerste nummers en oefent nog met tutorials.", "Je speelt hele nummers uit en zoekt ze zelf uit. Je basistechniek is stabiel.",
                          "Je speelt strak en bent klaar voor een optreden.", "Je speelt alles live, ook in andere stijlen, en kunt een band leiden.",
                          "Je speelt op topniveau en hebt een eigen, herkenbare sound."], json.dumps(uit["572"], ensure_ascii=False))
     d = uit["574"]
@@ -19254,7 +19254,7 @@ def blok_tt613():
 
 
 def blok_bundel1_mails():
-    print("\nBlok 160 — bundel 1 (14-11-2026): de privacyverklaring noemt de mail na het verwijderen (TT-72); de niveautabel achter de i-knop noemt geen instrument (TT-572)")
+    print("\nBlok 160 — bundel 1 (14-11-2026): de privacyverklaring noemt de mail na het verwijderen (TT-72); de niveautabel achter de i-knop noemt geen instrument (TT-572); de kernzin in de app met punt (TT-364)")
     privacy = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
     privacy = privacy[privacy.index('id="view-privacy"'):privacy.index('id="view-terms"')]
     check("TT-72: de privacyverklaring noemt \"een bevestiging als je je account verwijdert\" bij de e-mails (besluit Ronald 14-11-2026, \"ja\")",
@@ -19273,6 +19273,7 @@ def blok_bundel1_mails():
             page.route(pat, lambda r: r.abort())
         page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load")
         page.wait_for_timeout(500)
+        zinnen = page.evaluate("[TT_TEKSTEN.kernzinEenMatch, TT_TEKSTEN.kernzinMatches]")
         u = page.evaluate("""async () => {
           openMusicianNiveauInfoModal(); await new Promise(r => setTimeout(r, 300));
           const t = document.querySelector('#niveauInfoModalContent .niveau-info-table');
@@ -19291,6 +19292,8 @@ def blok_bundel1_mails():
     woorden = re.findall(r"drum|akkoord|\bfills?\b|ademsteun|\btabs\b|internettab|chord|barré|riff", u["tekst"], re.I)
     check("TT-572 (D7): het venster noemt geen instrument meer: geen drums, akkoorden, fills, ademsteun, tabs, chord charts, barré of riffs",
           not woorden, json.dumps(woorden))
+    check("TT-364: de kernzin van het bericht van TalentTent in de app eindigt op een punt, zoals in de mail (besluit Ronald 14-11-2026, \"Ja, overal een punt\")",
+          zinnen == ["Er is 1 nieuwe match bij jou in de buurt.", "Er zijn {aantal} nieuwe matches bij jou in de buurt."], json.dumps(zinnen))
     check("Blok 160: geen JS-fouten", not fouten, "; ".join(fouten)[:500])
 
 
