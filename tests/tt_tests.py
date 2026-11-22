@@ -21709,7 +21709,14 @@ window.TT_STUB.data.prikbord_zoek = [{ musician_id: 'm1', soort: 'gezocht', doel
             { id: 'o1', km: 3.4, soort: 'gezocht', doel: 'band', instrumenten: ['Drums'], elk: false, toevoeging: null, plaatser: 'm2', band: 'b1' }] } }, info);
           const d = document.createElement('div'); d.innerHTML = html;
           u.ttRijen = [...d.querySelectorAll('.bb-rij')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
+          // Je eigen oproep: geen gezamenlijke nummers (met jezelf).
+          const eigen = Object.assign({}, pbLijst.find(x => x.id === 'o1'), { eigen: true, gedeeld: 9 });
+          u.eigenRij = pbRijHTML(eigen).includes('pb-rij-gedeeld'); u.eigenOproep = pbOproepHTML(eigen).includes('pb-oproep-gedeeld');
+          // Herladen met het prikbord als laatste scherm: de lijst laadt (geen leeg scherm zonder straal).
+          sessionStorage.setItem('tt-zoekstand', JSON.stringify({ scherm: 'prikbord', soort: 'alles' }));
           return u; }""")
+        pg.goto(f"http://127.0.0.1:{port}/index.html?herladen=1#search", wait_until="load"); pg.wait_for_timeout(1800)
+        u["hersteld2"] = pg.evaluate("() => ({ scherm: zoekScherm, straal: document.getElementById('pbStraal').value, rijen: document.querySelectorAll('#pbResultaat .pb-rij').length })")
         links = {}
         for h in ("#prikbord", "#prikbord/o2", "#prikbord/onbekend", "#prikbord/mijn"):
             pl = pagina(h)
@@ -21740,6 +21747,9 @@ window.TT_STUB.data.prikbord_zoek = [{ musician_id: 'm1', soort: 'gezocht', doel
     check("TT-396: link /#prikbord/<id> opent die oproep", links["#prikbord/o2"]["laag"] == "oproep" and links["#prikbord/o2"]["titel"] == "Bassist beschikbaar", json.dumps(links["#prikbord/o2"]))
     check("TT-396: link naar een oproep die er niet meer is: melding", "Deze oproep staat niet meer op het prikbord." in links["#prikbord/onbekend"]["toast"], json.dumps(links["#prikbord/onbekend"]))
     check("TT-396: link /#prikbord/mijn opent Mijn oproepen", links["#prikbord/mijn"]["tab"] == "mijn", json.dumps(links["#prikbord/mijn"]))
+    check("TT-396: je eigen oproep toont geen gezamenlijke nummers (gemeten op de testsite, sessie 199)", u["eigenRij"] is False and u["eigenOproep"] is False, json.dumps([u["eigenRij"], u["eigenOproep"]]))
+    check("TT-396: herladen met het prikbord als laatste scherm laadt de lijst, met straal (gemeten op de testsite, sessie 199)",
+          u["hersteld2"]["scherm"] == "prikbord" and u["hersteld2"]["straal"] == "25" and u["hersteld2"]["rijen"] == 3, json.dumps(u["hersteld2"]))
     check("TT-396: geen JS-fouten in blok 176", not fouten, "; ".join(fouten)[:600])
 
 BLOKKEN = [

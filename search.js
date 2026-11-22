@@ -163,7 +163,9 @@ function herstelZoekStand() {
   try { stand = JSON.parse(sessionStorage.getItem('tt-zoekstand') || 'null'); } catch (e) { return; }
   if (!stand) return;
   if (ZOEK_SOORTEN.includes(stand.soort)) zetZoekSoortKnoppen(stand.soort);
-  if (ZOEK_SCHERMEN.includes(stand.scherm)) zetZoekScherm(stand.scherm);
+
+  if (stand.scherm === 'prikbord') openPrikbord();
+  else if (ZOEK_SCHERMEN.includes(stand.scherm)) zetZoekScherm(stand.scherm);
 }
 
 function zetZoekSoortKnoppen(soort) {

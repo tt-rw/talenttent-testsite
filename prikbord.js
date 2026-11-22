@@ -263,7 +263,7 @@ function pbRijHTML(o) {
 
 
   const metaRegel = [pbDoelNaam(o.doel), (o.genres || [])[0], o.naam, afstandTekst(o.km)].filter(Boolean).map(escHtml).join(' · ');
-  const gedeeld = o.gedeeld ? `<div class="pb-rij-gedeeld">${escHtml(pbGedeeldTekst(o))}</div>` : '';
+  const gedeeld = o.gedeeld && !o.eigen ? `<div class="pb-rij-gedeeld">${escHtml(pbGedeeldTekst(o))}</div>` : '';
   return `
     <div class="result-row pb-rij" onclick="pbOpenOproep('${jsAttr(o.id)}')">
       <div class="result-row-top">
@@ -330,7 +330,7 @@ function pbOproepHTML(o, voorbeeld) {
       </div>
       <p class="pb-oproep-tekst">${escHtml(o.tekst || '')}</p>
       <dl class="pb-feiten">${feiten.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
-      ${o.gedeeld ? `<p class="pb-oproep-gedeeld">${escHtml(pbGedeeldTekst(o))}</p>` : ''}
+      ${o.gedeeld && !o.eigen ? `<p class="pb-oproep-gedeeld">${escHtml(pbGedeeldTekst(o))}</p>` : ''}
       ${o.media_gewenst && o.soort === 'gezocht' ? '<p class="pb-oproep-media">Graag met een video of link.</p>' : ''}
       <p class="pb-oproep-datum">${datum}</p>
       ${knop}
