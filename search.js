@@ -101,8 +101,8 @@ let zoekSchermDirect = false;
 
 let zoekSoort = 'alles';
 const ZOEK_SOORTEN = ['alles', 'muzikanten', 'bands'];
-const ZOEK_SCHERMEN = ['start', 'muzikanten', 'mixmatch'];
-const ZOEK_SCHERM_IDS = { start: 'zoekStart', muzikanten: 'searchModeMusician', mixmatch: 'searchModeSetlist' };
+const ZOEK_SCHERMEN = ['start', 'prikbord', 'muzikanten', 'mixmatch'];
+const ZOEK_SCHERM_IDS = { start: 'zoekStart', prikbord: 'zoekPrikbord', muzikanten: 'searchModeMusician', mixmatch: 'searchModeSetlist' };
 
 
 function zetZoekScherm(scherm) {
@@ -145,6 +145,7 @@ function openZoekMuzikanten(mode) {
 
 
 function zoekSchermTerug() {
+  if (zoekScherm === 'prikbord' && pbTerug()) return;
   const direct = zoekSchermDirect && navStack.length;
   zetZoekScherm('start');
   if (direct) { popNavStap(); return; }
@@ -1266,7 +1267,7 @@ function bandRowHTML(b) {
     eerste: eersteGekozen(b.genres || []),
     plaats: b.city || '',
     afstand: afstandTekst(b.distance_km),
-    rechts: zoekt ? `<span class="result-row-zoekt"><span>Zoekt</span><span>${escHtml(instrumentInZin(zoekt))}</span></span>` : ''
+    rechts: zoekt ? `<span class="result-row-zoekt" role="button" onclick="event.stopPropagation(); pbOpenBandOproep('${jsAttr(b.id)}','${jsAttr(zoekt)}')"><span>Zoekt</span><span>${escHtml(instrumentInZin(zoekt))}</span></span>` : ''
   });
 }
 
@@ -1284,7 +1285,7 @@ function bandCardHTML(b) {
     eerste: eersteGekozen(b.genres || []),
     plaats: b.city || '',
     afstand: afstandTekst(b.distance_km),
-    hoek: zoekt ? `<span class="zoek-kaart-zoekt">Zoekt ${escHtml(instrumentInZin(zoekt))}</span>` : ''
+    hoek: zoekt ? `<span class="zoek-kaart-zoekt" role="button" onclick="event.stopPropagation(); pbOpenBandOproep('${jsAttr(b.id)}','${jsAttr(zoekt)}')">Zoekt ${escHtml(instrumentInZin(zoekt))}</span>` : ''
   });
 }
 
@@ -2176,7 +2177,7 @@ function renderGedeeldResults() {
   if (!totaal) {
     el.innerHTML = `
       <div class="no-results">
-        <p class="no-results-kop">Geen gedeelde nummers</p>
+        <p class="no-results-kop">Geen gezamenlijke nummers</p>
         <p class="no-results-tekst">Geen van deze nummers staat bij minstens 2 van deze muzikanten in het repertoire.</p>
       </div>`;
     return;
