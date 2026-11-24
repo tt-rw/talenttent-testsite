@@ -23,7 +23,8 @@ const TT_TEKSTEN = {
   kernzinMatches: 'Er zijn {aantal} nieuwe matches bij jou in de buurt.',
   meer: 'En nog {aantal} andere — bekijk ze in Zoeken',
   bandZoekt: 'zoekt: {instrument}',
-  oproepUitnodiging: '{naam} nodigt je uit om kennis te maken voor {titel}.',
+
+  oproepUitnodiging: '{naam} nodigt je uit om kennis te maken.',
 };
 
 
