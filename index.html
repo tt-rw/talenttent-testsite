@@ -1243,7 +1243,7 @@
 
     <button type="button" class="tile zoek-tegel" id="zoekTegelPrikbord" onclick="openPrikbord()">
       <span class="zoek-tegel-icoon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></span>
-      <span class="zoek-tegel-tekst"><span class="tile-title">Prikbord</span><span class="tile-sub">Oproepen: wie zoekt wie, en wie is beschikbaar</span></span>
+      <span class="zoek-tegel-tekst"><span class="tile-title">Prikbord</span><span class="tile-sub">Vinden en gevonden worden</span></span>
       <span class="pb-getal" id="pbTegelGetal" hidden></span>
     </button>
     <button type="button" class="tile zoek-tegel" id="zoekTegelMuzikanten" onclick="openZoekScherm('muzikanten')">
@@ -2092,10 +2092,12 @@
   <div class="modal-box modal-box-md">
     <h2 class="hoofdstuk-kop" id="pbReagerenKop">Reageren</h2>
     <div id="pbReagerenInhoud"></div>
-    <div class="field">
+    <div class="field-group">
+      <div class="field">
 
-      <div class="label-rij zoek-label-rij"><label for="pbBoodschap">Boodschap (niet verplicht)</label><button type="button" class="zoek-filters-knop pb-voorbeelden-knop" onclick="bioVoorbeeldenOpen('pbBoodschap','reactie')" aria-label="Voorbeelden bij Boodschap (niet verplicht)">Voorbeelden</button></div>
-      <textarea id="pbBoodschap" class="bio-vak" maxlength="1000" rows="3" oninput="veldGroeit(this)"></textarea>
+        <div class="label-rij zoek-label-rij"><label for="pbBoodschap">Boodschap (niet verplicht)</label><button type="button" class="zoek-filters-knop pb-voorbeelden-knop" onclick="bioVoorbeeldenOpen('pbBoodschap','reactie')" aria-label="Voorbeelden bij Boodschap (niet verplicht)">Voorbeelden</button></div>
+        <textarea id="pbBoodschap" class="bio-vak" maxlength="1000" rows="3" oninput="veldGroeit(this)"></textarea>
+      </div>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-ghost" onclick="pbReagerenSluiten()">Annuleren</button>
@@ -2484,20 +2486,20 @@
 
 
 <link rel="preload" href="supabase.js?v=2.118.0" as="script">
-<link rel="preload" href="core.js?v=20261124a" as="script">
-<link rel="preload" href="utils.js?v=20261124a" as="script">
+<link rel="preload" href="core.js?v=20261125a" as="script">
+<link rel="preload" href="utils.js?v=20261125a" as="script">
 <link rel="preload" href="veiligheid.js?v=20261121c" as="script">
 <link rel="preload" href="auth.js?v=20261120a" as="script">
 <link rel="preload" href="postcode.js?v=20261119a" as="script">
-<link rel="preload" href="wizard.js?v=20261124a" as="script">
+<link rel="preload" href="wizard.js?v=20261125a" as="script">
 <link rel="preload" href="ouder.js?v=20261118a" as="script">
 <link rel="preload" href="search.js?v=20261124a" as="script">
-<link rel="preload" href="musicians.js?v=20261121c" as="script">
-<link rel="preload" href="bands.js?v=20261124a" as="script">
-<link rel="preload" href="messages.js?v=20261124a" as="script">
+<link rel="preload" href="musicians.js?v=20261125a" as="script">
+<link rel="preload" href="bands.js?v=20261125a" as="script">
+<link rel="preload" href="messages.js?v=20261125a" as="script">
 <link rel="preload" href="push.js?v=20261118a" as="script">
 <link rel="preload" href="modals-shared.js?v=20261116a" as="script">
-<link rel="preload" href="prikbord.js?v=20261124a" as="script">
+<link rel="preload" href="prikbord.js?v=20261125a" as="script">
 <script src="supabase.js?v=2.118.0"></script>
 <script>
 
@@ -2515,20 +2517,20 @@
     document.getElementById('backendErrorOverlay').classList.add('visible');
   }
 </script>
-<script src="core.js?v=20261124a"></script>
-<script src="utils.js?v=20261124a"></script>
+<script src="core.js?v=20261125a"></script>
+<script src="utils.js?v=20261125a"></script>
 <script src="veiligheid.js?v=20261121c"></script>
 <script src="auth.js?v=20261120a"></script>
 <script src="postcode.js?v=20261119a"></script>
-<script src="wizard.js?v=20261124a"></script>
+<script src="wizard.js?v=20261125a"></script>
 <script src="ouder.js?v=20261118a"></script>
 <script src="search.js?v=20261124a"></script>
-<script src="musicians.js?v=20261121c"></script>
-<script src="bands.js?v=20261124a"></script>
-<script src="messages.js?v=20261124a"></script>
+<script src="musicians.js?v=20261125a"></script>
+<script src="bands.js?v=20261125a"></script>
+<script src="messages.js?v=20261125a"></script>
 <script src="push.js?v=20261118a"></script>
 <script src="modals-shared.js?v=20261116a"></script>
-<script src="prikbord.js?v=20261124a"></script>
+<script src="prikbord.js?v=20261125a"></script>
 <script>
 
 

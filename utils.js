@@ -3699,14 +3699,23 @@ const BIO_VOORBEELDEN = {
     kop: 'Boodschap',
     tips: ['Zeg kort wat je speelt en hoe lang al.', 'Waarom past deze oproep bij jou?', 'Noem wanneer je kunt.', 'Wijs op je filmpje of opname, als je die hebt.'],
     wie: ['Bassist', 'Toetsenist', 'Beginnende drummer'],
-    vb: ['Ik ben 16 en speel twee jaar basgitaar, vooral pop en rock. Jullie oproep past bij wat ik zoek. Op mijn profiel staat een filmpje.',
-      'Ik speel vijf jaar piano en sinds kort keyboard. Een deel van jullie nummers ken ik al. Ik kan op zaterdag en speel graag een keer mee.',
+    vb: ['Ik ben 16 en speel twee jaar basgitaar, vooral pop en rock. Deze oproep past bij wat ik zoek. Op mijn profiel staat een filmpje.',
+      'Ik speel vijf jaar piano en sinds kort keyboard. Een deel van de nummers ken ik al. Ik kan op zaterdag en speel graag een keer mee.',
       'Ik drum sinds een jaar en zoek een band om samen te leren. Woensdagmiddag kan ik altijd.']
   }
 };
 function bioVoorbeeldenOpen(veldId, soort) {
   const v = BIO_VOORBEELDEN[soort];
   voorbeeldBladOpen(v.kop, voorbeeldenHTML(v.tips, v.wie, v.vb, n => `bioVoorbeeldGebruiken('${veldId}','${soort}',${n})`));
+}
+
+
+
+function bioVoorbeeldFout(veldId, soort) {
+  const el = document.getElementById(veldId);
+  const t = el ? el.value.trim() : '';
+  if (!t || !BIO_VOORBEELDEN[soort].vb.includes(t)) return null;
+  return [veldId, soort === 'band' ? 'Pas het voorbeeld aan, zodat het over jullie gaat' : 'Pas het voorbeeld aan, zodat het over jou gaat'];
 }
 
 function bioVoorbeeldGebruiken(veldId, soort, n) {

@@ -173,7 +173,7 @@ function pbZetTab(tab) {
   if (duiding) duiding.textContent = PB_DUIDING[tab] || '';
   pbToonLaag();
   if (tab === 'alle') { pbInitFilters(); pbOnthoudHerstellen().finally(pbLaden); }
-  if (tab === 'mijn') pbMijnLaden();
+  if (tab === 'mijn') { pbMijnLaden(); pbTegelGetal(); }
   if (tab === 'reacties') pbReactiesLaden();
 }
 
@@ -472,6 +472,7 @@ function pbMediaToevoegen() { pbReagerenSluiten(); if (typeof openTegelScreenVan
 async function pbReagerenVersturen() {
   const o = pbOpen;
   const tekst = document.getElementById('pbBoodschap').value;
+  if (showFieldErrors([bioVoorbeeldFout('pbBoodschap', 'reactie')])) return;
   const { error } = await db.rpc('tt_oproep_reageren', { p_oproep: o.id, p_boodschap: tekst });
   if (error) { showToast(friendlyErrorMessage(error, 'je reactie versturen')); return; }
   pbReagerenSluiten();
@@ -1133,6 +1134,7 @@ async function pbWegBevestigen() {
 
 
   const tekst = (m.oproep.band_id ? PB_TT.gekozenBand : PB_TT.gekozen).replace('{naam}', gekozen.naam);
+  pbMijnLaden();
   pbTegelGetal();
   openMessageComposer(gekozen.musician_id, gekozen.naam);
   const veld = document.getElementById('messagesReplyInput');
@@ -1249,7 +1251,9 @@ const PB_TT = {
   oproepen: 'Er zijn {aantal} nieuwe oproepen bij jou in de buurt.',
   oproep: 'Er is 1 nieuwe oproep bij jou in de buurt.',
   knopPrikbord: 'Naar het prikbord',
-  knopMijn: 'Mijn Oproepen',
+
+  knopMijn: 'Naar Mijn Oproepen',
+  knopReacties: 'Naar Mijn Reacties',
 
   gekozen: 'Hoi {naam}, bedankt voor je reactie en ik wil graag met je verder. De oproep wordt hiermee afgesloten.',
   gekozenBand: 'Hoi {naam}, bedankt voor je reactie en we willen graag met je verder. De oproep wordt hiermee afgesloten.'
@@ -1288,7 +1292,8 @@ function pbTtBerichtHTML(bericht, info) {
   const kop = pbTtKernzin(inh, info);
   if (!kop) return '';
   const mijn = ['reactie_ingetrokken', 'oproep_loopt_af', 'nieuwe_reacties'].includes(inh.soort);
-  const knop = `<button type="button" class="tt-meer" onclick="openPrikbordVanuitBericht('${mijn ? 'mijn' : 'alle'}')">${escHtml(mijn ? PB_TT.knopMijn : PB_TT.knopPrikbord)}</button>`;
+  const tab = mijn ? 'mijn' : inh.soort === 'oproep_bedankt' ? 'reacties' : 'alle';
+  const knop = `<button type="button" class="tt-meer" onclick="openPrikbordVanuitBericht('${tab}')">${escHtml({ mijn: PB_TT.knopMijn, reacties: PB_TT.knopReacties, alle: PB_TT.knopPrikbord }[tab])}</button>`;
   const tijd = new Date(bericht.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
 
 

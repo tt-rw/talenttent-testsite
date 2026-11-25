@@ -1131,6 +1131,8 @@ async function nextStep(from) {
         }
       }
     }
+    const bioFout = bioVoorbeeldFout('bio', 'muzikant');
+    if (bioFout) fouten.push(bioFout);
 
     if (showFieldErrors(fouten)) return;
 

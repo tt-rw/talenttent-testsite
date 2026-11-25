@@ -621,6 +621,9 @@ async function onUserLoggedIn(user) {
   if (hasOwnProfile) ttToestelMelden();
 
 
+  if (hasOwnProfile && typeof pbTegelGetal === 'function') pbTegelGetal();
+
+
 
 
 

@@ -1661,6 +1661,8 @@ async function saveBandWie() {
   if (!zip || !bandPostcodeResolved || !city) {
     fouten.push(['bwZip', 'Vul een geldige postcode in. De plaats wordt dan automatisch ingevuld']);
   }
+  const bioFout = bioVoorbeeldFout('bwBio', 'band');
+  if (bioFout) fouten.push(bioFout);
   if (showFieldErrors(fouten)) return;
   if (bwFieldSnapshot() === bwSnapshot) return;
 
