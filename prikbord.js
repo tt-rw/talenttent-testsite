@@ -1134,7 +1134,10 @@ async function pbWegBevestigen() {
 
 
   const tekst = (m.oproep.band_id ? PB_TT.gekozenBand : PB_TT.gekozen).replace('{naam}', gekozen.naam);
-  pbMijnLaden();
+
+
+  pbMijn = pbMijn.filter(x => x.oproep.id !== k.oproep);
+  pbMijnTekenen();
   pbTegelGetal();
   openMessageComposer(gekozen.musician_id, gekozen.naam);
   const veld = document.getElementById('messagesReplyInput');

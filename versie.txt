@@ -13,4 +13,4 @@ bands.js?v=20261125a
 messages.js?v=20261125a
 push.js?v=20261118a
 modals-shared.js?v=20261116a
-prikbord.js?v=20261125a
+prikbord.js?v=20261125b

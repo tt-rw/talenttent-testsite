@@ -22304,6 +22304,7 @@ S.data.musicians.forEach(m => Object.assign(m, { musician_instruments: [], music
 const L = %s;
 S.rpcResults.tt_prikbord = (a) => a.p_id ? L.filter(x => x.id === a.p_id) : L;
 const M = %s;
+M.push({ oproep: Object.assign({}, M[0].oproep, { id: 'o10', doelen: ['band'] }), reacties: [] });
 window.__gesloten = new Set();
 S.rpcResults.tt_mijn_oproepen = () => JSON.parse(JSON.stringify(M)).filter(x => !window.__gesloten.has(x.oproep.id));
 S.rpcResults.tt_oproep_sluiten = (a) => { window.__gesloten.add(a.p_id); return null; };
@@ -22351,6 +22352,10 @@ S.data.talent_tent_berichten = [
           pbWegKies(document.querySelector('#pbWegKeuzes .pb-weg-keuze[data-w="m3"]'));
           await pbWegBevestigen(); await w(800);
           u.weg = { view: huidigeView, typvak: $('messagesReplyInput').value.slice(0, 9) };
+          // Terug uit het gesprek met de terugknop: de titel van de andere oproep in de korte vorm, niet afgekort met "…".
+          history.back(); await w(800);
+          const tt = document.querySelector('#pbMijnLijst .pb-titel');
+          u.weg.terug = { view: huidigeView, tab: pbTab, titel: tt ? [tekst(tt), tt.scrollWidth <= tt.clientWidth + 1] : null, lijst: pbMijn.map(m => m.oproep.id) };
           showView('search'); openPrikbord('mijn'); await w(300);
           pbZetTab('mijn'); await w(600);
           u.weg.kaarten = document.querySelectorAll('#pbMijnLijst .pb-kaart-oproep').length;
@@ -22401,7 +22406,9 @@ S.data.talent_tent_berichten = [
     check("Bericht van TalentTent: de knop zegt \"Naar Mijn Oproepen\" over je oproep en \"Naar Mijn Reacties\" over je reactie, en opent die plek (besluit Ronald 25-11-2026, sessie 209: \"ad 1. ja\")",
           u["knoppen"] == [["Naar Mijn Oproepen", "mijn"], ["Naar Mijn Reacties", "reacties"], ["Naar het prikbord", "alle"]], j(u["knoppen"]))
     check("TT-396 (8D sessie 209): na Wie is het geworden? met een keuze staat de gesloten oproep niet meer in Mijn Oproepen",
-          u["weg"]["view"] == "messages" and u["weg"]["typvak"] == "Hoi Mila," and "o9" not in u["weg"]["lijst"] and u["weg"]["kaarten"] == 0, j(u["weg"]))
+          u["weg"]["view"] == "messages" and u["weg"]["typvak"] == "Hoi Mila," and "o9" not in u["weg"]["lijst"] and u["weg"]["kaarten"] == 1, j(u["weg"]))
+    check("TT-396 (8D sessie 209): terug uit het gesprek staat Mijn Oproepen er meteen goed: zonder de gesloten oproep, en past de titel niet, dan de korte vorm",
+          u["weg"]["terug"]["view"] == "search" and u["weg"]["terug"]["lijst"] == ["o10"] and u["weg"]["terug"]["titel"][0] == "Bassist of toetsenist gezocht", j(u["weg"]["terug"]))
     check("TT-396 (8D sessie 209): het overzicht van Berichten noemt de naam van de plaatser, niet \"De plaatser\"",
           u["inbox"] is not None and "De plaatser" not in u["inbox"] and u["inbox"].startswith('Je oproep "Ronald zoekt een bassist of toetsenist"'), j(u["inbox"]))
     check("TT-396 (8D sessie 209): bij Ik doe mee staat de vaste ruimte (16) tussen het tekstvak en de knoppen",
