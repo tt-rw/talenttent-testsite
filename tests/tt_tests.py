@@ -5285,8 +5285,8 @@ window.TT_STUB.fnAntwoord = {};
               kl["d"]["ghost"] == "rgb(136, 136, 136)" and kl["l"]["ghost"] == "rgb(138, 135, 130)", json.dumps(kl))
         check("een uitgeschakelde knop is half zichtbaar zonder handje",
               kl["d"]["uitgeschakeld"] == ["0.5", "not-allowed"], json.dumps(kl["d"]["uitgeschakeld"]))
-        check("melding: rand in --accent, links 4px, vlak --surface2, kop 15px en tekst 12px in de tekstkleur (TT-517)",
-              kl["d"]["melding"] == ["rgb(255, 184, 28)", "4px", "rgb(30, 30, 30)"]
+        check("melding: rand in --accent, rondom 1px (ook links; besluit Ronald 25-11-2026, sessie 213: \"ja, alle kaders dezelfde vorm\"; was 4px), vlak --surface2, kop 15px en tekst 12px in de tekstkleur (TT-517)",
+              kl["d"]["melding"] == ["rgb(255, 184, 28)", "1px", "rgb(30, 30, 30)"]
               and kl["d"]["meldingTekst"] == ["15px", "12px", "rgb(240, 240, 240)"], json.dumps(kl["d"]))
         c.close()
 
@@ -9897,8 +9897,8 @@ window.TT_STUB.fnAntwoord = {};
               d85["eigen"] and d85["eigen"]["tekst"] == "Tijdelijk niet beschikbaar." and d85["eigen"]["vet"] == "Tijdelijk niet beschikbaar."
               and d85["eigen"]["uitlijning"] == "center"
               and d85["eigen"]["voor"] == "profiel-wat" and d85["eigen"]["na"] == "profile-bio" and not d85["eigen"]["kop"] and not d85["eigen"]["knop"], j85("eigen"))
-        check("UI: de zin is 12px (TT-517), de lijn links 4px, en staat 16px onder de twee regels en 16px boven de bio (TT-595, besluit Ronald 14-11-2026; was 20px)",
-              d85["eigen"]["letter"] == "12px" and d85["eigen"]["rand"] == "4px" and d85["eigen"]["boven"] == 16 and d85["eigen"]["onder"] == 16, j85("eigen"))
+        check("UI: de zin is 12px (TT-517), de rand rondom 1px, ook links (sessie 213: \"ja, alle kaders dezelfde vorm\"; was links 4px), en staat 16px onder de twee regels en 16px boven de bio (TT-595, besluit Ronald 14-11-2026; was 20px)",
+              d85["eigen"]["letter"] == "12px" and d85["eigen"]["rand"] == "1px" and d85["eigen"]["boven"] == 16 and d85["eigen"]["onder"] == 16, j85("eigen"))
         check("Actief (de standaard): er staat geen zin op Mijn Profiel", d85["eigenActief"] is True, j85("eigenActief"))
         check("het profiel van een ander: 'Inactief.' via tt_profiel_stand (met het id); bij Actief geen zin",
               d85["ander"] and d85["ander"]["tekst"] == "Inactief." and d85["ander"]["uitlijning"] == "center"

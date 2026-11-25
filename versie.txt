@@ -1,4 +1,4 @@
-styles.css?v=20261125a
+styles.css?v=20261125b
 supabase.js?v=2.118.0
 core.js?v=20261125a
 utils.js?v=20261125a
