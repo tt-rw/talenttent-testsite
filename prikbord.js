@@ -1095,6 +1095,9 @@ function pbMijnHTML(m) {
   const reacties = m.reacties || [];
   const open = pbMijnOpen === o.id;
   const telling = !reacties.length ? 'Geen reacties' : reacties.length === 1 ? '1 kandidaat' : `${reacties.length} kandidaten`;
+
+
+  const nieuw = reacties.filter(r => r.nieuw).length;
   const verlengen = pbDagenOver(o) <= 10;
   return `
     <div class="result-row pb-kaart-oproep${open ? ' open' : ''}" id="pbMijn-${escHtml(o.id)}">
@@ -1102,7 +1105,7 @@ function pbMijnHTML(m) {
         <div class="result-row-top">
           <div class="result-row-avatar${o.band_id ? ' result-vierkant' : ''}">${fotoHTML(o.foto, o.naam) || ZONDER_FOTO_HTML}</div>
           <div class="result-row-main">
-            <div class="result-row-name pb-eenregel">${pbTitelHTML(o)}<span class="pb-pijl">${PB_PIJL_OMLAAG}</span></div>
+            <div class="result-row-name pb-eenregel">${pbTitelHTML(o)}${nieuw ? `<span class="pb-getal">${nieuw}</span>` : ''}<span class="pb-pijl">${PB_PIJL_OMLAAG}</span></div>
             <div class="result-row-meta pb-eenregel"><span class="pb-regel-kort">${escHtml(telling)}</span><span class="pb-rechts">${escHtml(pbVerlengTekst(o))}</span></div>
           </div>
         </div>

@@ -23163,6 +23163,9 @@ S.data.prikbord_zoek = [];
         kaartOpen: [...document.querySelectorAll('#pbMijnLijst .pb-kaart-oproep.open')].map(k => k.id),
         nieuw: [...document.querySelectorAll('#pbMijnLijst .pb-nieuw')].length,
         getalKandidaat: [...document.querySelectorAll('#pbMijnLijst .pb-kandidaat .pb-getal')].map(e => e.textContent),
+        kaartGetal: Object.fromEntries([...document.querySelectorAll('#pbMijnLijst .pb-kaart-oproep')].map(k => [k.id, (k.querySelector('.pb-klap .pb-getal') || {}).textContent || ''])),
+        titelPast: [...document.querySelectorAll('#pbMijnLijst .pb-klap .pb-titel')].every(t => t.scrollWidth <= t.clientWidth + 1 || t.textContent === t.dataset.kort),
+        titels: [...document.querySelectorAll('#pbMijnLijst .pb-klap .pb-titel')].map(t => t.textContent),
         lijn: (() => { const g = document.querySelector('#pbMijnLijst .pb-kandidaat .pb-getal'), n = document.querySelector('#pbMijnLijst .pb-kandidaat .pb-nieuw');
           if (!g || !n) return null; const a = g.getBoundingClientRect(), b = n.getBoundingClientRect();
           const m = document.querySelector('#pbMijnLijst .pb-kandidaat .result-row-naam').getBoundingClientRect();
@@ -23256,8 +23259,12 @@ S.data.prikbord_zoek = [];
           t.get("getalKandidaat") == ["1"], j(t))
     check("TT-704: het rode 1 staat op dezelfde lijn als \"Nieuw\" (midden gelijk), met dezelfde ruimte als tussen naam en \"Nieuw\"",
           (t.get("lijn") or {}).get("midden") == 0 and (t.get("lijn") or {}).get("tussen") == (t.get("lijn") or {}).get("naamNieuw") == 14, j(t.get("lijn")))
+    check("TT-704: het rode getal staat ook op de kaart van elke oproep met een nieuwe kandidaat, ook dicht (besluit Ronald sessie 229: \"ad 2. ja\"); past een titel niet, dan de korte vorm (sessie 205)",
+          t.get("kaartGetal") == {"pbMijn-o9": "1", "pbMijn-o8": "1"} and t.get("titelPast"), j(t))
     check("TT-704: een tik op de kandidaat toont zijn bericht en vraagt \"gezien\" (stap 4)",
           k.get("ballon") and k.get("nieuw") == 0 and k.get("getalKandidaat") == [], j(k))
+    check("TT-704: na de tik op de kandidaat verdwijnt het getal van zijn kaart; de andere kaart houdt het zijne",
+          k.get("kaartGetal") == {"pbMijn-o9": "1", "pbMijn-o8": ""}, j(k))
     vb = uit.get("vanBericht", {})
     check("TT-704: \"Naar Mijn Oproepen\" onder \"1 nieuwe kandidaat\" opent die oproep met de kandidaten, de kandidaat dicht",
           vb.get("nieuw", {}).get("tekst") == "Naar Mijn Oproepen" and vb.get("nieuw", {}).get("tab") == "mijn"
